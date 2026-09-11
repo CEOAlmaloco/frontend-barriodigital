@@ -1,0 +1,79 @@
+@use '@angular/material' as mat;
+@use 'tokens' as *;
+
+html {
+  color-scheme: light;
+
+  // Paleta violeta como base M3; los roles de color se remapean abajo a los tokens exactos
+  @include mat.theme((
+    color: (
+      primary: mat.$violet-palette,
+      theme-type: light,
+    ),
+    typography: (
+      plain-family: $font-family-base,
+      brand-family: $font-family-base,
+      bold-weight: $font-weight-semibold,
+      medium-weight: $font-weight-medium,
+      regular-weight: $font-weight-regular,
+    ),
+    density: 0,
+  ));
+
+  @include mat.theme-overrides((
+    primary: $color-primary,
+    on-primary: $color-surface,
+    primary-container: $color-primary-light,
+    on-primary-container: $color-text-primary,
+    secondary: $color-secondary,
+    on-secondary: $color-surface,
+    error: $color-error,
+    on-error: $color-surface,
+    background: $color-background,
+    on-background: $color-text-primary,
+    surface: $color-surface,
+    on-surface: $color-text-primary,
+    on-surface-variant: $color-text-secondary,
+    outline: $color-border,
+    outline-variant: $color-border,
+  ));
+
+  @include mat.button-overrides((
+    filled-container-shape: $radius-base,
+    outlined-container-shape: $radius-base,
+    protected-container-shape: $radius-base,
+    text-container-shape: $radius-base,
+    tonal-container-shape: $radius-base,
+    filled-container-height: $size-touch-target,
+    filled-label-text-size: $font-body,
+    filled-label-text-weight: $font-weight-medium,
+    filled-hover-state-layer-opacity: 0,
+    filled-disabled-container-color: $color-primary-light,
+    filled-disabled-label-text-color: $color-text-primary,
+  ));
+
+  @include mat.strong-focus-indicators((
+    border-color: $color-primary-dark,
+    border-radius: $radius-base,
+  ));
+}
+
+// Hover del botón primario: morado profundo en vez de la capa clara por defecto de M3
+.mat-mdc-unelevated-button:not(:disabled):hover {
+  @include mat.button-overrides((
+    filled-container-color: $color-primary-dark,
+  ));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mat-mdc-unelevated-button {
+    transition: background-color $transition-base;
+  }
+}
+
+// Spinner dentro de un botón: toma el color del texto del botón en cualquier estado
+.mat-mdc-button-base .mat-mdc-progress-spinner {
+  @include mat.progress-spinner-overrides((
+    active-indicator-color: currentColor,
+  ));
+}
