@@ -53,15 +53,15 @@ npm test                      # modo watch
 npm test -- --watch=false     # una sola ejecución
 ```
 
-Hoy hay 16 tests en 5 archivos: `AppComponent`, `AuthService`, los guards, la configuración de MSAL (incluido el interceptor HTTP) y `LoginComponent`.
+Hoy hay 24 tests en 7 archivos: `AppComponent`, `AuthService`, los guards, la configuración de MSAL (incluido el interceptor HTTP), la lectura de claims del token, `LoginComponent` y `DashboardComponent`.
 
 ## Estructura
 
 ```
 src/
 ├── app/
-│   ├── core/          Servicios únicos de la app. Hoy: auth/ con la configuración de MSAL, AuthService y los guards
-│   ├── shared/        Componentes, pipes y modelos compartidos entre features. Aún no existe, se crea con el primer elemento compartido
+│   ├── core/          Servicios únicos de la app. Hoy: auth/ con la configuración de MSAL, AuthService (sesión y roles) y los guards
+│   ├── shared/        Componentes, pipes y modelos compartidos entre features. Hoy: models/role.ts con los App Roles de Entra ID
 │   └── features/      Una carpeta por dominio: login/ (pantalla de inicio de sesión) y dashboard/ (placeholder de /inicio)
 ├── styles/            _tokens.scss (paleta, tipografía, espaciado), _material-theme.scss y styles.scss global
 └── environments/      Configuración por entorno: Microsoft Entra ID y URL del BFF
@@ -79,6 +79,7 @@ Implementado:
 - Sesión compartida entre pestañas y ventanas; dura hasta cerrar el navegador o cerrar sesión.
 - Rutas privadas protegidas con `authGuard`, que delega en `MsalGuard`. Sin sesión, llevan al login (`/`).
 - Las llamadas `HttpClient` a `bffBaseUrl` llevan `Authorization: Bearer <accessToken>` con el scope `access_as_user`, que trae el claim `roles`. Las demás URLs salen sin token.
-- `/inicio` como placeholder: muestra la cuenta activa y permite cerrar sesión.
+- Roles del usuario leídos del claim `roles` del accessToken: `AuthService.roles()` y `AuthService.hasRole(Role.Admin)`, con los nombres de rol en `shared/models/role.ts`.
+- `/inicio` como placeholder: da la bienvenida con el rol, muestra un ejemplo temporal de contenido para Admin y para Vecino, y permite cerrar sesión.
 
 El resto de la aplicación se construye issue por issue según el tablero del proyecto.
