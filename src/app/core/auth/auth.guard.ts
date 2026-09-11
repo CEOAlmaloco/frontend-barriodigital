@@ -3,6 +3,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { MsalGuard } from '@azure/msal-angular';
 import { map, of, switchMap } from 'rxjs';
 
+import { Role } from '../../shared/models/role';
 import { AuthService } from './auth.service';
 
 /**
@@ -19,6 +20,18 @@ export const authGuard: CanActivateFn = (route, state) => {
       switchMap((hasSession) =>
         hasSession ? msalGuard.canActivate(route, state) : of(router.createUrlTree(['/'])),
       ),
+    );
+};
+
+/** Deja pasar solo a los roles de data.roles de la ruta; el resto vuelve al inicio. Va después de authGuard. */
+export const roleGuard: CanActivateFn = (route) => {
+  const router = inject(Router);
+  const allowedRoles = (route.data['roles'] ?? []) as readonly Role[];
+
+  return inject(AuthService)
+    .whenRolesLoaded()
+    .pipe(
+      map((roles) => allowedRoles.some((role) => roles.includes(role)) || router.createUrlTree(['/inicio'])),
     );
 };
 

@@ -8,10 +8,44 @@ import {
   provideRouter,
 } from '@angular/router';
 import { MsalGuard } from '@azure/msal-angular';
-import { Observable, firstValueFrom, of } from 'rxjs';
+import { Observable, Subject, firstValueFrom, of } from 'rxjs';
 
-import { authGuard } from './auth.guard';
+import { Role } from '../../shared/models/role';
+import { authGuard, roleGuard } from './auth.guard';
 import { AuthService } from './auth.service';
+
+describe('roleGuard', () => {
+  const route = { data: { roles: [Role.Vecino, Role.Funcionario] } } as unknown as ActivatedRouteSnapshot;
+
+  const runGuard = (roles$: Observable<string[]>) => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: AuthService, useValue: { whenRolesLoaded: () => roles$ } }],
+    });
+
+    return firstValueFrom(
+      TestBed.runInInjectionContext(() => roleGuard(route, {} as RouterStateSnapshot)) as Observable<GuardResult>,
+    );
+  };
+
+  it.each([Role.Vecino, Role.Funcionario])('deja pasar a %s', async (role) => {
+    expect(await runGuard(of([role]))).toBe(true);
+  });
+
+  it.each([Role.Admin, Role.Auditor])('%s vuelve al inicio', async (role) => {
+    const result = await runGuard(of([role]));
+
+    expect(TestBed.inject(Router).serializeUrl(result as UrlTree)).toBe('/inicio');
+  });
+
+  it('espera a que lleguen los roles del token antes de decidir', async () => {
+    const roles$ = new Subject<string[]>();
+    const decision = runGuard(roles$);
+
+    roles$.next([Role.Vecino]);
+
+    expect(await decision).toBe(true);
+  });
+});
 
 describe('authGuard', () => {
   const route = {} as ActivatedRouteSnapshot;
