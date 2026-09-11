@@ -83,3 +83,29 @@ Implementado:
 - `/inicio` como placeholder: da la bienvenida con el rol, muestra un ejemplo temporal de contenido para Admin y para Vecino, y permite cerrar sesión.
 
 El resto de la aplicación se construye issue por issue según el tablero del proyecto.
+
+## Deuda técnica
+
+- **RequestsService usa datos mock (EP1-08).** El backend real de trámites
+  (ms-barriodigital-requests, vía el BFF) todavía no estaba disponible al
+  implementar la vista de trámites. El servicio simula las respuestas con la
+  misma forma de datos que tendrá la API real. Pendiente: reemplazar el
+  cuerpo de `getRequests()` y `createRequest()` en
+  `src/app/features/requests/requests.service.ts` por llamadas HttpClient
+  reales, y aprovechar esa primera llamada real para cerrar la verificación
+  pendiente de EP1-06 (confirmar en DevTools > Network que el request lleva
+  el header `Authorization` con el accessToken).
+- **Tipos de trámite con lista fija provisional (EP1-08).** El catálogo
+  dinámico de tipos de trámite (ms-barriodigital-catalog) todavía no estaba
+  disponible. La lista vive hardcodeada en
+  `src/app/features/requests/requests.constants.ts`. Pendiente: reemplazar
+  por un servicio de catálogo real cuando el microservicio esté listo.
+
+## Mejoras futuras
+
+- **Header: menú de cuenta como desplegable (post EP1-08).** Hoy la zona de
+  cuenta del header muestra el nombre en texto plano y un botón "Cerrar
+  sesión" directo, porque es la única acción disponible. Cuando existan más
+  acciones asociadas a la cuenta, migrar a un desplegable disparado por un
+  círculo con las iniciales del usuario, reemplazando el nombre en texto
+  plano (no conviviendo con él).
