@@ -7,3 +7,6 @@ export const Role = {
 } as const;
 
 export type Role = (typeof Role)[keyof typeof Role];
+
+/** Roles con acceso a la vista de trámites (EP1-08). Los usan la navegación y el guard de la ruta. */
+export const REQUESTS_ROLES: readonly Role[] = [Role.Vecino, Role.Funcionario];

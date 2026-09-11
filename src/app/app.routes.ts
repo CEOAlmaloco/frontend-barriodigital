@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { authGuard, redirectAuthenticatedGuard } from './core/auth/auth.guard';
+import { AuthenticatedLayoutComponent } from './core/layout/authenticated-layout.component';
 import { LoginComponent } from './features/login/login.component';
 
 export const routes: Routes = [
@@ -11,13 +12,19 @@ export const routes: Routes = [
     canActivate: [redirectAuthenticatedGuard],
     title: 'Iniciar sesión | BarrioDigital',
   },
-  // Rutas privadas: cada una lleva canActivate: [authGuard]
+  // Rutas privadas: van como hijas del layout autenticado, que monta el header y aplica authGuard
   {
-    path: 'inicio',
+    path: '',
+    component: AuthenticatedLayoutComponent,
     canActivate: [authGuard],
-    loadComponent: () =>
-      import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
-    title: 'Inicio | BarrioDigital',
+    children: [
+      {
+        path: 'inicio',
+        loadComponent: () =>
+          import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+        title: 'Inicio | BarrioDigital',
+      },
+    ],
   },
   { path: '**', redirectTo: '' },
 ];
