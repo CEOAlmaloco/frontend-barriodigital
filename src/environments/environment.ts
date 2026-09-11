@@ -8,5 +8,6 @@ export const environment = {
     postLogoutRedirectUri: 'http://localhost:4200',
     apiScopeName: 'access_as_user'
   },
+  bffBaseUrl: 'http://localhost:8080',
   supportEmail: 'soporte@barriodigital.example',
 };

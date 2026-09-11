@@ -1,8 +1,26 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { map } from 'rxjs';
+import { MsalGuard } from '@azure/msal-angular';
+import { map, of, switchMap } from 'rxjs';
 
 import { AuthService } from './auth.service';
+
+/**
+ * Protege rutas privadas delegando en MsalGuard. Sin sesión lleva al login ('/') en vez de dejar
+ * que MsalGuard redirija directo a Microsoft, porque el login es el punto de entrada único.
+ */
+export const authGuard: CanActivateFn = (route, state) => {
+  const msalGuard = inject(MsalGuard);
+  const router = inject(Router);
+
+  return inject(AuthService)
+    .hasSession()
+    .pipe(
+      switchMap((hasSession) =>
+        hasSession ? msalGuard.canActivate(route, state) : of(router.createUrlTree(['/'])),
+      ),
+    );
+};
 
 /** Si ya hay sesión activa, salta el login y lleva directo al inicio. */
 export const redirectAuthenticatedGuard: CanActivateFn = () => {
