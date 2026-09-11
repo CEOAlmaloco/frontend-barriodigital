@@ -55,6 +55,7 @@ html {
   @include mat.form-field-overrides((
     filled-container-shape: $radius-base,
     outlined-container-shape: $radius-base,
+    outlined-outline-color: $color-border-interactive,
   ));
 
   @include mat.strong-focus-indicators((

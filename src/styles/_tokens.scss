@@ -13,6 +13,8 @@ $color-surface: #FFFFFF;
 $color-text-primary: #252329;
 $color-text-secondary: #68636B;
 $color-border: #DDD9DF;
+// Borde de campos interactivos: 3.45:1 sobre blanco (WCAG 1.4.11). $color-border queda para separadores
+$color-border-interactive: #8E8893;
 
 // Tipografía
 $font-family-base: 'Inter', sans-serif;
