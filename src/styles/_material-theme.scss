@@ -76,6 +76,12 @@ html {
   }
 }
 
+// Campos outline con fondo blanco también sobre el fondo gris de la página (filtros del listado)
+.mat-mdc-form-field .mdc-text-field--outlined {
+  background-color: $color-surface;
+  border-radius: $radius-base;
+}
+
 // Spinner dentro de un botón: toma el color del texto del botón en cualquier estado
 .mat-mdc-button-base .mat-mdc-progress-spinner {
   @include mat.progress-spinner-overrides((
