@@ -1,26 +1,36 @@
 import { TestBed } from '@angular/core/testing';
 import { MsalBroadcastService, MsalService } from '@azure/msal-angular';
-import { InteractionStatus } from '@azure/msal-browser';
+import { AccountInfo, InteractionStatus } from '@azure/msal-browser';
 import { BehaviorSubject, firstValueFrom, of } from 'rxjs';
 
+import { Role } from '../../shared/models/role';
 import { AuthService } from './auth.service';
+import { apiScope } from './msal-config';
+
+const fakeJwt = (claims: object) =>
+  ['e30', btoa(JSON.stringify(claims)).replace(/=+$/, ''), 'firma'].join('.');
 
 describe('AuthService', () => {
-  const createMsal = () => ({
+  const adminAccount = {
+    homeAccountId: 'admin-id',
+    username: 'admin.test@cloudproyecto.onmicrosoft.com',
+  } as AccountInfo;
+
+  const createMsal = (activeAccount: AccountInfo | null) => ({
     instance: {
-      getActiveAccount: vi.fn(() => null),
+      getActiveAccount: vi.fn(() => activeAccount),
       getAllAccounts: vi.fn(() => []),
       setActiveAccount: vi.fn(),
     },
     initialize: vi.fn(() => of(undefined)),
     handleRedirectObservable: vi.fn(() => of(null)),
+    acquireTokenSilent: vi.fn(() => of({ accessToken: fakeJwt({ roles: [Role.Admin] }) })),
   });
 
   let msal: ReturnType<typeof createMsal>;
-  let service: AuthService;
 
-  beforeEach(() => {
-    msal = createMsal();
+  const setup = (activeAccount: AccountInfo | null = null) => {
+    msal = createMsal(activeAccount);
 
     TestBed.configureTestingModule({
       providers: [
@@ -32,10 +42,12 @@ describe('AuthService', () => {
       ],
     });
 
-    service = TestBed.inject(AuthService);
-  });
+    return TestBed.inject(AuthService);
+  };
 
   it('inicializa MSAL una sola vez aunque el guard y el redirect lo pidan a la vez', async () => {
+    const service = setup();
+
     await Promise.all([
       firstValueFrom(service.handleRedirect()),
       firstValueFrom(service.hasSession()),
@@ -45,8 +57,39 @@ describe('AuthService', () => {
   });
 
   it('procesa el redirect en la redirectUri sin volver a la página donde empezó el login', async () => {
+    const service = setup();
+
     await firstValueFrom(service.handleRedirect());
 
     expect(msal.handleRedirectObservable).toHaveBeenCalledWith({ navigateToLoginRequestUrl: false });
+  });
+
+  it('lee los roles del claim roles del accessToken de la API', async () => {
+    const service = setup(adminAccount);
+
+    await firstValueFrom(service.hasSession());
+
+    expect(msal.acquireTokenSilent).toHaveBeenCalledWith({ scopes: [apiScope], account: adminAccount });
+    expect(service.roles()).toEqual([Role.Admin]);
+    expect(service.hasRole(Role.Admin)).toBe(true);
+    expect(service.hasRole(Role.Vecino)).toBe(false);
+  });
+
+  it('no vuelve a pedir el token mientras la cuenta no cambie', async () => {
+    const service = setup(adminAccount);
+
+    await firstValueFrom(service.hasSession());
+    await firstValueFrom(service.hasSession());
+
+    expect(msal.acquireTokenSilent).toHaveBeenCalledTimes(1);
+  });
+
+  it('sin sesión no pide token y no tiene roles', async () => {
+    const service = setup();
+
+    await firstValueFrom(service.hasSession());
+
+    expect(msal.acquireTokenSilent).not.toHaveBeenCalled();
+    expect(service.roles()).toEqual([]);
   });
 });
