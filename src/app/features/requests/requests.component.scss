@@ -2,7 +2,6 @@
 @use 'tokens' as *;
 
 $content-max-width: 1200px;
-$form-max-width: 640px;
 $filter-min-width: 200px;
 $badge-tint: 0.12;
 
@@ -39,11 +38,10 @@ $badge-tint: 0.12;
 }
 
 .requests__card {
-  max-width: $form-max-width;
   padding: $space-8;
 }
 
-.requests__card-title {
+.requests__section-title {
   margin-bottom: $space-4;
   font-size: $font-h3;
 }

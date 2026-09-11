@@ -12,7 +12,7 @@
 
   @if (!isFuncionario()) {
     <section class="requests__card" aria-labelledby="new-request-title">
-      <h2 id="new-request-title" class="requests__card-title">Nuevo trámite</h2>
+      <h2 id="new-request-title" class="requests__section-title">Nuevo trámite</h2>
 
       <form
         class="requests__form"
@@ -65,35 +65,43 @@
     </section>
   }
 
-  @if (isFuncionario()) {
-    <form class="requests__filters" [formGroup]="filters" aria-label="Filtros del listado">
-      <mat-form-field class="requests__filter">
-        <mat-label>Estado</mat-label>
-        <mat-select formControlName="status">
-          <mat-option value="">Todos</mat-option>
-          @for (status of statuses; track status) {
-            <mat-option [value]="status">{{ statusView[status].label }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
+  <section class="requests__list" aria-labelledby="requests-list-title" [attr.aria-busy]="listState() === 'loading'">
+    <h2 id="requests-list-title" class="requests__section-title">
+      @if (isFuncionario()) {
+        Todos los trámites
+      } @else {
+        Mis trámites
+      }
+    </h2>
 
-      <mat-form-field class="requests__filter">
-        <mat-label>Desde</mat-label>
-        <input matInput [matDatepicker]="fromPicker" formControlName="from" />
-        <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
-        <mat-datepicker #fromPicker />
-      </mat-form-field>
+    @if (isFuncionario()) {
+      <form class="requests__filters" [formGroup]="filters" aria-label="Filtros del listado">
+        <mat-form-field class="requests__filter">
+          <mat-label>Estado</mat-label>
+          <mat-select formControlName="status">
+            <mat-option value="">Todos</mat-option>
+            @for (status of statuses; track status) {
+              <mat-option [value]="status">{{ statusView[status].label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
 
-      <mat-form-field class="requests__filter">
-        <mat-label>Hasta</mat-label>
-        <input matInput [matDatepicker]="toPicker" formControlName="to" />
-        <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
-        <mat-datepicker #toPicker />
-      </mat-form-field>
-    </form>
-  }
+        <mat-form-field class="requests__filter">
+          <mat-label>Desde</mat-label>
+          <input matInput [matDatepicker]="fromPicker" formControlName="from" />
+          <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+          <mat-datepicker #fromPicker />
+        </mat-form-field>
 
-  <section class="requests__list" aria-label="Listado de trámites" [attr.aria-busy]="listState() === 'loading'">
+        <mat-form-field class="requests__filter">
+          <mat-label>Hasta</mat-label>
+          <input matInput [matDatepicker]="toPicker" formControlName="to" />
+          <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+          <mat-datepicker #toPicker />
+        </mat-form-field>
+      </form>
+    }
+
     @switch (listState()) {
       @case ('loading') {
         <div class="requests__status">

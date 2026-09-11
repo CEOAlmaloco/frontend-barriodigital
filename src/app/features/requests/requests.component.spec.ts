@@ -50,6 +50,7 @@ describe('RequestsComponent', () => {
     await render(Role.Vecino);
 
     expect(element.querySelector('.requests__card')).not.toBeNull();
+    expect(element.querySelector('#requests-list-title')?.textContent).toContain('Mis trámites');
     expect(element.querySelector('.requests__filters')).toBeNull();
     expect(text()).toContain('Rama sobre el cable');
     expect(text()).not.toContain('Bache de otro vecino');
@@ -60,6 +61,7 @@ describe('RequestsComponent', () => {
     await render(Role.Funcionario);
 
     expect(element.querySelector('.requests__card')).toBeNull();
+    expect(element.querySelector('#requests-list-title')?.textContent).toContain('Todos los trámites');
     expect(element.querySelector('.requests__filters')).not.toBeNull();
     expect(text()).toContain('Bache de otro vecino');
     expect(headers()).toEqual(['Tipo', 'Descripción', 'Estado', 'Fecha', 'Solicitante']);
