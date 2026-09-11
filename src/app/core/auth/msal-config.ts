@@ -17,7 +17,7 @@ import {
 import { environment } from '../../../environments/environment';
 
 export const loginRequest: RedirectRequest = {
-  scopes: ['openid', 'profile'],
+  scopes: ['openid', 'profile', `api://${environment.entraId.clientId}/${environment.entraId.apiScopeName}`],
 };
 
 function createMsalInstance(): IPublicClientApplication {
