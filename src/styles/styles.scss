@@ -1,0 +1,43 @@
+@use 'tokens' as *;
+@use 'material-theme';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: $color-background;
+  color: $color-text-primary;
+  font-family: $font-family-base;
+  font-size: $font-body;
+  font-weight: $font-weight-regular;
+  line-height: $line-height-body;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  color: $color-text-primary;
+  font-weight: $font-weight-semibold;
+}
+
+h1 {
+  font-size: $font-h1;
+}
+
+h2 {
+  font-size: $font-h2;
+}
+
+h3 {
+  font-size: $font-h3;
+}
+
+p {
+  margin: 0;
+  max-width: $measure-body;
+}
