@@ -100,6 +100,13 @@ El resto de la aplicación se construye issue por issue según el tablero del pr
   disponible. La lista vive hardcodeada en
   `src/app/features/requests/requests.constants.ts`. Pendiente: reemplazar
   por un servicio de catálogo real cuando el microservicio esté listo.
+- **Columna Solicitante muestra el oid de Entra ID (EP1-08).** En la vista del
+  Funcionario, la columna Solicitante muestra `solicitanteId`, que es el
+  Object ID de la cuenta en Microsoft Entra ID: un UUID que no le dice a quien
+  revisa la tabla quién hizo el trámite. El mock no tiene nombre ni correo del
+  solicitante. Pendiente: mostrar el nombre para mostrar (o el correo) del
+  solicitante cuando el backend real entregue ese dato, en
+  `src/app/features/requests/requests.component.html`.
 
 ## Mejoras futuras
 
