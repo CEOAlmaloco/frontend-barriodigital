@@ -29,12 +29,14 @@ Aplicación web de BarrioDigital, la plataforma municipal de trámites y atenci�
    npx npm@11 install
    ```
 
-2. Revisa la configuración de Microsoft Entra ID en `src/environments/`:
+2. Revisa la configuración en `src/environments/`:
 
    - `environment.development.ts` lo usa `npm start`.
    - `environment.ts` lo usa el build de producción.
 
-   Ambos archivos ya traen los valores de la app registrada. La fuente de verdad es `barriodigital-infra/docs/decisiones.md`: si esos valores cambian, cópialos desde ahí a los dos archivos.
+   Ambos archivos ya traen los valores de la app registrada en Microsoft Entra ID. La fuente de verdad es `barriodigital-infra/docs/decisiones.md`: si esos valores cambian, cópialos desde ahí a los dos archivos.
+
+   `bffBaseUrl` es la URL del BFF. Toda llamada a esa URL sale con el token de acceso; ajústala cuando el BFF tenga su puerto definido.
 
 3. Levanta el servidor de desarrollo:
 
@@ -51,21 +53,23 @@ npm test                      # modo watch
 npm test -- --watch=false     # una sola ejecución
 ```
 
-Hoy hay 12 tests en 4 archivos: `AppComponent`, `AuthService`, la configuración de MSAL y `LoginComponent`.
+Hoy hay 16 tests en 5 archivos: `AppComponent`, `AuthService`, los guards, la configuración de MSAL (incluido el interceptor HTTP) y `LoginComponent`.
 
 ## Estructura
 
 ```
 src/
 ├── app/
-│   ├── core/          Servicios únicos de la app. Hoy: auth/ con la configuración de MSAL, AuthService y el guard del login
+│   ├── core/          Servicios únicos de la app. Hoy: auth/ con la configuración de MSAL, AuthService y los guards
 │   ├── shared/        Componentes, pipes y modelos compartidos entre features. Aún no existe, se crea con el primer elemento compartido
 │   └── features/      Una carpeta por dominio: login/ (pantalla de inicio de sesión) y dashboard/ (placeholder de /inicio)
 ├── styles/            _tokens.scss (paleta, tipografía, espaciado), _material-theme.scss y styles.scss global
-└── environments/      Configuración por entorno, incluida la de Microsoft Entra ID
+└── environments/      Configuración por entorno: Microsoft Entra ID y URL del BFF
 ```
 
 Los componentes importan los tokens con `@use 'tokens' as *;`, sin colores ni tamaños escritos a mano.
+
+Una ruta privada nueva se protege con `canActivate: [authGuard]` en `app.routes.ts`.
 
 ## Estado actual
 
@@ -73,6 +77,8 @@ Implementado:
 
 - Login con MSAL (redirect) contra Microsoft Entra ID, con estados de carga, error y redirección a `/inicio` si ya hay sesión.
 - Sesión compartida entre pestañas y ventanas; dura hasta cerrar el navegador o cerrar sesión.
+- Rutas privadas protegidas con `authGuard`, que delega en `MsalGuard`. Sin sesión, llevan al login (`/`).
+- Las llamadas `HttpClient` a `bffBaseUrl` llevan `Authorization: Bearer <accessToken>` con el scope `access_as_user`, que trae el claim `roles`. Las demás URLs salen sin token.
 - `/inicio` como placeholder: muestra la cuenta activa y permite cerrar sesión.
 
-Lo próximo es proteger las rutas y adjuntar el token a las llamadas al backend (`MsalGuard` y `MsalInterceptor`). El resto de la aplicación se construye issue por issue según el tablero del proyecto.
+El resto de la aplicación se construye issue por issue según el tablero del proyecto.

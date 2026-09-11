@@ -6,18 +6,30 @@ import {
   provideAppInitializer,
 } from '@angular/core';
 import { Router, UrlTree } from '@angular/router';
-import { MSAL_INSTANCE, MsalBroadcastService, MsalService } from '@azure/msal-angular';
+import {
+  MSAL_GUARD_CONFIG,
+  MSAL_INSTANCE,
+  MsalBroadcastService,
+  MsalGuard,
+  MsalGuardConfiguration,
+  MsalInterceptorConfiguration,
+  MsalService,
+} from '@azure/msal-angular';
 import {
   BrowserCacheLocation,
   IPublicClientApplication,
+  InteractionType,
   PublicClientApplication,
   RedirectRequest,
 } from '@azure/msal-browser';
 
 import { environment } from '../../../environments/environment';
 
+/** Scope custom de la API. Su accessToken lleva audience api://<clientId> y el claim roles. */
+export const apiScope = `api://${environment.entraId.clientId}/${environment.entraId.apiScopeName}`;
+
 export const loginRequest: RedirectRequest = {
-  scopes: ['openid', 'profile', `api://${environment.entraId.clientId}/${environment.entraId.apiScopeName}`],
+  scopes: ['openid', 'profile', apiScope],
 };
 
 function createMsalInstance(): IPublicClientApplication {
@@ -28,6 +40,23 @@ function createMsalInstance(): IPublicClientApplication {
     // Compartida entre pestañas y ventanas. MSAL cifra los tokens con una cookie que expira al cerrar el navegador
     cache: { cacheLocation: BrowserCacheLocation.LocalStorage },
   });
+}
+
+function createMsalGuardConfig(): MsalGuardConfiguration {
+  return {
+    interactionType: InteractionType.Redirect,
+    authRequest: loginRequest,
+    loginFailedRoute: '/',
+  };
+}
+
+/** Adjunta el accessToken del scope de la API a toda llamada al BFF. Las demás URLs salen sin token. */
+export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
+  return {
+    interactionType: InteractionType.Redirect,
+    protectedResourceMap: new Map([[`${environment.bffBaseUrl}/*`, [apiScope]]]),
+    strictMatching: true,
+  };
 }
 
 /**
@@ -48,12 +77,14 @@ export function removeLogoutStateFromUrl(): void {
   location.replaceState(router.serializeUrl(new UrlTree(url.root, queryParams, url.fragment)));
 }
 
-/** Registra MSAL contra la app de Microsoft Entra ID. MsalGuard y MsalInterceptor llegan en EP1-06. */
+/** Registra MSAL contra la app de Microsoft Entra ID. El interceptor HTTP se registra en app.config.ts. */
 export function provideMsal(): EnvironmentProviders {
   return makeEnvironmentProviders([
     provideAppInitializer(removeLogoutStateFromUrl),
     { provide: MSAL_INSTANCE, useFactory: createMsalInstance },
+    { provide: MSAL_GUARD_CONFIG, useFactory: createMsalGuardConfig },
     MsalService,
     MsalBroadcastService,
+    MsalGuard,
   ]);
 }
