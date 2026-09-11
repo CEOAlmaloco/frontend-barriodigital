@@ -4,7 +4,9 @@ import { MsalBroadcastService, MsalService } from '@azure/msal-angular';
 import { AccountInfo, AuthenticationResult, InteractionStatus } from '@azure/msal-browser';
 import { Observable, catchError, map, of, shareReplay, switchMap, tap } from 'rxjs';
 
-import { loginRequest } from './msal-config';
+import { Role } from '../../shared/models/role';
+import { apiScope, loginRequest } from './msal-config';
+import { AccessTokenClaims, decodeJwtPayload } from './token-claims';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -12,9 +14,13 @@ export class AuthService {
   private readonly interactionStatus = toSignal(inject(MsalBroadcastService).inProgress$, {
     initialValue: InteractionStatus.Startup,
   });
+  private readonly accessTokenClaims = signal<AccessTokenClaims | null>(null);
+  private claimsAccountId: string | null = null;
 
   readonly account = signal<AccountInfo | null>(null);
   readonly isAuthenticated = computed(() => this.account() !== null);
+  /** App Roles del usuario, leídos del claim roles del accessToken de la API. */
+  readonly roles = computed(() => this.accessTokenClaims()?.roles ?? []);
   readonly isInteractionInProgress = computed(
     () => this.interactionStatus() !== InteractionStatus.None,
   );
@@ -47,6 +53,11 @@ export class AuthService {
     );
   }
 
+  /** Lee el signal roles, así que en plantillas se actualiza solo cuando llegan los claims. */
+  hasRole(role: Role): boolean {
+    return this.roles().includes(role);
+  }
+
   login(): void {
     this.loginFailed.set(false);
     this.msal.loginRedirect(loginRequest).subscribe({
@@ -66,6 +77,35 @@ export class AuthService {
 
     instance.setActiveAccount(current);
     this.account.set(current);
+    this.loadAccessTokenClaims(current);
+  }
+
+  /** Pide el accessToken de la API (desde caché si está vigente) solo cuando cambia la cuenta. */
+  private loadAccessTokenClaims(account: AccountInfo | null): void {
+    const accountId = account?.homeAccountId ?? null;
+
+    if (accountId === this.claimsAccountId) {
+      return;
+    }
+
+    this.claimsAccountId = accountId;
+    this.accessTokenClaims.set(null);
+
+    if (!account) {
+      return;
+    }
+
+    this.msal.acquireTokenSilent({ scopes: [apiScope], account }).subscribe({
+      next: ({ accessToken }) => {
+        if (this.claimsAccountId === accountId) {
+          this.accessTokenClaims.set(decodeJwtPayload(accessToken));
+        }
+      },
+      error: (error: unknown) => {
+        this.claimsAccountId = null;
+        console.error('No se pudieron leer los roles del token de acceso', error);
+      },
+    });
   }
 
   private failLogin(error: unknown): void {
