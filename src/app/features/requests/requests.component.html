@@ -1,0 +1,189 @@
+<main class="requests">
+  <header class="requests__header">
+    <h1>Trámites</h1>
+    <p class="requests__subtitle">
+      @if (isFuncionario()) {
+        Trámites ingresados por los vecinos de la comuna.
+      } @else {
+        Ingresa un nuevo trámite y revisa el estado de los tuyos.
+      }
+    </p>
+  </header>
+
+  @if (!isFuncionario()) {
+    <section class="requests__card" aria-labelledby="new-request-title">
+      <h2 id="new-request-title" class="requests__card-title">Nuevo trámite</h2>
+
+      <form
+        class="requests__form"
+        [formGroup]="createForm"
+        #createFormDirective="ngForm"
+        (ngSubmit)="submit(createFormDirective)"
+        novalidate
+      >
+        <mat-form-field>
+          <mat-label>Tipo de trámite</mat-label>
+          <mat-select formControlName="tipo">
+            @for (tipo of tiposTramite; track tipo) {
+              <mat-option [value]="tipo">{{ tipo }}</mat-option>
+            }
+          </mat-select>
+          <mat-error>Selecciona el tipo de trámite.</mat-error>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Descripción</mat-label>
+          <textarea matInput formControlName="descripcion" rows="3"></textarea>
+          <mat-error>Describe el trámite.</mat-error>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Dirección o ubicación</mat-label>
+          <input matInput formControlName="direccion" autocomplete="street-address" />
+          <mat-error>Indica la dirección o ubicación.</mat-error>
+        </mat-form-field>
+
+        <button
+          matButton="filled"
+          type="submit"
+          class="requests__submit"
+          [disabled]="isSubmitting()"
+          [attr.aria-busy]="isSubmitting()"
+        >
+          <span [class.requests__submit-label--hidden]="isSubmitting()">Ingresar trámite</span>
+          @if (isSubmitting()) {
+            <mat-progress-spinner class="requests__submit-spinner" mode="indeterminate" [diameter]="20" aria-hidden="true" />
+          }
+        </button>
+
+        <div aria-live="polite">
+          @if (submitFailed()) {
+            <p class="requests__error">No se pudo ingresar el trámite. Intenta nuevamente.</p>
+          }
+        </div>
+      </form>
+    </section>
+  }
+
+  @if (isFuncionario()) {
+    <form class="requests__filters" [formGroup]="filters" aria-label="Filtros del listado">
+      <mat-form-field class="requests__filter">
+        <mat-label>Estado</mat-label>
+        <mat-select formControlName="status">
+          <mat-option value="">Todos</mat-option>
+          @for (status of statuses; track status) {
+            <mat-option [value]="status">{{ statusView[status].label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field class="requests__filter">
+        <mat-label>Desde</mat-label>
+        <input matInput [matDatepicker]="fromPicker" formControlName="from" />
+        <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+        <mat-datepicker #fromPicker />
+      </mat-form-field>
+
+      <mat-form-field class="requests__filter">
+        <mat-label>Hasta</mat-label>
+        <input matInput [matDatepicker]="toPicker" formControlName="to" />
+        <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+        <mat-datepicker #toPicker />
+      </mat-form-field>
+    </form>
+  }
+
+  <section class="requests__list" aria-label="Listado de trámites" [attr.aria-busy]="listState() === 'loading'">
+    @switch (listState()) {
+      @case ('loading') {
+        <div class="requests__status">
+          <mat-progress-spinner mode="indeterminate" [diameter]="40" aria-label="Cargando trámites" />
+        </div>
+      }
+      @case ('error') {
+        <div class="requests__status" role="alert">
+          <p class="requests__error">No se pudieron cargar los trámites.</p>
+          <button matButton type="button" (click)="loadRequests()">Reintentar</button>
+        </div>
+      }
+      @default {
+        @if (visibleRequests().length === 0) {
+          <p class="requests__empty">
+            @if (isFuncionario()) {
+              No hay trámites que coincidan con el filtro seleccionado.
+            } @else {
+              Aún no has ingresado trámites.
+            }
+          </p>
+        } @else {
+          <div class="requests__table-wrapper">
+            <table mat-table [dataSource]="visibleRequests()" class="requests__table">
+              <ng-container matColumnDef="tipo">
+                <th mat-header-cell *matHeaderCellDef>Tipo</th>
+                <td mat-cell *matCellDef="let request">{{ request.tipo }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="descripcion">
+                <th mat-header-cell *matHeaderCellDef>Descripción</th>
+                <td mat-cell *matCellDef="let request">{{ request.descripcion }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="estado">
+                <th mat-header-cell *matHeaderCellDef>Estado</th>
+                <td mat-cell *matCellDef="let request">
+                  <span class="badge badge--{{ statusOf(request).tone }}">{{ statusOf(request).label }}</span>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="fecha">
+                <th mat-header-cell *matHeaderCellDef>Fecha</th>
+                <td mat-cell *matCellDef="let request">{{ request.fechaCreacion | date: 'dd-MM-yyyy' }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="solicitante">
+                <th mat-header-cell *matHeaderCellDef>Solicitante</th>
+                <td mat-cell *matCellDef="let request" class="requests__requester">{{ request.solicitanteId }}</td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="columns()"></tr>
+              <tr mat-row *matRowDef="let row; columns: columns()"></tr>
+            </table>
+          </div>
+
+          <ul class="requests__cards">
+            @for (request of visibleRequests(); track request.id) {
+              <li class="requests__item">
+                <dl class="requests__fields">
+                  <div>
+                    <dt>Tipo</dt>
+                    <dd>{{ request.tipo }}</dd>
+                  </div>
+                  <div>
+                    <dt>Descripción</dt>
+                    <dd>{{ request.descripcion }}</dd>
+                  </div>
+                  <div>
+                    <dt>Estado</dt>
+                    <dd>
+                      <span class="badge badge--{{ statusOf(request).tone }}">{{ statusOf(request).label }}</span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Fecha</dt>
+                    <dd>{{ request.fechaCreacion | date: 'dd-MM-yyyy' }}</dd>
+                  </div>
+                  @if (isFuncionario()) {
+                    <div>
+                      <dt>Solicitante</dt>
+                      <dd class="requests__requester">{{ request.solicitanteId }}</dd>
+                    </div>
+                  }
+                </dl>
+              </li>
+            }
+          </ul>
+        }
+      }
+    }
+  </section>
+</main>
