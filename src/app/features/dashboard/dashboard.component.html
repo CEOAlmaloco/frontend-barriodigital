@@ -1,8 +1,27 @@
 <main class="dashboard">
-  <h1>Inicio</h1>
+  @if (primaryRole(); as role) {
+    <h1>Bienvenido, {{ role }}</h1>
+  } @else {
+    <h1>Inicio</h1>
+  }
 
   @if (accountName(); as name) {
     <p class="dashboard__text">Sesión iniciada como {{ name }}.</p>
+  }
+
+  <!-- Demostración temporal de UI por rol (EP1-07); se reemplaza con contenido real en EP2 -->
+  @if (auth.hasRole(Role.Admin)) {
+    <section class="dashboard__role-demo" aria-labelledby="admin-demo-title">
+      <h2 id="admin-demo-title" class="dashboard__role-title">Panel de administración</h2>
+      <p class="dashboard__text">Visible solo para el rol Admin.</p>
+    </section>
+  }
+
+  @if (auth.hasRole(Role.Vecino)) {
+    <section class="dashboard__role-demo" aria-labelledby="vecino-demo-title">
+      <h2 id="vecino-demo-title" class="dashboard__role-title">Mis trámites</h2>
+      <p class="dashboard__text">Visible solo para el rol Vecino.</p>
+    </section>
   }
 
   <button matButton="outlined" type="button" (click)="signOut()">Cerrar sesión</button>
