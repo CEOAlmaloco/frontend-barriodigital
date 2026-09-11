@@ -1,8 +1,20 @@
 import { Location } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { MSAL_INSTANCE } from '@azure/msal-angular';
+import { BrowserCacheLocation } from '@azure/msal-browser';
 
-import { removeLogoutStateFromUrl } from './msal-config';
+import { provideMsal, removeLogoutStateFromUrl } from './msal-config';
+
+describe('provideMsal', () => {
+  it('guarda la sesión en localStorage para compartirla entre pestañas y ventanas', () => {
+    TestBed.configureTestingModule({ providers: [provideRouter([]), provideMsal()] });
+
+    const { cache } = TestBed.inject(MSAL_INSTANCE).getConfiguration();
+
+    expect(cache.cacheLocation).toBe(BrowserCacheLocation.LocalStorage);
+  });
+});
 
 describe('removeLogoutStateFromUrl', () => {
   const location = {

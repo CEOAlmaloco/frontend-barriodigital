@@ -8,6 +8,7 @@ import {
 import { Router, UrlTree } from '@angular/router';
 import { MSAL_INSTANCE, MsalBroadcastService, MsalService } from '@azure/msal-angular';
 import {
+  BrowserCacheLocation,
   IPublicClientApplication,
   PublicClientApplication,
   RedirectRequest,
@@ -24,6 +25,8 @@ function createMsalInstance(): IPublicClientApplication {
 
   return new PublicClientApplication({
     auth: { clientId, authority, redirectUri, postLogoutRedirectUri },
+    // Compartida entre pestañas y ventanas. MSAL cifra los tokens con una cookie que expira al cerrar el navegador
+    cache: { cacheLocation: BrowserCacheLocation.LocalStorage },
   });
 }
 
