@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MsalBroadcastService, MsalService } from '@azure/msal-angular';
 import { AccountInfo, AuthenticationResult, InteractionStatus } from '@azure/msal-browser';
-import { Observable, catchError, map, of, tap } from 'rxjs';
+import { Observable, catchError, map, of, shareReplay, switchMap, tap } from 'rxjs';
 
 import { loginRequest } from './msal-config';
 
@@ -20,9 +20,17 @@ export class AuthService {
   );
   readonly loginFailed = signal(false);
 
-  /** Procesa la respuesta de Entra ID al volver del redirect. Se llama una sola vez al iniciar la app. */
+  /** Única inicialización de MSAL. El guard y el procesamiento del redirect esperan esta misma promesa. */
+  private readonly initialized$ = this.msal.initialize().pipe(shareReplay(1));
+
+  /**
+   * Procesa la respuesta de Entra ID al volver del redirect. Se llama una sola vez al iniciar la app.
+   * navigateToLoginRequestUrl en false evita volver a la página donde empezó el login: tras un logout
+   * esa URL trae ?state= de Entra ID y MSAL Angular lo toma como respuesta, lo que causa state_mismatch.
+   */
   handleRedirect(): Observable<AuthenticationResult | null> {
-    return this.msal.handleRedirectObservable().pipe(
+    return this.initialized$.pipe(
+      switchMap(() => this.msal.handleRedirectObservable({ navigateToLoginRequestUrl: false })),
       tap((result) => this.syncAccount(result?.account)),
       catchError((error: unknown) => {
         this.failLogin(error);
@@ -31,9 +39,9 @@ export class AuthService {
     );
   }
 
-  /** Indica si hay una sesión en caché. Espera a que MSAL termine de inicializarse. */
+  /** Indica si hay una sesión en caché, una vez inicializado MSAL. */
   hasSession(): Observable<boolean> {
-    return this.msal.initialize().pipe(
+    return this.initialized$.pipe(
       tap(() => this.syncAccount()),
       map(() => this.isAuthenticated()),
     );
