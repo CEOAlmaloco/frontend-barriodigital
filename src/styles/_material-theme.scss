@@ -52,6 +52,11 @@ html {
     filled-disabled-label-text-color: $color-text-primary,
   ));
 
+  @include mat.form-field-overrides((
+    filled-container-shape: $radius-base,
+    outlined-container-shape: $radius-base,
+  ));
+
   @include mat.strong-focus-indicators((
     border-color: $color-primary-dark,
     border-radius: $radius-base,
