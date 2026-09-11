@@ -1,0 +1,9 @@
+<main class="dashboard">
+  <h1>Inicio</h1>
+
+  @if (accountName(); as name) {
+    <p class="dashboard__text">Sesión iniciada como {{ name }}.</p>
+  }
+
+  <button matButton="outlined" type="button" (click)="signOut()">Cerrar sesión</button>
+</main>
