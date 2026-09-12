@@ -14,6 +14,8 @@ export interface Request {
   estado: RequestStatus;
   fechaCreacion: string; // ISO 8601
   solicitanteId: string;
+  /** Nombre o correo para mostrar. solicitanteId sigue siendo el que identifica al solicitante. */
+  solicitanteNombre: string;
 }
 
 export interface CreateRequestPayload {

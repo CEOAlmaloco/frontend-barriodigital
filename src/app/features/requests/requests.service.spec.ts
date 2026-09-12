@@ -12,7 +12,12 @@ describe('RequestsService (mock)', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [{ provide: AuthService, useValue: { userId: signal('vecino-actual') } }],
+      providers: [
+        {
+          provide: AuthService,
+          useValue: { userId: signal('vecino-actual'), account: signal({ name: 'Vecino Test' }) },
+        },
+      ],
     });
     service = TestBed.inject(RequestsService);
   });
@@ -43,6 +48,7 @@ describe('RequestsService (mock)', () => {
 
     expect(created.estado).toBe('INGRESADO');
     expect(created.solicitanteId).toBe('vecino-actual');
+    expect(created.solicitanteNombre).toBe('Vecino Test');
 
     const requests = await firstValueFrom(service.getRequests());
     expect(requests.some((request) => request.id === created.id)).toBe(true);

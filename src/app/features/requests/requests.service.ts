@@ -8,15 +8,17 @@ import { toDateKey } from './date-key';
 const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
 // Solicitantes ficticios: ninguno corresponde a una cuenta real del tenant
-const VECINA_ALAMEDA = '3f1c9a52-7d4e-4b8a-9c21-5e6f7a8b9c01';
-const VECINO_ROBLES = '8b2d4e61-1a3f-4c5d-8e9f-0a1b2c3d4e02';
-const VECINA_PINARES = 'c7e5f083-2b4a-4d6c-9f1e-3a5b7c9d1e03';
+const VECINA_ALAMEDA = { solicitanteId: '3f1c9a52-7d4e-4b8a-9c21-5e6f7a8b9c01', solicitanteNombre: 'María Pérez' };
+const VECINO_ROBLES = { solicitanteId: '8b2d4e61-1a3f-4c5d-8e9f-0a1b2c3d4e02', solicitanteNombre: 'Carlos Soto' };
+const VECINA_PINARES = { solicitanteId: 'c7e5f083-2b4a-4d6c-9f1e-3a5b7c9d1e03', solicitanteNombre: 'Ana Rojas' };
 
 // DEUDA TECNICA (EP1-08): este servicio usa datos mock porque el backend real
 // (ms-barriodigital-requests, EP1-14/EP1-15) todavia no esta disponible.
 // Cuando el endpoint real exista, reemplazar el cuerpo de getRequests() y
-// createRequest() por llamadas HttpClient contra `${environment.bffBaseUrl}/api/requests`,
+// createRequest() por llamadas HttpClient contra `${environment.bffBaseUrl}/api/v1/requests`,
 // sin cambiar la firma de los metodos ni el resto de la UI que consume este servicio.
+// El backend real tambien debe devolver solicitanteNombre (nombre o correo del
+// solicitante) junto a solicitanteId; hoy el mock lo completa con datos ficticios.
 @Injectable({ providedIn: 'root' })
 export class RequestsService {
   private readonly auth = inject(AuthService);
@@ -29,7 +31,7 @@ export class RequestsService {
       direccion: 'Av. Los Aromos 1234',
       estado: 'INGRESADO',
       fechaCreacion: daysAgo(2),
-      solicitanteId: VECINA_ALAMEDA,
+      ...VECINA_ALAMEDA,
     },
     {
       id: 'a1e3c5d7-0002-4f00-8000-000000000002',
@@ -38,7 +40,7 @@ export class RequestsService {
       direccion: 'Calle Las Rosas esquina Pasaje 5',
       estado: 'ADMITIDO',
       fechaCreacion: daysAgo(5),
-      solicitanteId: VECINO_ROBLES,
+      ...VECINO_ROBLES,
     },
     {
       id: 'a1e3c5d7-0003-4f00-8000-000000000003',
@@ -47,7 +49,7 @@ export class RequestsService {
       direccion: 'Pasaje El Roble 45',
       estado: 'EN_GESTION',
       fechaCreacion: daysAgo(9),
-      solicitanteId: VECINA_ALAMEDA,
+      ...VECINA_ALAMEDA,
     },
     {
       id: 'a1e3c5d7-0004-4f00-8000-000000000004',
@@ -56,7 +58,7 @@ export class RequestsService {
       direccion: 'Calle Los Pinos 890',
       estado: 'EN_TERRENO',
       fechaCreacion: daysAgo(14),
-      solicitanteId: VECINA_PINARES,
+      ...VECINA_PINARES,
     },
     {
       id: 'a1e3c5d7-0005-4f00-8000-000000000005',
@@ -65,7 +67,7 @@ export class RequestsService {
       direccion: 'Av. Central 2050',
       estado: 'RESUELTO',
       fechaCreacion: daysAgo(20),
-      solicitanteId: VECINO_ROBLES,
+      ...VECINO_ROBLES,
     },
     {
       id: 'a1e3c5d7-0006-4f00-8000-000000000006',
@@ -74,7 +76,7 @@ export class RequestsService {
       direccion: 'Calle Escuela 12',
       estado: 'RECHAZADO',
       fechaCreacion: daysAgo(27),
-      solicitanteId: VECINA_ALAMEDA,
+      ...VECINA_ALAMEDA,
     },
     {
       id: 'a1e3c5d7-0007-4f00-8000-000000000007',
@@ -83,7 +85,7 @@ export class RequestsService {
       direccion: 'Plaza Los Héroes s/n',
       estado: 'RESUELTO',
       fechaCreacion: daysAgo(33),
-      solicitanteId: VECINA_PINARES,
+      ...VECINA_PINARES,
     },
   ];
 
@@ -98,6 +100,7 @@ export class RequestsService {
   }
 
   createRequest(payload: CreateRequestPayload): Observable<Request> {
+    const account = this.auth.account();
     const request: Request = {
       ...payload,
       id: crypto.randomUUID(),
@@ -105,6 +108,7 @@ export class RequestsService {
       fechaCreacion: new Date().toISOString(),
       // En la API real el solicitante sale del token; el mock usa la cuenta activa
       solicitanteId: this.auth.userId() ?? '',
+      solicitanteNombre: account?.name ?? account?.username ?? '',
     };
     this.mockData = [...this.mockData, request];
 

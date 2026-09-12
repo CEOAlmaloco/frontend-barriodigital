@@ -18,8 +18,15 @@ describe('RequestsComponent', () => {
     estado: 'INGRESADO',
     fechaCreacion: '2026-09-01T12:00:00.000Z',
     solicitanteId: 'vecino-actual',
+    solicitanteNombre: 'Vecino Test',
   };
-  const other: Request = { ...mine, id: 'ajeno', descripcion: 'Bache de otro vecino', solicitanteId: 'otro-vecino' };
+  const other: Request = {
+    ...mine,
+    id: 'ajeno',
+    descripcion: 'Bache de otro vecino',
+    solicitanteId: 'otro-vecino',
+    solicitanteNombre: 'María Pérez',
+  };
 
   let service: { getRequests: ReturnType<typeof vi.fn>; createRequest: ReturnType<typeof vi.fn> };
   let fixture: ComponentFixture<RequestsComponent>;
@@ -65,6 +72,8 @@ describe('RequestsComponent', () => {
     expect(element.querySelector('.requests__filters')).not.toBeNull();
     expect(text()).toContain('Bache de otro vecino');
     expect(headers()).toEqual(['Tipo', 'Descripción', 'Estado', 'Fecha', 'Solicitante']);
+    expect(text()).toContain('María Pérez');
+    expect(text()).not.toContain('otro-vecino');
   });
 
   it('no envía el formulario vacío y muestra el error de cada campo obligatorio', async () => {
