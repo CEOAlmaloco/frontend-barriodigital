@@ -53,23 +53,23 @@ npm test                      # modo watch
 npm test -- --watch=false     # una sola ejecución
 ```
 
-Hoy hay 24 tests en 7 archivos: `AppComponent`, `AuthService`, los guards, la configuración de MSAL (incluido el interceptor HTTP), la lectura de claims del token, `LoginComponent` y `DashboardComponent`.
+Hoy hay 45 tests en 10 archivos: `AppComponent`, `AuthService`, los guards, la configuración de MSAL (incluido el interceptor HTTP), la lectura de claims del token, `LoginComponent`, `DashboardComponent`, `HeaderComponent`, `RequestsService` y `RequestsComponent`.
 
 ## Estructura
 
 ```
 src/
 ├── app/
-│   ├── core/          Servicios únicos de la app. Hoy: auth/ con la configuración de MSAL, AuthService (sesión y roles) y los guards
-│   ├── shared/        Componentes, pipes y modelos compartidos entre features. Hoy: models/role.ts con los App Roles de Entra ID
-│   └── features/      Una carpeta por dominio: login/ (pantalla de inicio de sesión) y dashboard/ (placeholder de /inicio)
+│   ├── core/          Servicios únicos de la app. Hoy: auth/ (configuración de MSAL, AuthService con sesión y roles, guards) y layout/ (contenedor de las rutas autenticadas)
+│   ├── shared/        Componentes, pipes y modelos compartidos entre features. Hoy: components/header y models/ (roles y trámites)
+│   └── features/      Una carpeta por dominio: login/, dashboard/ (placeholder de /inicio) y requests/ (vista de trámites en /tramites)
 ├── styles/            _tokens.scss (paleta, tipografía, espaciado), _material-theme.scss y styles.scss global
 └── environments/      Configuración por entorno: Microsoft Entra ID y URL del BFF
 ```
 
 Los componentes importan los tokens con `@use 'tokens' as *;`, sin colores ni tamaños escritos a mano.
 
-Una ruta privada nueva se protege con `canActivate: [authGuard]` en `app.routes.ts`.
+Las rutas privadas van como hijas del layout de rutas autenticadas en `app.routes.ts`: ese layout monta el header y aplica `authGuard`, así que una ruta nueva queda protegida solo por estar ahí. Si además es solo para ciertos roles, se le agrega `canActivate: [roleGuard]` y `data: { roles: [...] }`, como `/tramites` con `REQUESTS_ROLES`.
 
 ## Estado actual
 
@@ -77,10 +77,12 @@ Implementado:
 
 - Login con MSAL (redirect) contra Microsoft Entra ID, con estados de carga, error y redirección a `/inicio` si ya hay sesión.
 - Sesión compartida entre pestañas y ventanas; dura hasta cerrar el navegador o cerrar sesión.
-- Rutas privadas protegidas con `authGuard`, que delega en `MsalGuard`. Sin sesión, llevan al login (`/`).
+- Rutas privadas bajo un layout protegido con `authGuard`, que delega en `MsalGuard`. Sin sesión, llevan al login (`/`). `roleGuard` restringe una ruta a los roles de su `data.roles`.
 - Las llamadas `HttpClient` a `bffBaseUrl` llevan `Authorization: Bearer <accessToken>` con el scope `access_as_user`, que trae el claim `roles`. Las demás URLs salen sin token.
 - Roles del usuario leídos del claim `roles` del accessToken: `AuthService.roles()` y `AuthService.hasRole(Role.Admin)`, con los nombres de rol en `shared/models/role.ts`.
-- `/inicio` como placeholder: da la bienvenida con el rol, muestra un ejemplo temporal de contenido para Admin y para Vecino, y permite cerrar sesión.
+- Header compartido en todas las rutas autenticadas: navegación según rol (Trámites solo para Vecino y Funcionario), nombre de la cuenta y cierre de sesión. Bajo 768px la navegación se colapsa en un menú.
+- `/inicio` como placeholder: título Inicio, saludo con el nombre de la cuenta y un ejemplo temporal de contenido para Admin y para Vecino.
+- Vista de trámites en `/tramites` (EP1-08), con datos mock: el Vecino ingresa trámites y ve solo los suyos; el Funcionario ve todos, con filtros de estado y fechas y el nombre del solicitante. Admin y Auditor no tienen acceso.
 
 El resto de la aplicación se construye issue por issue según el tablero del proyecto.
 
@@ -100,13 +102,12 @@ El resto de la aplicación se construye issue por issue según el tablero del pr
   disponible. La lista vive hardcodeada en
   `src/app/features/requests/requests.constants.ts`. Pendiente: reemplazar
   por un servicio de catálogo real cuando el microservicio esté listo.
-- **Columna Solicitante muestra el oid de Entra ID (EP1-08).** En la vista del
-  Funcionario, la columna Solicitante muestra `solicitanteId`, que es el
-  Object ID de la cuenta en Microsoft Entra ID: un UUID que no le dice a quien
-  revisa la tabla quién hizo el trámite. El mock no tiene nombre ni correo del
-  solicitante. Pendiente: mostrar el nombre para mostrar (o el correo) del
-  solicitante cuando el backend real entregue ese dato, en
-  `src/app/features/requests/requests.component.html`.
+- **Nombre del solicitante ficticio (EP1-08).** La columna Solicitante de la
+  vista del Funcionario muestra `solicitanteNombre`; `solicitanteId` (el Object
+  ID de Entra ID) se sigue usando solo para filtrar los trámites del Vecino. El
+  campo `solicitanteNombre` se completa con datos ficticios en el mock. Cuando
+  exista el backend real, debe devolver el nombre o correo real del solicitante
+  (por ejemplo vía Microsoft Graph o claims del token), no solo el id.
 
 ## Mejoras futuras
 
