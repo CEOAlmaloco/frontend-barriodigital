@@ -25,6 +25,7 @@ describe('AuthService', () => {
     initialize: vi.fn(() => of(undefined)),
     handleRedirectObservable: vi.fn(() => of(null)),
     acquireTokenSilent: vi.fn(() => of({ accessToken: fakeJwt({ roles: [Role.Admin] }) })),
+    logoutRedirect: vi.fn(() => of(undefined)),
   });
 
   let msal: ReturnType<typeof createMsal>;
@@ -91,5 +92,14 @@ describe('AuthService', () => {
 
     expect(msal.acquireTokenSilent).not.toHaveBeenCalled();
     expect(service.roles()).toEqual([]);
+  });
+
+  it('cierra sesión con logoutRedirect sobre la cuenta activa', async () => {
+    const service = setup(adminAccount);
+
+    await firstValueFrom(service.hasSession());
+    service.logout();
+
+    expect(msal.logoutRedirect).toHaveBeenCalledWith({ account: adminAccount });
   });
 });
