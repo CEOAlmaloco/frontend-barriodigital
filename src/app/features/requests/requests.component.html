@@ -23,7 +23,7 @@
       >
         <mat-form-field>
           <mat-label>Tipo de trámite</mat-label>
-          <mat-select formControlName="tipo">
+          <mat-select formControlName="procedureType">
             @for (tipo of tiposTramite; track tipo.value) {
               <mat-option [value]="tipo.value">{{ tipo.label }}</mat-option>
             }
@@ -33,13 +33,13 @@
 
         <mat-form-field>
           <mat-label>Descripción</mat-label>
-          <textarea matInput formControlName="descripcion" rows="3"></textarea>
+          <textarea matInput formControlName="description" rows="3"></textarea>
           <mat-error>Describe el trámite.</mat-error>
         </mat-form-field>
 
         <mat-form-field>
           <mat-label>Dirección o ubicación</mat-label>
-          <input matInput formControlName="direccion" autocomplete="street-address" />
+          <input matInput formControlName="address" autocomplete="street-address" />
           <mat-error>Indica la dirección o ubicación.</mat-error>
         </mat-form-field>
 
@@ -115,7 +115,7 @@
         </div>
       }
       @default {
-        @if (visibleRequests().length === 0) {
+        @if (requests().length === 0) {
           <p class="requests__empty">
             @if (isFuncionario()) {
               No hay trámites que coincidan con el filtro seleccionado.
@@ -125,15 +125,15 @@
           </p>
         } @else {
           <div class="requests__table-wrapper">
-            <table mat-table [dataSource]="visibleRequests()" class="requests__table">
+            <table mat-table [dataSource]="requests()" class="requests__table">
               <ng-container matColumnDef="tipo">
                 <th mat-header-cell *matHeaderCellDef>Tipo</th>
-                <td mat-cell *matCellDef="let request">{{ getTipoLabel(request.tipo) }}</td>
+                <td mat-cell *matCellDef="let request">{{ getTipoLabel(request.procedureType) }}</td>
               </ng-container>
 
               <ng-container matColumnDef="descripcion">
                 <th mat-header-cell *matHeaderCellDef>Descripción</th>
-                <td mat-cell *matCellDef="let request">{{ request.descripcion }}</td>
+                <td mat-cell *matCellDef="let request">{{ request.description }}</td>
               </ng-container>
 
               <ng-container matColumnDef="estado">
@@ -145,30 +145,25 @@
 
               <ng-container matColumnDef="fecha">
                 <th mat-header-cell *matHeaderCellDef>Fecha</th>
-                <td mat-cell *matCellDef="let request">{{ request.fechaCreacion | date: 'dd-MM-yyyy' }}</td>
+                <td mat-cell *matCellDef="let request">{{ request.createdAt | date: 'dd-MM-yyyy' }}</td>
               </ng-container>
 
-              <ng-container matColumnDef="solicitante">
-                <th mat-header-cell *matHeaderCellDef>Solicitante</th>
-                <td mat-cell *matCellDef="let request" class="requests__requester">{{ request.solicitanteNombre }}</td>
-              </ng-container>
-
-              <tr mat-header-row *matHeaderRowDef="columns()"></tr>
-              <tr mat-row *matRowDef="let row; columns: columns()"></tr>
+              <tr mat-header-row *matHeaderRowDef="columns"></tr>
+              <tr mat-row *matRowDef="let row; columns: columns"></tr>
             </table>
           </div>
 
           <ul class="requests__cards">
-            @for (request of visibleRequests(); track request.id) {
+            @for (request of requests(); track request.id) {
               <li class="requests__item">
                 <dl class="requests__fields">
                   <div>
                     <dt>Tipo</dt>
-                    <dd>{{ getTipoLabel(request.tipo) }}</dd>
+                    <dd>{{ getTipoLabel(request.procedureType) }}</dd>
                   </div>
                   <div>
                     <dt>Descripción</dt>
-                    <dd>{{ request.descripcion }}</dd>
+                    <dd>{{ request.description }}</dd>
                   </div>
                   <div>
                     <dt>Estado</dt>
@@ -178,14 +173,8 @@
                   </div>
                   <div>
                     <dt>Fecha</dt>
-                    <dd>{{ request.fechaCreacion | date: 'dd-MM-yyyy' }}</dd>
+                    <dd>{{ request.createdAt | date: 'dd-MM-yyyy' }}</dd>
                   </div>
-                  @if (isFuncionario()) {
-                    <div>
-                      <dt>Solicitante</dt>
-                      <dd class="requests__requester">{{ request.solicitanteNombre }}</dd>
-                    </div>
-                  }
                 </dl>
               </li>
             }

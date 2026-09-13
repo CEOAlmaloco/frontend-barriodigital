@@ -27,8 +27,8 @@ import { RequestsService } from './requests.service';
 
 type ListState = 'loading' | 'ready' | 'error';
 
-const VECINO_COLUMNS = ['tipo', 'descripcion', 'estado', 'fecha'];
-const FUNCIONARIO_COLUMNS = [...VECINO_COLUMNS, 'solicitante'];
+// Sin columna Solicitante: el backend solo expone el oid (ver deuda técnica en el README)
+const COLUMNS = ['tipo', 'descripcion', 'estado', 'fecha'];
 
 @Component({
   selector: 'app-requests',
@@ -54,33 +54,26 @@ export class RequestsComponent {
   private readonly snackBar = inject(MatSnackBar);
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly reload$ = new Subject<void>();
-  private readonly requests = signal<Request[]>([]);
 
   protected readonly tiposTramite = TIPOS_TRAMITE_PROVISIONAL;
   protected readonly statuses = REQUEST_STATUSES;
   protected readonly statusView = REQUEST_STATUS_VIEW;
+  protected readonly columns = COLUMNS;
 
   /** Admin y Auditor no llegan a esta vista (roleGuard), así que quien no es Funcionario es Vecino. */
   protected readonly isFuncionario = computed(() => this.auth.hasRole(Role.Funcionario));
-  protected readonly columns = computed(() => (this.isFuncionario() ? FUNCIONARIO_COLUMNS : VECINO_COLUMNS));
 
   protected readonly listState = signal<ListState>('loading');
-  protected readonly visibleRequests = computed(() => {
-    const userId = this.auth.userId();
-    const requests = this.isFuncionario()
-      ? this.requests()
-      : this.requests().filter((request) => request.solicitanteId === userId);
-
-    return [...requests].sort((a, b) => b.fechaCreacion.localeCompare(a.fechaCreacion));
-  });
+  /** Tal como llegan del BFF: el servidor ya filtra al Vecino por su oid y ordena por fecha descendente. */
+  protected readonly requests = signal<Request[]>([]);
 
   protected readonly isSubmitting = signal(false);
   protected readonly submitFailed = signal(false);
 
   protected readonly createForm = this.formBuilder.group({
-    tipo: ['', Validators.required],
-    descripcion: ['', Validators.required],
-    direccion: ['', Validators.required],
+    procedureType: ['', Validators.required],
+    description: ['', Validators.required],
+    address: ['', Validators.required],
   });
 
   protected readonly filters = this.formBuilder.group({
@@ -118,7 +111,7 @@ export class RequestsComponent {
 
   /** Etiqueta y tono del badge. Método tipado porque en las celdas de mat-table la fila llega como any. */
   protected statusOf(request: Request): (typeof REQUEST_STATUS_VIEW)[keyof typeof REQUEST_STATUS_VIEW] {
-    return REQUEST_STATUS_VIEW[request.estado];
+    return REQUEST_STATUS_VIEW[request.status];
   }
 
   /** Traduce el código guardado a su etiqueta. Si no está en la lista, muestra el código. */
@@ -148,7 +141,7 @@ export class RequestsComponent {
     });
   }
 
-  /** Mismos query params que tendrá GET /api/requests. El Vecino no filtra. */
+  /** Query params de GET /api/requests. El Vecino no filtra. */
   private currentFilters(): { status?: string; from?: string; to?: string } | undefined {
     if (!this.isFuncionario()) {
       return undefined;

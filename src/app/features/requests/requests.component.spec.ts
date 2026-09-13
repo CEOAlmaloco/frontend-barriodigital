@@ -1,4 +1,3 @@
-import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Observable, of, throwError } from 'rxjs';
@@ -12,20 +11,18 @@ import { RequestsService } from './requests.service';
 describe('RequestsComponent', () => {
   const mine: Request = {
     id: 'propio',
-    tipo: 'alumbrado',
-    descripcion: 'Rama sobre el cable',
-    direccion: 'Calle 1',
-    estado: 'INGRESADO',
-    fechaCreacion: '2026-09-01T12:00:00.000Z',
+    description: 'Rama sobre el cable',
+    procedureType: 'alumbrado',
+    address: 'Calle 1',
+    status: 'INGRESADO',
+    createdAt: '2026-09-01T12:00:00.000Z',
     solicitanteId: 'vecino-actual',
-    solicitanteNombre: 'Vecino Test',
   };
   const other: Request = {
     ...mine,
     id: 'ajeno',
-    descripcion: 'Bache de otro vecino',
+    description: 'Bache de otro vecino',
     solicitanteId: 'otro-vecino',
-    solicitanteNombre: 'María Pérez',
   };
 
   let service: { getRequests: ReturnType<typeof vi.fn>; createRequest: ReturnType<typeof vi.fn> };
@@ -34,7 +31,7 @@ describe('RequestsComponent', () => {
 
   const render = async (role: Role, getRequests: () => Observable<Request[]> = () => of([mine, other])) => {
     service = { getRequests: vi.fn(getRequests), createRequest: vi.fn(() => of(mine)) };
-    const auth = { hasRole: (userRole: string) => userRole === role, userId: signal('vecino-actual') };
+    const auth = { hasRole: (userRole: string) => userRole === role };
 
     await TestBed.configureTestingModule({
       imports: [RequestsComponent],
@@ -53,31 +50,40 @@ describe('RequestsComponent', () => {
   const headers = () => Array.from(element.querySelectorAll('th'), (header) => header.textContent?.trim());
   const submitButton = () => element.querySelector<HTMLButtonElement>('.requests__submit');
 
-  it('Vecino: ve el formulario, sin filtros, y solo sus trámites', async () => {
+  it('Vecino: ve el formulario, sin filtros, y lo que entrega el servidor sin volver a filtrarlo', async () => {
     await render(Role.Vecino);
 
     expect(element.querySelector('.requests__card')).not.toBeNull();
     expect(element.querySelector('#requests-list-title')?.textContent).toContain('Mis trámites');
     expect(element.querySelector('.requests__filters')).toBeNull();
+    expect(service.getRequests).toHaveBeenCalledWith(undefined);
     expect(text()).toContain('Rama sobre el cable');
-    expect(text()).not.toContain('Bache de otro vecino');
+    expect(text()).toContain('Bache de otro vecino');
     expect(headers()).toEqual(['Tipo', 'Descripción', 'Estado', 'Fecha']);
   });
 
-  it('Funcionario: sin formulario, con filtros, todos los trámites y la columna Solicitante', async () => {
+  it('Funcionario: sin formulario, con filtros, todos los trámites y sin columna Solicitante', async () => {
     await render(Role.Funcionario);
 
     expect(element.querySelector('.requests__card')).toBeNull();
     expect(element.querySelector('#requests-list-title')?.textContent).toContain('Todos los trámites');
     expect(element.querySelector('.requests__filters')).not.toBeNull();
     expect(text()).toContain('Bache de otro vecino');
-    expect(headers()).toEqual(['Tipo', 'Descripción', 'Estado', 'Fecha', 'Solicitante']);
-    expect(text()).toContain('María Pérez');
+    expect(headers()).toEqual(['Tipo', 'Descripción', 'Estado', 'Fecha']);
     expect(text()).not.toContain('otro-vecino');
   });
 
+  it('Funcionario: pide el listado con los filtros elegidos', async () => {
+    await render(Role.Funcionario);
+
+    fixture.componentInstance['filters'].setValue({ status: 'RESUELTO', from: new Date(2026, 8, 1), to: null });
+    await fixture.whenStable();
+
+    expect(service.getRequests).toHaveBeenLastCalledWith({ status: 'RESUELTO', from: '2026-09-01' });
+  });
+
   it('muestra la etiqueta del tipo y, si el código no está en la lista, el código crudo', async () => {
-    await render(Role.Vecino, () => of([mine, { ...other, solicitanteId: 'vecino-actual', tipo: 'desconocido' }]));
+    await render(Role.Vecino, () => of([mine, { ...other, procedureType: 'desconocido' }]));
 
     expect(text()).toContain('Alumbrado público');
     expect(text()).toContain('desconocido');
@@ -96,7 +102,7 @@ describe('RequestsComponent', () => {
   it('crea el trámite, avisa con un snackbar y recarga el listado', async () => {
     await render(Role.Vecino);
     const openSnackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open');
-    const payload = { tipo: 'otro', descripcion: 'Poste caído', direccion: 'Calle 2' };
+    const payload = { procedureType: 'otro', description: 'Poste caído', address: 'Calle 2' };
 
     fixture.componentInstance['createForm'].setValue(payload);
     submitButton()?.click();
