@@ -94,6 +94,15 @@ describe('AuthService', () => {
     expect(service.roles()).toEqual([]);
   });
 
+  it('entrega los roles a los guards al llegar el token y expone el id de la cuenta', async () => {
+    const service = setup({ ...adminAccount, localAccountId: 'oid-admin' } as AccountInfo);
+
+    await firstValueFrom(service.hasSession());
+
+    expect(await firstValueFrom(service.whenRolesLoaded())).toEqual([Role.Admin]);
+    expect(service.userId()).toBe('oid-admin');
+  });
+
   it('cierra sesión con logoutRedirect sobre la cuenta activa', async () => {
     const service = setup(adminAccount);
 

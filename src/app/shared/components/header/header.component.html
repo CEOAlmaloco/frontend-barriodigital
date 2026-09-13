@@ -1,0 +1,38 @@
+<header class="header">
+  <span class="header__wordmark">BarrioDigital</span>
+
+  <nav class="header__nav" [class.header__nav--open]="isMenuOpen()" aria-label="Navegación principal">
+    <button
+      mat-icon-button
+      type="button"
+      class="header__menu-toggle"
+      aria-label="Abrir menú de navegación"
+      aria-controls="header-links"
+      [attr.aria-expanded]="isMenuOpen()"
+      (click)="toggleMenu()"
+    >
+      <mat-icon>menu</mat-icon>
+    </button>
+
+    <ul id="header-links" class="header__links">
+      @for (item of navItems(); track item.path) {
+        <li>
+          <a
+            class="header__link"
+            [routerLink]="item.path"
+            routerLinkActive="header__link--active"
+            ariaCurrentWhenActive="page"
+            (click)="closeMenu()"
+          >
+            {{ item.label }}
+          </a>
+        </li>
+      }
+    </ul>
+  </nav>
+
+  <div class="header__account">
+    <span class="header__account-name">{{ accountName() }}</span>
+    <button matButton type="button" class="header__sign-out" (click)="signOut()">Cerrar sesión</button>
+  </div>
+</header>

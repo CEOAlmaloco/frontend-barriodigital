@@ -52,6 +52,12 @@ html {
     filled-disabled-label-text-color: $color-text-primary,
   ));
 
+  @include mat.form-field-overrides((
+    filled-container-shape: $radius-base,
+    outlined-container-shape: $radius-base,
+    outlined-outline-color: $color-border-interactive,
+  ));
+
   @include mat.strong-focus-indicators((
     border-color: $color-primary-dark,
     border-radius: $radius-base,
@@ -69,6 +75,12 @@ html {
   .mat-mdc-unelevated-button {
     transition: background-color $transition-base;
   }
+}
+
+// Campos outline con fondo blanco también sobre el fondo gris de la página (filtros del listado)
+.mat-mdc-form-field .mdc-text-field--outlined {
+  background-color: $color-surface;
+  border-radius: $radius-base;
 }
 
 // Spinner dentro de un botón: toma el color del texto del botón en cualquier estado

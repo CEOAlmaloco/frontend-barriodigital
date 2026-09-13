@@ -1,12 +1,8 @@
 <main class="dashboard">
-  @if (primaryRole(); as role) {
-    <h1>Hola, {{ role }}</h1>
-  } @else {
-    <h1>Inicio</h1>
-  }
+  <h1>Inicio</h1>
 
   @if (accountName(); as name) {
-    <p class="dashboard__text">Sesión iniciada como {{ name }}.</p>
+    <p class="dashboard__text">Hola, {{ name }}.</p>
   }
 
   <!-- Demostración temporal de UI por rol (EP1-07); se reemplaza con contenido real en EP2 -->
@@ -23,6 +19,4 @@
       <p class="dashboard__text">Visible solo para el rol Vecino.</p>
     </section>
   }
-
-  <button matButton="outlined" type="button" (click)="signOut()">Cerrar sesión</button>
 </main>

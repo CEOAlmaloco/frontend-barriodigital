@@ -1,0 +1,129 @@
+@use 'tokens' as *;
+
+$header-height: 64px;
+$header-layer: 10;
+
+:host {
+  position: sticky;
+  top: 0;
+  z-index: $header-layer;
+  display: block;
+}
+
+.header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: $space-4;
+  height: $header-height;
+  padding-inline: $space-6;
+  background-color: $color-surface;
+  border-bottom: $border-width solid $color-border;
+
+  @media (min-width: $breakpoint-lg) {
+    padding-inline: $space-12;
+  }
+}
+
+.header__wordmark {
+  flex-shrink: 0;
+  font-size: $font-h3;
+  font-weight: $font-weight-semibold;
+  color: $color-primary;
+  white-space: nowrap;
+}
+
+.header__nav {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.header__links {
+  display: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  // Mobile: lista vertical bajo el header, visible solo con el menú abierto
+  .header__nav--open & {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    padding: $space-2 $space-6;
+    background-color: $color-surface;
+    border-bottom: $border-width solid $color-border;
+  }
+
+  @media (min-width: $breakpoint-md) {
+    // Selector repetido para ganar a la regla del menú abierto al pasar a desktop
+    &,
+    .header__nav--open & {
+      position: static;
+      display: flex;
+      flex-direction: row;
+      gap: $space-6;
+      height: 100%;
+      padding: 0;
+      border-bottom: none;
+    }
+  }
+}
+
+.header__link {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding-block: $space-3;
+  font-size: $font-body;
+  color: $color-text-primary;
+  text-decoration: none;
+  border-bottom: $border-width-strong solid transparent;
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: color $transition-base;
+  }
+
+  &:hover {
+    color: $color-primary;
+  }
+}
+
+.header__link--active {
+  font-weight: $font-weight-medium;
+  color: $color-primary;
+  border-bottom-color: $color-primary;
+}
+
+.header__menu-toggle {
+  @media (min-width: $breakpoint-md) {
+    display: none;
+  }
+}
+
+.header__account {
+  display: flex;
+  align-items: center;
+  gap: $space-4;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.header__account-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: $font-body-sm;
+  color: $color-text-secondary;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Tokens de Material en el propio botón: gris en reposo para no competir con el botón primario de la página
+.header__sign-out {
+  --mat-button-text-label-text-color: #{$color-text-secondary};
+  --mat-button-text-state-layer-color: #{$color-text-secondary};
+  flex-shrink: 0;
+}

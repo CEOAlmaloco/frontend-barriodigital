@@ -14,7 +14,6 @@ describe('DashboardComponent', () => {
       account: signal({ name: 'Usuario de prueba', username: 'usuario@cloudproyecto.onmicrosoft.com' }),
       roles,
       hasRole: (role: string) => roles().includes(role),
-      logout: vi.fn(),
     };
 
     await TestBed.configureTestingModule({
@@ -27,29 +26,33 @@ describe('DashboardComponent', () => {
     await fixture.whenStable();
   };
 
-  const title = () => element.querySelector('h1')?.textContent ?? '';
   const text = () => element.textContent ?? '';
 
-  it('Admin: da la bienvenida con su rol y muestra solo el panel de administración', async () => {
+  it('titula la página Inicio y saluda con el nombre de la cuenta, sin cerrar sesión propio', async () => {
+    await render([Role.Vecino]);
+
+    expect(element.querySelector('h1')?.textContent).toContain('Inicio');
+    expect(text()).toContain('Hola, Usuario de prueba.');
+    expect(text()).not.toContain('Cerrar sesión');
+  });
+
+  it('Admin ve solo el panel de administración', async () => {
     await render([Role.Admin]);
 
-    expect(title()).toContain('Bienvenido, Admin');
     expect(text()).toContain('Panel de administración');
     expect(text()).not.toContain('Mis trámites');
   });
 
-  it('Vecino: da la bienvenida con su rol y muestra solo sus trámites', async () => {
+  it('Vecino ve solo sus trámites', async () => {
     await render([Role.Vecino]);
 
-    expect(title()).toContain('Bienvenido, Vecino');
     expect(text()).toContain('Mis trámites');
     expect(text()).not.toContain('Panel de administración');
   });
 
-  it('sin roles muestra el título genérico y ningún bloque por rol', async () => {
+  it('sin roles no muestra bloques por rol', async () => {
     await render([]);
 
-    expect(title()).toContain('Inicio');
     expect(text()).not.toContain('Panel de administración');
     expect(text()).not.toContain('Mis trámites');
   });

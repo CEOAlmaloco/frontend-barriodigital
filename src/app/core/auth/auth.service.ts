@@ -16,9 +16,12 @@ export class AuthService {
   });
   private readonly accessTokenClaims = signal<AccessTokenClaims | null>(null);
   private claimsAccountId: string | null = null;
+  private claims$: Observable<AccessTokenClaims | null> = of(null);
 
   readonly account = signal<AccountInfo | null>(null);
   readonly isAuthenticated = computed(() => this.account() !== null);
+  /** Object ID de la cuenta en Entra ID; es el solicitanteId de los trámites. */
+  readonly userId = computed(() => this.account()?.localAccountId ?? null);
   /** App Roles del usuario, leídos del claim roles del accessToken de la API. */
   readonly roles = computed(() => this.accessTokenClaims()?.roles ?? []);
   readonly isInteractionInProgress = computed(
@@ -58,6 +61,11 @@ export class AuthService {
     return this.roles().includes(role);
   }
 
+  /** Roles una vez leído el accessToken. Los guards lo usan porque corren antes de que llegue el token. */
+  whenRolesLoaded(): Observable<string[]> {
+    return this.claims$.pipe(map((claims) => claims?.roles ?? []));
+  }
+
   login(): void {
     this.loginFailed.set(false);
     this.msal.loginRedirect(loginRequest).subscribe({
@@ -92,20 +100,25 @@ export class AuthService {
     this.accessTokenClaims.set(null);
 
     if (!account) {
+      this.claims$ = of(null);
       return;
     }
 
-    this.msal.acquireTokenSilent({ scopes: [apiScope], account }).subscribe({
-      next: ({ accessToken }) => {
-        if (this.claimsAccountId === accountId) {
-          this.accessTokenClaims.set(decodeJwtPayload(accessToken));
-        }
-      },
-      error: (error: unknown) => {
+    this.claims$ = this.msal.acquireTokenSilent({ scopes: [apiScope], account }).pipe(
+      map(({ accessToken }) => decodeJwtPayload(accessToken)),
+      catchError((error: unknown) => {
         this.claimsAccountId = null;
         console.error('No se pudieron leer los roles del token de acceso', error);
-      },
-    });
+        return of(null);
+      }),
+      tap((claims) => {
+        if (this.claimsAccountId === accountId) {
+          this.accessTokenClaims.set(claims);
+        }
+      }),
+      shareReplay(1),
+    );
+    this.claims$.subscribe();
   }
 
   private failLogin(error: unknown): void {
