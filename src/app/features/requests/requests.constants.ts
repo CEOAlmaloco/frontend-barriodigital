@@ -2,16 +2,22 @@ import { RequestStatus } from '../../shared/models/request.model';
 
 // DEUDA TECNICA (EP1-08): lista fija provisional. El catalogo dinamico de
 // tipos de tramite (ms-barriodigital-catalog) todavia no esta disponible.
-// Cuando exista, reemplazar este arreglo por una llamada al catalogo real
-// (probablemente un CatalogService.getTiposTramite() analogo a RequestsService)
-// y actualizar el select del formulario de creacion para consumirlo desde ahi.
-export const TIPOS_TRAMITE_PROVISIONAL: string[] = [
-  'Poda de árbol',
-  'Bache en calle',
-  'Alumbrado público',
-  'Recolección de escombros',
-  'Ruidos molestos',
-  'Otro',
+// Los "value" deben coincidir exactamente con los codigos que espera el
+// backend (ms-barriodigital-requests, campo procedureType).
+// Cuando el catalogo exista, reemplazar por un CatalogService.getTiposTramite()
+// analogo a RequestsService.
+export interface TipoTramiteOption {
+  value: string;
+  label: string;
+}
+
+export const TIPOS_TRAMITE_PROVISIONAL: TipoTramiteOption[] = [
+  { value: 'bache', label: 'Bache en calle' },
+  { value: 'alumbrado', label: 'Alumbrado público' },
+  { value: 'basura', label: 'Recolección de escombros' },
+  { value: 'agua', label: 'Agua o alcantarillado' },
+  { value: 'ruido', label: 'Ruidos molestos' },
+  { value: 'otro', label: 'Otro' },
 ];
 
 export type StatusTone = 'neutral' | 'secondary' | 'success' | 'error';

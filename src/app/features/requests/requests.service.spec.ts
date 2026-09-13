@@ -43,7 +43,7 @@ describe('RequestsService (mock)', () => {
 
   it('crea el trámite en INGRESADO, a nombre de la cuenta activa, y lo incluye en el listado', async () => {
     const created = await firstValueFrom(
-      service.createRequest({ tipo: 'Otro', descripcion: 'Prueba', direccion: 'Calle 1' }),
+      service.createRequest({ tipo: 'otro', descripcion: 'Prueba', direccion: 'Calle 1' }),
     );
 
     expect(created.estado).toBe('INGRESADO');

@@ -26,7 +26,7 @@ export class RequestsService {
   private mockData: Request[] = [
     {
       id: 'a1e3c5d7-0001-4f00-8000-000000000001',
-      tipo: 'Poda de árbol',
+      tipo: 'otro',
       descripcion: 'Rama grande apoyada sobre el cable del alumbrado frente al número 1234.',
       direccion: 'Av. Los Aromos 1234',
       estado: 'INGRESADO',
@@ -35,7 +35,7 @@ export class RequestsService {
     },
     {
       id: 'a1e3c5d7-0002-4f00-8000-000000000002',
-      tipo: 'Bache en calle',
+      tipo: 'bache',
       descripcion: 'Bache profundo en la esquina; ya dañó la rueda de un auto.',
       direccion: 'Calle Las Rosas esquina Pasaje 5',
       estado: 'ADMITIDO',
@@ -44,7 +44,7 @@ export class RequestsService {
     },
     {
       id: 'a1e3c5d7-0003-4f00-8000-000000000003',
-      tipo: 'Alumbrado público',
+      tipo: 'alumbrado',
       descripcion: 'Tres postes sin luz en la cuadra desde hace una semana.',
       direccion: 'Pasaje El Roble 45',
       estado: 'EN_GESTION',
@@ -53,7 +53,7 @@ export class RequestsService {
     },
     {
       id: 'a1e3c5d7-0004-4f00-8000-000000000004',
-      tipo: 'Recolección de escombros',
+      tipo: 'basura',
       descripcion: 'Escombros de una demolición abandonados en la vereda, bloquean el paso.',
       direccion: 'Calle Los Pinos 890',
       estado: 'EN_TERRENO',
@@ -62,7 +62,7 @@ export class RequestsService {
     },
     {
       id: 'a1e3c5d7-0005-4f00-8000-000000000005',
-      tipo: 'Ruidos molestos',
+      tipo: 'ruido',
       descripcion: 'Taller mecánico que trabaja con maquinaria pasada la medianoche.',
       direccion: 'Av. Central 2050',
       estado: 'RESUELTO',
@@ -71,8 +71,8 @@ export class RequestsService {
     },
     {
       id: 'a1e3c5d7-0006-4f00-8000-000000000006',
-      tipo: 'Otro',
-      descripcion: 'Solicitud de un lomo de toro frente a la entrada del colegio.',
+      tipo: 'agua',
+      descripcion: 'Fuga de agua en la vereda frente a la entrada del colegio, lleva tres días.',
       direccion: 'Calle Escuela 12',
       estado: 'RECHAZADO',
       fechaCreacion: daysAgo(27),
@@ -80,7 +80,7 @@ export class RequestsService {
     },
     {
       id: 'a1e3c5d7-0007-4f00-8000-000000000007',
-      tipo: 'Poda de árbol',
+      tipo: 'otro',
       descripcion: 'Árbol seco con riesgo de caída junto a los juegos infantiles.',
       direccion: 'Plaza Los Héroes s/n',
       estado: 'RESUELTO',

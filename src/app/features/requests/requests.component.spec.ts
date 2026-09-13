@@ -12,7 +12,7 @@ import { RequestsService } from './requests.service';
 describe('RequestsComponent', () => {
   const mine: Request = {
     id: 'propio',
-    tipo: 'Poda de árbol',
+    tipo: 'alumbrado',
     descripcion: 'Rama sobre el cable',
     direccion: 'Calle 1',
     estado: 'INGRESADO',
@@ -76,6 +76,13 @@ describe('RequestsComponent', () => {
     expect(text()).not.toContain('otro-vecino');
   });
 
+  it('muestra la etiqueta del tipo y, si el código no está en la lista, el código crudo', async () => {
+    await render(Role.Vecino, () => of([mine, { ...other, solicitanteId: 'vecino-actual', tipo: 'desconocido' }]));
+
+    expect(text()).toContain('Alumbrado público');
+    expect(text()).toContain('desconocido');
+  });
+
   it('no envía el formulario vacío y muestra el error de cada campo obligatorio', async () => {
     await render(Role.Vecino);
 
@@ -89,7 +96,7 @@ describe('RequestsComponent', () => {
   it('crea el trámite, avisa con un snackbar y recarga el listado', async () => {
     await render(Role.Vecino);
     const openSnackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open');
-    const payload = { tipo: 'Otro', descripcion: 'Poste caído', direccion: 'Calle 2' };
+    const payload = { tipo: 'otro', descripcion: 'Poste caído', direccion: 'Calle 2' };
 
     fixture.componentInstance['createForm'].setValue(payload);
     submitButton()?.click();

@@ -121,6 +121,11 @@ export class RequestsComponent {
     return REQUEST_STATUS_VIEW[request.estado];
   }
 
+  /** Traduce el código guardado a su etiqueta. Si no está en la lista, muestra el código. */
+  protected getTipoLabel(value: string): string {
+    return TIPOS_TRAMITE_PROVISIONAL.find((t) => t.value === value)?.label ?? value;
+  }
+
   protected submit(formDirective: FormGroupDirective): void {
     if (this.createForm.invalid || this.isSubmitting()) {
       return;
