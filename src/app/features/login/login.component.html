@@ -1,0 +1,30 @@
+<main class="login__panel" aria-labelledby="login-title">
+  <header class="login__header">
+    <h1 id="login-title" class="login__title">BarrioDigital</h1>
+    <p class="login__subtitle">Trámites y atención vecinal</p>
+  </header>
+
+  <button
+    matButton="filled"
+    type="button"
+    class="login__button"
+    [disabled]="isLoading()"
+    [attr.aria-busy]="isLoading()"
+    (click)="signIn()"
+  >
+    @if (isLoading()) {
+      <mat-progress-spinner class="login__spinner" mode="indeterminate" [diameter]="20" aria-hidden="true" />
+    }
+    Iniciar sesión con Microsoft
+  </button>
+
+  <div aria-live="polite">
+    @if (hasError()) {
+      <p class="login__error">No se pudo iniciar sesión. Intenta nuevamente.</p>
+    }
+  </div>
+</main>
+
+<footer class="login__footer">
+  <p>¿Problemas para ingresar? <a class="login__link" [href]="'mailto:' + supportEmail">Contacto</a></p>
+</footer>

@@ -1,0 +1,35 @@
+@use 'tokens' as *;
+
+$content-max-width: 1200px;
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $space-4;
+  max-width: $content-max-width;
+  margin-inline: auto;
+  padding: $space-6;
+
+  @media (min-width: $breakpoint-lg) {
+    padding: $space-12;
+  }
+}
+
+.dashboard__text {
+  color: $color-text-secondary;
+}
+
+.dashboard__role-demo {
+  width: 100%;
+  max-width: $measure-body;
+  padding: $space-4;
+  background-color: $color-surface;
+  border-radius: $radius-base;
+  box-shadow: $shadow-elevated;
+}
+
+.dashboard__role-title {
+  margin-bottom: $space-1;
+  font-size: $font-h3;
+}

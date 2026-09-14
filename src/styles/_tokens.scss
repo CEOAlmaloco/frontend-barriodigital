@@ -1,0 +1,61 @@
+// Tokens del sistema de diseño BarrioDigital (docs: 04-sistema-diseno.md)
+
+// Colores
+$color-primary: #814B8B;
+$color-primary-dark: #5D3565;
+$color-primary-light: #B98BC1;
+$color-secondary: #2F5D62;
+$color-accent: #D6A84F;
+$color-success: #3E7C59;
+$color-error: #B94A48;
+$color-background: #F7F7F8;
+$color-surface: #FFFFFF;
+$color-text-primary: #252329;
+$color-text-secondary: #68636B;
+$color-border: #DDD9DF;
+// Borde de campos interactivos: 3.45:1 sobre blanco (WCAG 1.4.11). $color-border queda para separadores
+$color-border-interactive: #8E8893;
+
+// Tipografía
+$font-family-base: 'Inter', sans-serif;
+$font-h1: 32px;
+$font-h2: 24px;
+$font-h3: 18px;
+$font-body: 15px;
+$font-body-sm: 13px;
+$font-label: 13px;
+$font-weight-regular: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$line-height-body: 1.5;
+$measure-body: 72ch;
+
+// Espaciado (múltiplos de 4px)
+$space-1: 4px;
+$space-2: 8px;
+$space-3: 12px;
+$space-4: 16px;
+$space-6: 24px;
+$space-8: 32px;
+$space-12: 48px;
+
+// Bordes
+$border-width: 1px;
+$border-width-strong: 2px;
+
+// Radios y sombras
+$radius-base: 8px;
+$shadow-elevated: 0 2px 8px rgba(37, 35, 41, 0.08);
+
+// Tamaños
+$size-touch-target: 44px;
+
+// Transiciones
+$transition-base: 180ms ease-out;
+$transition-entrance: 300ms ease-out;
+
+// Breakpoints (mobile-first, usar con min-width)
+$breakpoint-sm: 480px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 1024px;
+$breakpoint-xl: 1280px;
