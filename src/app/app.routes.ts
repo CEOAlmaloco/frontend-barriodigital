@@ -3,7 +3,7 @@ import { Routes } from '@angular/router';
 import { authGuard, redirectAuthenticatedGuard, roleGuard } from './core/auth/auth.guard';
 import { AuthenticatedLayoutComponent } from './core/layout/authenticated-layout.component';
 import { LoginComponent } from './features/login/login.component';
-import { REQUESTS_ROLES } from './shared/models/role';
+import { REQUESTS_ROLES, Role } from './shared/models/role';
 
 export const routes: Routes = [
   {
@@ -32,6 +32,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/requests/requests.component').then((m) => m.RequestsComponent),
         title: 'Trámites | BarrioDigital',
+      },
+      {
+        path: 'admin',
+        canActivate: [roleGuard],
+        data: { roles: [Role.Admin] },
+        loadComponent: () => import('./features/admin/admin.component').then((m) => m.AdminComponent),
+        title: 'Administración | BarrioDigital',
       },
     ],
   },

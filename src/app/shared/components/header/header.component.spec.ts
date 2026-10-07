@@ -39,8 +39,15 @@ describe('HeaderComponent', () => {
     expect(linkLabels()).toEqual(['Inicio', 'Trámites']);
   });
 
-  it.each([Role.Admin, Role.Auditor])('%s ve solo Inicio', async (role) => {
-    await render([role]);
+  it('Admin ve Inicio y Administración', async () => {
+    await render([Role.Admin]);
+
+    expect(linkLabels()).toEqual(['Inicio', 'Administración']);
+    expect(element.querySelector('a[href="/admin"]')).not.toBeNull();
+  });
+
+  it.each([Role.Auditor, undefined])('%s ve solo Inicio', async (role) => {
+    await render(role ? [role] : []);
 
     expect(linkLabels()).toEqual(['Inicio']);
   });
