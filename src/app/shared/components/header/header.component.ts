@@ -35,6 +35,9 @@ export class HeaderComponent {
     return account?.name ?? account?.username ?? '';
   });
 
+  /** Claim roles del access token. Vacío hasta que MSAL entrega el token. */
+  protected readonly roleLabel = computed(() => this.auth.roles().join(', '));
+
   protected readonly navItems = computed(() =>
     NAV_ITEMS.filter((item) => !item.roles || item.roles.some((role) => this.auth.hasRole(role))),
   );

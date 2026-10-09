@@ -5,18 +5,56 @@
     <p class="dashboard__text">Hola, {{ name }}.</p>
   }
 
-  <!-- Demostración temporal de UI por rol (EP1-07); se reemplaza con contenido real en EP2 -->
-  @if (auth.hasRole(Role.Admin)) {
-    <section class="dashboard__role-demo" aria-labelledby="admin-demo-title">
-      <h2 id="admin-demo-title" class="dashboard__role-title">Panel de administración</h2>
-      <p class="dashboard__text">Visible solo para el rol Admin.</p>
+  @if (rolesLabel(); as roles) {
+    <p class="dashboard__role">Rol: {{ roles }}</p>
+  }
+
+  @if (isAdmin()) {
+    <section class="dashboard__panel" aria-labelledby="admin-title">
+      <h2 id="admin-title" class="dashboard__panel-title">Panel de administración</h2>
+      <p class="dashboard__text">
+        Tipos de trámite de la comuna. El vecino ingresa solicitudes; no administra este catálogo.
+      </p>
+
+      <h3 class="dashboard__section-title">Catálogo</h3>
+      <ul class="dashboard__list">
+        @for (tipo of tiposTramite; track tipo.value) {
+          <li>{{ tipo.label }}</li>
+        }
+      </ul>
+
+      <h3 class="dashboard__section-title">Cambio de estado</h3>
+      <ul class="dashboard__list">
+        @for (status of statuses; track status) {
+          <li>{{ statusView[status].label }}</li>
+        }
+      </ul>
+      <p class="dashboard__text">Estos estados los mueve el municipio. No aparecen en la pantalla del vecino.</p>
     </section>
   }
 
-  @if (auth.hasRole(Role.Vecino)) {
-    <section class="dashboard__role-demo" aria-labelledby="vecino-demo-title">
-      <h2 id="vecino-demo-title" class="dashboard__role-title">Mis trámites</h2>
-      <p class="dashboard__text">Visible solo para el rol Vecino.</p>
+  @if (isFuncionario()) {
+    <section class="dashboard__panel" aria-labelledby="funcionario-title">
+      <h2 id="funcionario-title" class="dashboard__panel-title">Cola de admisión</h2>
+      <p class="dashboard__text">Revisa los trámites de la comuna y fíltralos por estado.</p>
+      <a class="dashboard__link" routerLink="/tramites">Revisar la cola</a>
+    </section>
+  }
+
+  @if (isVecino()) {
+    <section class="dashboard__panel" aria-labelledby="vecino-title">
+      <h2 id="vecino-title" class="dashboard__panel-title">Mis trámites</h2>
+      <p class="dashboard__text">Ingresa una solicitud y sigue solo las tuyas.</p>
+      <a class="dashboard__link" routerLink="/tramites">Ver mis trámites</a>
+    </section>
+  }
+
+  @if (isAuditor()) {
+    <section class="dashboard__panel" aria-labelledby="auditor-title">
+      <h2 id="auditor-title" class="dashboard__panel-title">Auditoría</h2>
+      <p class="dashboard__text">
+        Desde este rol no se ingresan trámites ni se edita el catálogo. La línea de tiempo de cada trámite queda para el stream.
+      </p>
     </section>
   }
 </main>

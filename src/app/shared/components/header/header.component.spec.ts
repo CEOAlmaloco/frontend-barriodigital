@@ -48,6 +48,7 @@ describe('HeaderComponent', () => {
   it('muestra solo el nombre de la cuenta y cierra sesión desde el header', async () => {
     await render([Role.Vecino]);
 
+    expect(element.querySelector('.header__account-role')?.textContent?.trim()).toBe(Role.Vecino);
     expect(element.querySelector('.header__account-name')?.textContent?.trim()).toBe('Usuario de prueba');
 
     element.querySelector<HTMLButtonElement>('.header__sign-out')?.click();

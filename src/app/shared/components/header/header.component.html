@@ -32,6 +32,9 @@
   </nav>
 
   <div class="header__account">
+    @if (roleLabel(); as role) {
+      <span class="header__account-role">{{ role }}</span>
+    }
     <span class="header__account-name">{{ accountName() }}</span>
     <button matButton type="button" class="header__sign-out" (click)="signOut()">Cerrar sesión</button>
   </div>

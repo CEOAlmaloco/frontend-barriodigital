@@ -112,6 +112,13 @@ $header-layer: 10;
   margin-left: auto;
 }
 
+.header__account-role {
+  flex-shrink: 0;
+  font-size: $font-label;
+  font-weight: $font-weight-semibold;
+  color: $color-primary-dark;
+}
+
 .header__account-name {
   min-width: 0;
   overflow: hidden;

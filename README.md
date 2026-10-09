@@ -53,7 +53,7 @@ npm test                      # modo watch
 npm test -- --watch=false     # una sola ejecución
 ```
 
-Hoy hay 49 tests en 10 archivos: `AppComponent`, `AuthService`, los guards, la configuración de MSAL (incluido el interceptor HTTP), la lectura de claims del token, `LoginComponent`, `DashboardComponent`, `HeaderComponent`, `RequestsService` y `RequestsComponent`.
+Hoy hay 51 tests en 10 archivos: `AppComponent`, `AuthService`, los guards, la configuración de MSAL (incluido el interceptor HTTP), la lectura de claims del token, `LoginComponent`, `DashboardComponent`, `HeaderComponent`, `RequestsService` y `RequestsComponent`.
 
 ## Estructura
 
@@ -62,7 +62,7 @@ src/
 ├── app/
 │   ├── core/          Servicios únicos de la app. Hoy: auth/ (configuración de MSAL, AuthService con sesión y roles, guards) y layout/ (contenedor de las rutas autenticadas)
 │   ├── shared/        Componentes, pipes y modelos compartidos entre features. Hoy: components/header y models/ (roles y trámites)
-│   └── features/      Una carpeta por dominio: login/, dashboard/ (placeholder de /inicio) y requests/ (vista de trámites en /tramites)
+│   └── features/      Una carpeta por dominio: login/, dashboard/ (inicio según el rol) y requests/ (vista de trámites en /tramites)
 ├── styles/            _tokens.scss (paleta, tipografía, espaciado), _material-theme.scss y styles.scss global
 └── environments/      Configuración por entorno: Microsoft Entra ID y URL del BFF
 ```
@@ -87,7 +87,7 @@ Implementado:
 - Las llamadas `HttpClient` a `bffBaseUrl` llevan `Authorization: Bearer <accessToken>` con el scope `access_as_user`, que trae el claim `roles`. Las demás URLs salen sin token.
 - Roles del usuario leídos del claim `roles` del accessToken: `AuthService.roles()` y `AuthService.hasRole(Role.Admin)`, con los nombres de rol en `shared/models/role.ts`.
 - Header compartido en todas las rutas autenticadas: navegación según rol (Trámites solo para Vecino y Funcionario), nombre de la cuenta y cierre de sesión. Bajo 768px la navegación se colapsa en un menú.
-- `/inicio` como placeholder: título Inicio, saludo con el nombre de la cuenta y un ejemplo temporal de contenido para Admin y para Vecino.
+- `/inicio` según el claim `roles` del access token (EP1-07). Admin ve catálogo y cambio de estado; Vecino ve solo «Mis trámites» y el enlace a `/tramites`; Funcionario ve la cola; Auditor no ingresa trámites ni edita el catálogo. El header muestra el rol al lado del nombre. Ocultar un bloque no autoriza: el corte real sigue en el BFF (`/api/admin/**` → 403).
 - Vista de trámites en `/tramites` (EP1-08), conectada al BFF (`GET` y `POST /api/requests`): el Vecino ingresa trámites y ve solo los suyos, que el servidor filtra según el token; el Funcionario ve todos, con filtros de estado y fechas. Admin y Auditor no tienen acceso.
 - Flujo verificado de punta a punta contra la infraestructura real en AWS: login, creación y listado de trámites, con el header `Authorization` confirmado en las peticiones al backend real (cierra la verificación pendiente de EP1-06).
 

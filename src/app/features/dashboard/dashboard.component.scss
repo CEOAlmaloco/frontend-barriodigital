@@ -17,10 +17,21 @@ $content-max-width: 1200px;
 }
 
 .dashboard__text {
+  max-width: $measure-body;
   color: $color-text-secondary;
 }
 
-.dashboard__role-demo {
+.dashboard__role {
+  font-size: $font-label;
+  font-weight: $font-weight-medium;
+  color: $color-primary-dark;
+}
+
+.dashboard__panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $space-3;
   width: 100%;
   max-width: $measure-body;
   padding: $space-4;
@@ -29,7 +40,33 @@ $content-max-width: 1200px;
   box-shadow: $shadow-elevated;
 }
 
-.dashboard__role-title {
-  margin-bottom: $space-1;
+.dashboard__panel-title {
   font-size: $font-h3;
+}
+
+.dashboard__section-title {
+  font-size: $font-body;
+  font-weight: $font-weight-semibold;
+}
+
+.dashboard__list {
+  margin: 0;
+  padding-left: $space-6;
+  color: $color-text-primary;
+}
+
+.dashboard__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: $size-touch-target;
+  padding-inline: $space-4;
+  font-weight: $font-weight-medium;
+  color: $color-surface;
+  text-decoration: none;
+  background-color: $color-primary;
+  border-radius: $radius-base;
+
+  &:hover {
+    background-color: $color-primary-dark;
+  }
 }
