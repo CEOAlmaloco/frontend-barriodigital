@@ -37,7 +37,8 @@ export const routes: Routes = [
         path: 'admin',
         canActivate: [roleGuard],
         data: { roles: [Role.Admin] },
-        loadComponent: () => import('./features/admin/admin.component').then((m) => m.AdminComponent),
+        loadComponent: () => 
+          import('./features/admin/admin.component').then((m) => m.AdminComponent),
         title: 'Administración | BarrioDigital',
       },
     ],
