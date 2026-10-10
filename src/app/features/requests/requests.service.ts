@@ -3,7 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { CreateRequestPayload, Request } from '../../shared/models/request.model';
+import {
+  ChangeRequestStatusPayload,
+  CreateRequestPayload,
+  Request,
+  RequestTransitions,
+} from '../../shared/models/request.model';
 
 /** Trámite tal como lo devuelve el BFF: el modelo de la UI más title y updatedAt, que la UI no usa. */
 interface RequestResponse extends Request {
@@ -37,6 +42,14 @@ export class RequestsService {
   createRequest(payload: CreateRequestPayload): Observable<Request> {
     return this.http.post<RequestResponse>(this.url, payload).pipe(map(toRequest));
   }
+
+  getTransitions(): Observable<RequestTransitions> {
+    return this.http.get<RequestTransitions>(`${this.url}/meta/transitions`);
+  }
+
+  changeStatus(id: string, payload: ChangeRequestStatusPayload): Observable<Request> {
+    return this.http.put<RequestResponse>(`${this.url}/${id}/status`, payload).pipe(map(toRequest));
+  }
 }
 
 function toRequest({
@@ -45,8 +58,18 @@ function toRequest({
   procedureType,
   address,
   status,
+  rejectionReason,
   createdAt,
   solicitanteId,
 }: RequestResponse): Request {
-  return { id, description, procedureType, address, status, createdAt, solicitanteId };
+  return {
+    id,
+    description,
+    procedureType,
+    address,
+    status,
+    rejectionReason,
+    createdAt,
+    solicitanteId,
+  };
 }

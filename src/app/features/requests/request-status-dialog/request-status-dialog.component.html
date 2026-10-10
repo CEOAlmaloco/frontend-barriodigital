@@ -1,0 +1,104 @@
+<form [formGroup]="rejectionForm" (ngSubmit)="submit()" novalidate>
+  <h2 mat-dialog-title class="status-dialog__title">{{ title }}</h2>
+
+  <mat-dialog-content class="status-dialog__content">
+    <p id="request-status-description">
+      @if (isRejection) {
+        El trámite quedará rechazado y no podrá avanzar a otro estado. Indica el motivo para que el
+        vecino pueda conocerlo.
+      } @else if (isAdmission) {
+        ¿Confirmas la admisión de este trámite? Una vez admitido, no podrá volver al estado
+        Ingresado.
+      } @else {
+        ¿Confirmas el cambio de este trámite al estado “{{ statusView[data.status].label }}”? No
+        podrá volver al estado anterior.
+      }
+    </p>
+
+    <dl class="status-dialog__summary">
+      <div>
+        <dt>Tipo de trámite</dt>
+        <dd>{{ data.procedureTypeLabel }}</dd>
+      </div>
+      <div>
+        <dt>Dirección o ubicación</dt>
+        <dd>{{ data.request.address }}</dd>
+      </div>
+      <div>
+        <dt>Cambio de estado</dt>
+        <dd class="status-dialog__transition">
+          <span>{{ statusView[data.request.status].label }}</span>
+          <mat-icon aria-hidden="true">arrow_forward</mat-icon>
+          <span class="cdk-visually-hidden">a</span>
+          <span>{{ statusView[data.status].label }}</span>
+        </dd>
+      </div>
+    </dl>
+
+    @if (isRejection) {
+      <div class="status-dialog__reason">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-label>Motivo del rechazo (obligatorio)</mat-label>
+          <textarea
+            matInput
+            formControlName="rejectionReason"
+            placeholder="Explica por qué se rechaza este trámite"
+            rows="3"
+            [maxlength]="maxReasonLength"
+            aria-describedby="request-rejection-reason-counter"
+            required
+          ></textarea>
+          <mat-error>
+            @if (rejectionForm.controls.rejectionReason.hasError('maxlength')) {
+              El motivo de rechazo no puede superar {{ maxReasonLength }} caracteres.
+            } @else {
+              Indica un motivo de rechazo que no esté vacío.
+            }
+          </mat-error>
+        </mat-form-field>
+        <p id="request-rejection-reason-counter" class="status-dialog__counter">
+          {{ rejectionForm.controls.rejectionReason.value.length }} / {{ maxReasonLength }}
+        </p>
+      </div>
+    }
+
+    <div class="status-dialog__feedback" aria-live="polite" aria-atomic="true">
+      @if (isSubmitting()) {
+        <p>Confirmando cambio de estado.</p>
+      } @else if (submitError(); as error) {
+        <p class="status-dialog__error">{{ error }}</p>
+      }
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="status-dialog__actions" align="end">
+    <button matButton type="button" [disabled]="isSubmitting()" (click)="cancel()">Cancelar</button>
+    @if (requiresReload()) {
+      <button matButton="filled" type="button" (click)="closeAndReload()">
+        Cerrar y actualizar lista
+      </button>
+    } @else {
+      <button
+        matButton="filled"
+        type="submit"
+        class="status-dialog__confirm"
+        [class.status-dialog__confirm--reject]="isRejection"
+        [disabled]="isSubmitting()"
+        [attr.aria-busy]="isSubmitting()"
+      >
+        <span [class.status-dialog__confirm-label--hidden]="isSubmitting()">{{
+          confirmLabel
+        }}</span>
+        @if (isSubmitting()) {
+          <mat-progress-spinner
+            class="status-dialog__spinner"
+            mode="indeterminate"
+            [style.width]="'var(--status-dialog-spinner-size)'"
+            [style.height]="'var(--status-dialog-spinner-size)'"
+            aria-hidden="true"
+          />
+        }
+      </button>
+    }
+  </mat-dialog-actions>
+</form>

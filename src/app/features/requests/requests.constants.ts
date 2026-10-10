@@ -33,3 +33,14 @@ export const REQUEST_STATUS_VIEW: Record<RequestStatus, { label: string; tone: S
 };
 
 export const REQUEST_STATUSES = Object.keys(REQUEST_STATUS_VIEW) as RequestStatus[];
+
+/** Etiquetas de acciones por destino; las transiciones permitidas vienen del backend. */
+export const REQUEST_ACTION_LABELS: Record<Exclude<RequestStatus, 'INGRESADO'>, string> = {
+  ADMITIDO: 'Admitir',
+  EN_GESTION: 'Pasar a gestión',
+  EN_TERRENO: 'Enviar a terreno',
+  RESUELTO: 'Resolver',
+  RECHAZADO: 'Rechazar',
+};
+
+export const REJECTION_REASON_MAX_LENGTH = 500;
