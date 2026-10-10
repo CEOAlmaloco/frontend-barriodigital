@@ -1,0 +1,66 @@
+@use '@angular/material' as mat;
+@use 'tokens' as *;
+
+.request-actions {
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 100%;
+}
+
+.request-actions__primary,
+.request-actions__menu-trigger,
+.request-actions__reject {
+  min-height: $size-touch-target;
+  height: auto;
+  white-space: normal;
+  overflow-wrap: normal;
+
+  &:focus-visible {
+    outline: $border-width-strong solid $color-primary-dark;
+    outline-offset: $space-1;
+  }
+}
+
+.request-actions__primary {
+  min-width: 0;
+  padding: $space-2 $space-4;
+  line-height: $line-height-body;
+
+  @media (min-width: $breakpoint-md) {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
+
+.request-actions__primary--split {
+  @include mat.button-overrides((
+    filled-container-shape: $radius-base 0 0 $radius-base,
+  ));
+}
+
+.request-actions__menu-trigger {
+  @include mat.button-overrides((
+    filled-container-shape: 0 $radius-base $radius-base 0,
+  ));
+  min-width: $size-touch-target;
+  flex: 0 0 $size-touch-target;
+  padding-inline: $space-2;
+  border-inline-start: $border-width solid $color-surface;
+
+  mat-icon {
+    margin: 0;
+  }
+}
+
+.request-actions__finished {
+  font-size: $font-body-sm;
+  color: $color-text-secondary;
+  overflow-wrap: normal;
+}
+
+.request-actions__reject {
+  @include mat.button-overrides((
+    text-label-text-color: $color-error,
+  ));
+  color: $color-error;
+}

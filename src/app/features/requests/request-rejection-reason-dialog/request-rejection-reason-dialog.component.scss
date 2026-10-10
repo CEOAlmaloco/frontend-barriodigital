@@ -1,0 +1,49 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+  max-width: $measure-body;
+}
+
+.rejection-reason-dialog__title {
+  padding: $space-6 $space-6 $space-4;
+  font-size: $font-h2;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.rejection-reason-dialog__content {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  padding: $space-4 $space-6;
+  font-size: $font-body;
+  color: $color-text-primary;
+}
+
+.rejection-reason-dialog__summary {
+  display: grid;
+  gap: $space-3;
+  margin: 0;
+
+  dt {
+    margin-bottom: $space-1;
+    font-size: $font-label;
+    color: $color-text-secondary;
+  }
+
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.rejection-reason-dialog__reason {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.rejection-reason-dialog__actions {
+  padding: $space-4 $space-6 $space-6;
+}

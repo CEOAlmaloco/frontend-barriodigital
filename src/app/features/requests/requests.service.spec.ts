@@ -15,6 +15,7 @@ describe('RequestsService', () => {
     procedureType: 'bache',
     address: 'Calle 1',
     status: 'INGRESADO',
+    rejectionReason: null,
     createdAt: '2026-09-13T15:04:05.123456Z',
     solicitanteId: 'oid-vecino',
   };

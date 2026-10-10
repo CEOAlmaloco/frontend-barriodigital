@@ -13,6 +13,7 @@ export interface Request {
   procedureType: string;
   address: string;
   status: RequestStatus;
+  rejectionReason: string | null;
   createdAt: string; // ISO 8601 en UTC
   /** Object ID (oid) de Entra ID del solicitante. Lo asigna el BFF desde el token. */
   solicitanteId: string;
@@ -23,4 +24,12 @@ export interface CreateRequestPayload {
   procedureType: string;
   description: string;
   address: string;
+}
+
+export type RequestTransitions = Record<RequestStatus, readonly RequestStatus[]>;
+
+/** Body del PUT de estado. El motivo solo se envía al rechazar. */
+export interface ChangeRequestStatusPayload {
+  status: RequestStatus;
+  rejectionReason?: string;
 }
