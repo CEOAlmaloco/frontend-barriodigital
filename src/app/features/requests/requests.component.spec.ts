@@ -1,11 +1,16 @@
 import { OverlayContainer } from '@angular/cdk/overlay';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { FormGroupDirective } from '@angular/forms';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { MatSelect } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Observable, Subject, firstValueFrom, of, throwError } from 'rxjs';
+import { By } from '@angular/platform-browser';
+import { Observable, Subject, Subscriber, firstValueFrom, of, throwError } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { CatalogService } from '../../core/catalog/catalog.service';
+import { ProcedureType } from '../../shared/models/procedure-type.model';
 import { Request, RequestStatus, RequestTransitions } from '../../shared/models/request.model';
 import { Role } from '../../shared/models/role';
 import {
@@ -16,6 +21,11 @@ import { RequestsComponent } from './requests.component';
 import { RequestsService } from './requests.service';
 
 describe('RequestsComponent', () => {
+  const catalog: ProcedureType[] = [
+    { value: 'alumbrado', label: 'Iluminación municipal', active: true },
+    { value: 'otro', label: 'Otro servicio municipal', active: true },
+    { value: 'historico', label: 'Servicio anterior', active: false },
+  ];
   const mine: Request = {
     id: 'propio',
     description: 'Rama sobre el cable',
@@ -41,13 +51,16 @@ describe('RequestsComponent', () => {
   };
   let fixture: ComponentFixture<RequestsComponent>;
   let element: HTMLElement;
+  let catalogService: { getProcedures: ReturnType<typeof vi.fn> };
 
   const render = async (
     role: Role,
     getRequests: () => Observable<Request[]> = () => of([mine, other]),
     getTransitions: () => Observable<RequestTransitions> = () =>
       throwError(() => new Error('acciones no disponibles')),
+    getProcedures: () => Observable<ProcedureType[]> = () => of(catalog),
   ) => {
+    catalogService = { getProcedures: vi.fn(getProcedures) };
     service = {
       getRequests: vi.fn(getRequests),
       createRequest: vi.fn(() => of(mine)),
@@ -61,6 +74,7 @@ describe('RequestsComponent', () => {
       providers: [
         { provide: RequestsService, useValue: service },
         { provide: AuthService, useValue: auth },
+        { provide: CatalogService, useValue: catalogService },
       ],
     }).compileComponents();
 
@@ -70,7 +84,8 @@ describe('RequestsComponent', () => {
   };
 
   const text = () => element.textContent ?? '';
-  const headers = () => Array.from(element.querySelectorAll('th'), (header) => header.textContent?.trim());
+  const headers = () =>
+    Array.from(element.querySelectorAll('th'), (header) => header.textContent?.trim());
   const submitButton = () => element.querySelector<HTMLButtonElement>('.requests__submit');
 
   it('Vecino: ve el formulario, sin filtros, y lo que entrega el servidor sin volver a filtrarlo', async () => {
@@ -89,7 +104,9 @@ describe('RequestsComponent', () => {
     await render(Role.Funcionario);
 
     expect(element.querySelector('.requests__card')).toBeNull();
-    expect(element.querySelector('#requests-list-title')?.textContent).toContain('Todos los trámites');
+    expect(element.querySelector('#requests-list-title')?.textContent).toContain(
+      'Todos los trámites',
+    );
     expect(element.querySelector('.requests__filters')).not.toBeNull();
     expect(text()).toContain('Bache de otro vecino');
     expect(headers()).toEqual(['Tipo', 'Descripción', 'Estado', 'Fecha', 'Acciones']);
@@ -99,17 +116,26 @@ describe('RequestsComponent', () => {
   it('Funcionario: pide el listado con los filtros elegidos', async () => {
     await render(Role.Funcionario);
 
-    fixture.componentInstance['filters'].setValue({ status: 'RESUELTO', from: new Date(2026, 8, 1), to: null });
+    fixture.componentInstance['filters'].setValue({
+      status: 'RESUELTO',
+      from: new Date(2026, 8, 1),
+      to: null,
+    });
     await fixture.whenStable();
 
-    expect(service.getRequests).toHaveBeenLastCalledWith({ status: 'RESUELTO', from: '2026-09-01' });
+    expect(service.getRequests).toHaveBeenLastCalledWith({
+      status: 'RESUELTO',
+      from: '2026-09-01',
+    });
   });
 
   it('muestra la etiqueta del tipo y, si el código no está en la lista, el código crudo', async () => {
     await render(Role.Vecino, () => of([mine, { ...other, procedureType: 'desconocido' }]));
 
-    expect(text()).toContain('Alumbrado público');
-    expect(text()).toContain('desconocido');
+    for (const container of ['.requests__table', '.requests__cards']) {
+      expect(element.querySelector(container)?.textContent).toContain('Iluminación municipal');
+      expect(element.querySelector(container)?.textContent).toContain('desconocido');
+    }
   });
 
   it('no envía el formulario vacío y muestra el error de cada campo obligatorio', async () => {
@@ -138,9 +164,11 @@ describe('RequestsComponent', () => {
 
   it('si falla la carga ofrece Reintentar y vuelve a pedir el listado', async () => {
     let attempts = 0;
-    await render(Role.Vecino, () => (attempts++ === 0 ? throwError(() => new Error('sin red')) : of([])));
+    await render(Role.Vecino, () =>
+      attempts++ === 0 ? throwError(() => new Error('sin red')) : of([]),
+    );
 
-    expect(text()).toContain('No se pudieron cargar los trámites.');
+    expect(text()).toContain('No pudimos cargar la información de trámites. Intenta nuevamente.');
 
     Array.from(element.querySelectorAll('button'))
       .find((button) => button.textContent?.includes('Reintentar'))
@@ -244,15 +272,11 @@ describe('RequestsComponent', () => {
           overlay.querySelector('.cdk-overlay-pane')?.classList.contains('request-dialog'),
         ).toBe(true);
         expect(overlay.textContent).toContain('Motivo del rechazo');
-        expect(overlay.textContent).toContain('Alumbrado público');
+        expect(overlay.textContent).toContain('Iluminación municipal');
         expect(overlay.textContent).toContain(mine.address);
         expect(
           Array.from(overlay.querySelectorAll('dt'), (label) => label.textContent?.trim()),
-        ).toEqual([
-          'Tipo de trámite',
-          'Dirección o ubicación',
-          'Motivo',
-        ]);
+        ).toEqual(['Tipo de trámite', 'Dirección o ubicación', 'Motivo']);
         expect(overlay.querySelector('dd.rejection-reason-dialog__reason')).not.toBeNull();
         expect(overlay.querySelector('.rejection-reason-dialog__reason')?.textContent).toBe(reason);
         const closed = firstValueFrom(dialogRef.afterClosed());
@@ -300,6 +324,586 @@ describe('RequestsComponent', () => {
       expect(service.changeStatus).not.toHaveBeenCalled();
     },
   );
+
+  describe('catálogo real', () => {
+    const payload = { procedureType: 'alumbrado', description: 'Poste caído', address: 'Calle 2' };
+    const fillForm = () => fixture.componentInstance['createForm'].setValue(payload);
+    const submitDirectly = () =>
+      fixture.componentInstance['submit'](
+        fixture.debugElement
+          .query(By.directive(FormGroupDirective))
+          .injector.get(FormGroupDirective),
+      );
+    const reloadCatalog = () => fixture.componentInstance['loadCatalog']();
+    const controls = () => fixture.componentInstance['createForm'].controls;
+
+    it('ofrece solo activos, conserva labels históricos y no selecciona el primer tipo', async () => {
+      await render(Role.Vecino, () => of([{ ...mine, procedureType: 'historico' }]));
+      const select = fixture.debugElement.query(By.directive(MatSelect))
+        .componentInstance as MatSelect;
+      expect(select.options.map((option) => option.value)).toEqual(['alumbrado', 'otro']);
+      expect(select.options.map((option) => option.viewValue)).toEqual([
+        'Iluminación municipal',
+        'Otro servicio municipal',
+      ]);
+      expect(controls().procedureType.value).toBe('');
+      for (const container of ['.requests__table', '.requests__cards']) {
+        expect(element.querySelector(container)?.textContent).toContain('Servicio anterior');
+      }
+    });
+
+    it.each(['loading', 'error', 'empty', 'inactive'] as const)(
+      '%s: bloquea select, botón y submit directo, conservando los textos editables',
+      async (state) => {
+        const getProcedures = () =>
+          state === 'loading'
+            ? new Subject<ProcedureType[]>()
+            : state === 'error'
+              ? throwError(() => new Error('sin red'))
+              : of(state === 'empty' ? [] : [catalog[2]]);
+        await render(Role.Vecino, () => of([mine]), undefined, getProcedures);
+        fillForm();
+        submitDirectly();
+        expect(controls().procedureType.disabled).toBe(true);
+        expect(submitButton()!.disabled).toBe(true);
+        expect(controls().description.enabled).toBe(true);
+        expect(controls().address.enabled).toBe(true);
+        expect(fixture.componentInstance['createForm'].getRawValue()).toEqual(payload);
+        expect(service.createRequest).not.toHaveBeenCalled();
+        expect(element.querySelector('.requests__table')?.textContent).toContain('alumbrado');
+        if (state === 'empty' || state === 'inactive') {
+          expect(text()).toContain('No hay tipos de trámite disponibles');
+        }
+      },
+    );
+
+    it.each(['desconocido', 'historico'])(
+      'submit directo rechaza el código %s',
+      async (procedureType) => {
+        await render(Role.Vecino);
+        fixture.componentInstance['createForm'].setValue({ ...payload, procedureType });
+        submitDirectly();
+        expect(service.createRequest).not.toHaveBeenCalled();
+      },
+    );
+
+    it('el error de catálogo usa el mensaje común y permite reintentar conservando campos', async () => {
+      const message = 'Mensaje del BFF';
+      await render(Role.Vecino, undefined, undefined, () =>
+        throwError(() => new HttpErrorResponse({ status: 500, error: { message } })),
+      );
+      fillForm();
+      expect(text()).toContain('No pudimos cargar la información de trámites. Intenta nuevamente.');
+      expect(text()).not.toContain(message);
+      catalogService.getProcedures.mockReturnValue(of(catalog));
+      Array.from(element.querySelectorAll('button'))
+        .find((button) => button.textContent?.trim() === 'Reintentar')!
+        .click();
+      await fixture.whenStable();
+      expect(fixture.componentInstance['createForm'].getRawValue()).toEqual(payload);
+      expect(controls().procedureType.enabled).toBe(true);
+      expect(catalogService.getProcedures).toHaveBeenCalledTimes(2);
+      expect(service.getRequests).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['removed', 'inactive'] as const)(
+      'al recargar con tipo %s limpia solo la selección e informa',
+      async (state) => {
+        await render(Role.Vecino);
+        fillForm();
+        catalogService.getProcedures.mockReturnValue(
+          of(state === 'removed' ? [catalog[1]] : [{ ...catalog[0], active: false }, catalog[1]]),
+        );
+        reloadCatalog();
+        await fixture.whenStable();
+        expect(fixture.componentInstance['createForm'].getRawValue()).toEqual({
+          ...payload,
+          procedureType: '',
+        });
+        expect(text()).toContain(
+          'El tipo seleccionado ya no está disponible. Selecciona otro tipo de trámite.',
+        );
+        controls().procedureType.setValue('otro');
+        await fixture.whenStable();
+        expect(text()).not.toContain('El tipo seleccionado ya no está disponible.');
+      },
+    );
+
+    it('conserva selección y labels anteriores tras fallo; una nueva carga válida actualiza el label', async () => {
+      await render(Role.Vecino);
+      fillForm();
+      catalogService.getProcedures
+        .mockReturnValueOnce(throwError(() => new Error('sin red')))
+        .mockReturnValueOnce(of([{ ...catalog[0], label: 'Etiqueta actualizada' }]));
+      reloadCatalog();
+      await fixture.whenStable();
+      expect(fixture.componentInstance['createForm'].getRawValue()).toEqual(payload);
+      expect(text()).toContain('Iluminación municipal');
+      expect(submitButton()!.disabled).toBe(true);
+      submitDirectly();
+      expect(service.createRequest).not.toHaveBeenCalled();
+      reloadCatalog();
+      await fixture.whenStable();
+      expect(controls().procedureType.value).toBe('alumbrado');
+      expect(text()).toContain('Etiqueta actualizada');
+      expect(submitButton()!.disabled).toBe(false);
+    });
+
+    it('Funcionario: el catálogo fallido no bloquea filtros, transiciones ni diálogos y ofrece reintento', async () => {
+      const transitions: RequestTransitions = {
+        INGRESADO: ['ADMITIDO'],
+        ADMITIDO: [],
+        EN_GESTION: [],
+        EN_TERRENO: [],
+        RESUELTO: [],
+        RECHAZADO: [],
+      };
+      await render(
+        Role.Funcionario,
+        () => of([mine]),
+        () => of(transitions),
+        () => throwError(() => new Error('sin red')),
+      );
+      fixture.componentInstance['filters'].patchValue({ status: 'INGRESADO' });
+      await fixture.whenStable();
+      element.querySelector<HTMLButtonElement>('.request-actions__primary')!.click();
+      await fixture.whenStable();
+      const dialog = TestBed.inject(MatDialog).openDialogs[0];
+      expect(TestBed.inject(OverlayContainer).getContainerElement().textContent).toContain(
+        'alumbrado',
+      );
+      dialog.close();
+      await fixture.whenStable();
+      const listCalls = service.getRequests.mock.calls.length;
+      catalogService.getProcedures.mockReturnValue(of(catalog));
+      Array.from(element.querySelectorAll('button'))
+        .find((button) => button.textContent?.trim() === 'Reintentar')!
+        .click();
+      await fixture.whenStable();
+      expect(service.getRequests).toHaveBeenCalledTimes(listCalls);
+      expect(service.getTransitions).toHaveBeenCalledTimes(1);
+      expect(text()).toContain('Iluminación municipal');
+    });
+
+    it('un fallo del listado no impide cargar el catálogo ni habilitar el formulario', async () => {
+      await render(Role.Vecino, () => throwError(() => new Error('sin listado')));
+      expect(fixture.componentInstance['catalogState']()).toBe('ready');
+      expect(controls().procedureType.enabled).toBe(true);
+      expect(text()).toContain('No pudimos cargar la información de trámites. Intenta nuevamente.');
+    });
+
+    it('los dos diálogos reciben el label inactivo al abrirse y lo conservan durante una recarga', async () => {
+      const request = {
+        ...mine,
+        id: 'historico-rechazado',
+        procedureType: 'historico',
+        status: 'RECHAZADO' as const,
+        rejectionReason: 'Motivo',
+      };
+      const transitions: RequestTransitions = {
+        INGRESADO: ['ADMITIDO'],
+        ADMITIDO: [],
+        EN_GESTION: [],
+        EN_TERRENO: [],
+        RESUELTO: [],
+        RECHAZADO: [],
+      };
+      await render(
+        Role.Funcionario,
+        () => of([mine, request]),
+        () => of(transitions),
+      );
+      const trigger = element.querySelector<HTMLButtonElement>('.request-actions__primary')!;
+      fixture.componentInstance['openStatusDialog'](
+        { ...request, status: 'INGRESADO' },
+        { status: 'ADMITIDO', trigger },
+      );
+      await fixture.whenStable();
+      const overlay = TestBed.inject(OverlayContainer).getContainerElement();
+      expect(overlay.textContent).toContain('Servicio anterior');
+      catalogService.getProcedures.mockReturnValue(
+        of([{ ...catalog[2], label: 'Nuevo label histórico' }]),
+      );
+      reloadCatalog();
+      await fixture.whenStable();
+      expect(overlay.textContent).toContain('Servicio anterior');
+      const statusDialog = TestBed.inject(MatDialog).openDialogs[0];
+      const statusClosed = firstValueFrom(statusDialog.afterClosed());
+      statusDialog.close();
+      await statusClosed;
+      await fixture.whenStable();
+      element.querySelector<HTMLButtonElement>('.requests__rejection-reason')!.click();
+      await fixture.whenStable();
+      expect(overlay.textContent).toContain('Nuevo label histórico');
+      const reasonDialog = TestBed.inject(MatDialog).openDialogs[0];
+      const reasonClosed = firstValueFrom(reasonDialog.afterClosed());
+      reasonDialog.close();
+      await reasonClosed;
+      await fixture.whenStable();
+    });
+
+    it.each([
+      [400, 'El tipo de tramite no esta disponible', true],
+      [400, 'procedureType invalido', true],
+      [400, 'Otro error de validación', false],
+      [503, 'Servicio no disponible', false],
+      [500, '  ', false],
+    ] as const)(
+      'POST %s (%s): conserva campos y ofrece actualizar solo para el rechazo de tipo',
+      async (status, message, refresh) => {
+        await render(Role.Vecino);
+        fillForm();
+        service.createRequest.mockReturnValue(
+          throwError(() => new HttpErrorResponse({ status, error: { message } })),
+        );
+        submitButton()!.click();
+        await fixture.whenStable();
+        expect(fixture.componentInstance['createForm'].getRawValue()).toEqual(payload);
+        expect(text()).toContain(
+          message.trim() ? message : 'No se pudo ingresar el trámite. Intenta nuevamente.',
+        );
+        const button = Array.from(element.querySelectorAll('button')).find(
+          (button) => button.textContent?.trim() === 'Actualizar tipos de trámite',
+        );
+        expect(!!button).toBe(refresh);
+        if (button) {
+          catalogService.getProcedures.mockReturnValue(of([{ ...catalog[0], active: false }]));
+          button.click();
+          await fixture.whenStable();
+          expect(controls().procedureType.value).toBe('');
+          expect(controls().description.value).toBe(payload.description);
+          expect(controls().address.value).toBe(payload.address);
+        }
+        expect(service.createRequest).toHaveBeenCalledTimes(1);
+      },
+    );
+
+    it('una recarga no habilita controles durante el POST y un fallo posterior mantiene bloqueado el tipo', async () => {
+      await render(Role.Vecino);
+      fillForm();
+      const response = new Subject<Request>();
+      service.createRequest.mockReturnValue(response);
+      submitButton()!.click();
+      reloadCatalog();
+      await fixture.whenStable();
+      expect(fixture.componentInstance['createForm'].disabled).toBe(true);
+      submitDirectly();
+      expect(service.createRequest).toHaveBeenCalledTimes(1);
+      catalogService.getProcedures.mockReturnValue(throwError(() => new Error('sin red')));
+      reloadCatalog();
+      response.error(new Error('sin red'));
+      await fixture.whenStable();
+      expect(controls().description.enabled).toBe(true);
+      expect(controls().address.enabled).toBe(true);
+      expect(controls().procedureType.disabled).toBe(true);
+    });
+
+    it('cancela consultas anteriores y al destruir, sin aceptar respuestas antiguas', async () => {
+      const responses: Subscriber<ProcedureType[]>[] = [];
+      const cancelled = vi.fn();
+      await render(
+        Role.Vecino,
+        undefined,
+        undefined,
+        () =>
+          new Observable<ProcedureType[]>((subscriber) => {
+            responses.push(subscriber);
+            return cancelled;
+          }),
+      );
+      reloadCatalog();
+      expect(responses[0].closed).toBe(true);
+      responses[1].next(catalog);
+      responses[0].next([{ ...catalog[0], label: 'Respuesta antigua' }]);
+      await fixture.whenStable();
+      expect(text()).toContain('Iluminación municipal');
+      expect(text()).not.toContain('Respuesta antigua');
+      fixture.destroy();
+      expect(responses[1].closed).toBe(true);
+      expect(cancelled).toHaveBeenCalledTimes(2);
+    });
+
+    it('cancela el POST pendiente al destruir la vista', async () => {
+      await render(Role.Vecino);
+      fillForm();
+      const cancelled = vi.fn();
+      service.createRequest.mockReturnValue(new Observable<Request>(() => cancelled));
+      submitButton()!.click();
+      await fixture.whenStable();
+      fixture.destroy();
+      expect(cancelled).toHaveBeenCalledTimes(1);
+      expect(service.getRequests).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('recuperación común', () => {
+    const message = 'No pudimos cargar la información de trámites. Intenta nuevamente.';
+    const savedMessage = 'El cambio se guardó, pero no pudimos actualizar la lista.';
+    const transitions: RequestTransitions = {
+      INGRESADO: ['ADMITIDO'],
+      ADMITIDO: [],
+      EN_GESTION: [],
+      EN_TERRENO: [],
+      RESUELTO: [],
+      RECHAZADO: [],
+    };
+    const fail = () => throwError(() => new Error('sin red'));
+    const recovery = () => element.querySelector<HTMLElement>('.requests__recovery')!;
+    const retry = () => recovery().querySelector<HTMLButtonElement>('button')!.click();
+    const retryButtons = () =>
+      Array.from(element.querySelectorAll('button')).filter(
+        (button) => button.textContent?.trim() === 'Reintentar',
+      );
+    const spinner = () => recovery().querySelector('mat-progress-spinner');
+    const complete = <T>(subject: Subject<T>, value: T) => {
+      subject.next(value);
+      subject.complete();
+    };
+
+    it('unifica tres errores; pasa de centrado a compacto y espera toda la recuperación antes del siguiente intento', async () => {
+      await render(Role.Funcionario, fail, fail, fail);
+      expect(element.querySelectorAll('.requests__recovery')).toHaveLength(1);
+      expect(retryButtons()).toHaveLength(1);
+      expect(text().split(message)).toHaveLength(2);
+      expect(recovery().classList.contains('requests__status')).toBe(true);
+      expect(element.querySelector('.requests__table')).toBeNull();
+      const requestsResponse = new Subject<Request[]>();
+      const catalogResponse = new Subject<ProcedureType[]>();
+      const transitionsResponse = new Subject<RequestTransitions>();
+      service.getRequests.mockReturnValue(requestsResponse);
+      catalogService.getProcedures.mockReturnValue(catalogResponse);
+      service.getTransitions.mockReturnValue(transitionsResponse);
+      retry();
+      fixture.componentInstance['retryFailedLoads']();
+      await fixture.whenStable();
+      expect(service.getRequests).toHaveBeenCalledTimes(2);
+      expect(catalogService.getProcedures).toHaveBeenCalledTimes(2);
+      expect(service.getTransitions).toHaveBeenCalledTimes(2);
+      expect(spinner()?.getAttribute('aria-label')).toBe('Cargando información de trámites');
+      expect(recovery().querySelector('button')).toBeNull();
+      expect(text()).not.toContain(message);
+      complete(requestsResponse, [mine]);
+      await fixture.whenStable();
+      expect(recovery().classList.contains('requests__recovery--compact')).toBe(true);
+      expect(element.querySelector('.requests__table')?.textContent).toContain(mine.description);
+      catalogResponse.error(new Error('sin red'));
+      await fixture.whenStable();
+      expect(spinner()).not.toBeNull();
+      expect(recovery().querySelector('button')).toBeNull();
+      complete(transitionsResponse, transitions);
+      await fixture.whenStable();
+      expect(spinner()).toBeNull();
+      expect(recovery().textContent).toContain(message);
+      catalogService.getProcedures.mockReturnValue(of(catalog));
+      retry();
+      await fixture.whenStable();
+      expect(catalogService.getProcedures).toHaveBeenCalledTimes(3);
+      expect(service.getRequests).toHaveBeenCalledTimes(2);
+      expect(service.getTransitions).toHaveBeenCalledTimes(2);
+      expect(recovery().hidden).toBe(true);
+      expect(service.createRequest).not.toHaveBeenCalled();
+      expect(service.changeStatus).not.toHaveBeenCalled();
+    });
+
+    it.each(['catalog', 'transitions'] as const)(
+      '%s fallido: muestra la variante compacta y reintenta solo esa consulta',
+      async (query) => {
+        await render(
+          Role.Funcionario,
+          () => of([mine]),
+          query === 'transitions' ? fail : () => of(transitions),
+          query === 'catalog' ? fail : () => of(catalog),
+        );
+        expect(recovery().classList.contains('requests__recovery--compact')).toBe(true);
+        expect(element.querySelector('.requests__table')).not.toBeNull();
+        catalogService.getProcedures.mockReturnValue(of(catalog));
+        service.getTransitions.mockReturnValue(of(transitions));
+        retry();
+        await fixture.whenStable();
+        expect(catalogService.getProcedures).toHaveBeenCalledTimes(query === 'catalog' ? 2 : 1);
+        expect(service.getTransitions).toHaveBeenCalledTimes(query === 'transitions' ? 2 : 1);
+        expect(service.getRequests).toHaveBeenCalledTimes(1);
+        expect(recovery().hidden).toBe(true);
+      },
+    );
+
+    it('conserva campos y labels; Vecino nunca consulta transiciones y las asociaciones accesibles siguen presentes', async () => {
+      await render(Role.Vecino);
+      const payload = { procedureType: 'alumbrado', description: 'Poste', address: 'Calle 2' };
+      fixture.componentInstance['createForm'].setValue(payload);
+      catalogService.getProcedures.mockReturnValue(fail());
+      service.getRequests.mockReturnValue(fail());
+      fixture.componentInstance['loadCatalog']();
+      fixture.componentInstance['loadRequests']();
+      await fixture.whenStable();
+      expect(fixture.componentInstance['getTipoLabel']('alumbrado')).toBe('Iluminación municipal');
+      expect(fixture.componentInstance['createForm'].getRawValue()).toEqual(payload);
+      const checkDescriptions = () => {
+        const select = element.querySelector('[formControlName="procedureType"]')!;
+        for (const id of (select.getAttribute('aria-describedby') ?? '')
+          .split(/\s+/)
+          .filter(Boolean)) {
+          expect(element.querySelector(`[id="${id}"]`)).not.toBeNull();
+        }
+        expect(element.querySelector('#catalog-form-feedback')).not.toBeNull();
+        expect(element.querySelector('#catalog-feedback')).toBeNull();
+      };
+      checkDescriptions();
+      catalogService.getProcedures.mockReturnValue(of(catalog));
+      service.getRequests.mockReturnValue(of([mine]));
+      retry();
+      await fixture.whenStable();
+      expect(fixture.componentInstance['createForm'].getRawValue()).toEqual(payload);
+      expect(service.getTransitions).not.toHaveBeenCalled();
+      expect(service.createRequest).not.toHaveBeenCalled();
+      expect(service.changeStatus).not.toHaveBeenCalled();
+      fixture.componentInstance['createForm'].controls.procedureType.setValue('');
+      submitButton()!.click();
+      await fixture.whenStable();
+      checkDescriptions();
+    });
+
+    it('conserva filtros y el aviso de cambio guardado hasta que se recupere el listado', async () => {
+      await render(Role.Funcionario, () => of([mine]), fail);
+      const filters = { status: 'INGRESADO', from: new Date(2026, 8, 1), to: null };
+      fixture.componentInstance['filters'].setValue(filters);
+      service.getRequests.mockReturnValue(fail());
+      fixture.componentInstance['loadRequests'](true);
+      catalogService.getProcedures.mockReturnValue(fail());
+      fixture.componentInstance['loadCatalog']();
+      await fixture.whenStable();
+      expect(text()).toContain(savedMessage);
+      catalogService.getProcedures.mockReturnValue(of(catalog));
+      service.getTransitions.mockReturnValue(of(transitions));
+      retry();
+      await fixture.whenStable();
+      expect(text()).toContain(savedMessage);
+      expect(fixture.componentInstance['statusChangeReloadFailed']()).toBe(true);
+      expect(fixture.componentInstance['filters'].getRawValue()).toEqual(filters);
+      service.getRequests.mockReturnValue(of([]));
+      retry();
+      await fixture.whenStable();
+      expect(service.getRequests).toHaveBeenLastCalledWith({
+        status: 'INGRESADO',
+        from: '2026-09-01',
+      });
+      expect(catalogService.getProcedures).toHaveBeenCalledTimes(3);
+      expect(service.getTransitions).toHaveBeenCalledTimes(2);
+      expect(fixture.componentInstance['statusChangeReloadFailed']()).toBe(false);
+      expect(text()).not.toContain(savedMessage);
+      expect(recovery().hidden).toBe(true);
+      expect(service.changeStatus).not.toHaveBeenCalled();
+    });
+
+    it('mantiene un único spinner inicial de 40 y luego uno compacto de 20 sin ocultar el listado', async () => {
+      const requestsResponse = new Subject<Request[]>();
+      const catalogResponse = new Subject<ProcedureType[]>();
+      const transitionsResponse = new Subject<RequestTransitions>();
+      await render(
+        Role.Funcionario,
+        () => requestsResponse,
+        () => transitionsResponse,
+        () => catalogResponse,
+      );
+      const diameter = () =>
+        fixture.debugElement.query(By.css('.requests__recovery mat-progress-spinner'))
+          .componentInstance.diameter;
+      expect(element.querySelectorAll('mat-progress-spinner')).toHaveLength(1);
+      expect(diameter()).toBe(40);
+      expect(text()).not.toContain('Cargando');
+      complete(requestsResponse, []);
+      await fixture.whenStable();
+      expect(diameter()).toBe(20);
+      expect(text()).toContain('No hay trámites que coincidan con el filtro seleccionado.');
+      complete(catalogResponse, catalog);
+      complete(transitionsResponse, transitions);
+      await fixture.whenStable();
+      expect(recovery().hidden).toBe(true);
+      expect(spinner()).toBeNull();
+    });
+
+    it('reintenta fallos sin cancelar otra consulta en curso', async () => {
+      const requestsResponse = new Subject<Request[]>();
+      await render(Role.Vecino, () => requestsResponse, undefined, fail);
+      catalogService.getProcedures.mockReturnValue(of(catalog));
+      fixture.componentInstance['retryFailedLoads']();
+      await fixture.whenStable();
+      expect(requestsResponse.observed).toBe(true);
+      expect(service.getRequests).toHaveBeenCalledTimes(1);
+      expect(catalogService.getProcedures).toHaveBeenCalledTimes(2);
+      complete(requestsResponse, [mine]);
+      await fixture.whenStable();
+      expect(recovery().hidden).toBe(true);
+      expect(service.getTransitions).not.toHaveBeenCalled();
+    });
+
+    it('conserva el diálogo abierto y su label al recuperar el catálogo sin reenviar operaciones', async () => {
+      await render(
+        Role.Funcionario,
+        () => of([{ ...mine, status: 'RECHAZADO', rejectionReason: 'Motivo' }]),
+        () => of(transitions),
+        fail,
+      );
+      element.querySelector<HTMLButtonElement>('.requests__rejection-reason')!.click();
+      await fixture.whenStable();
+      const dialog = TestBed.inject(MatDialog).openDialogs[0];
+      const focused = document.activeElement;
+      catalogService.getProcedures.mockReturnValue(of(catalog));
+      retry();
+      await fixture.whenStable();
+      expect(TestBed.inject(MatDialog).openDialogs).toContain(dialog);
+      expect(document.activeElement).toBe(focused);
+      expect(TestBed.inject(OverlayContainer).getContainerElement().textContent).toContain(
+        'alumbrado',
+      );
+      expect(service.createRequest).not.toHaveBeenCalled();
+      expect(service.changeStatus).not.toHaveBeenCalled();
+      const closed = firstValueFrom(dialog.afterClosed());
+      dialog.close();
+      await closed;
+    });
+
+    it.each([Role.Vecino, Role.Funcionario])(
+      '%s: los estados vacíos no activan recuperación y el aviso de creación solo pertenece a Vecino',
+      async (role) => {
+        await render(
+          role,
+          () => of([]),
+          () => of(transitions),
+          () => of([]),
+        );
+        expect(recovery().hidden).toBe(true);
+        expect(text().includes('No hay tipos de trámite disponibles')).toBe(role === Role.Vecino);
+        expect(retryButtons()).toHaveLength(0);
+        if (role === Role.Vecino) expect(submitButton()!.disabled).toBe(true);
+        fixture.componentInstance['retryFailedLoads']();
+        expect(catalogService.getProcedures).toHaveBeenCalledTimes(1);
+        expect(service.getRequests).toHaveBeenCalledTimes(1);
+      },
+    );
+
+    it('cancelar la recarga por filtros no termina el indicador de las otras consultas; destruir cancela el resto', async () => {
+      await render(Role.Funcionario, fail, fail, fail);
+      const requestsResponse = new Subject<Request[]>();
+      const replacement = new Subject<Request[]>();
+      const catalogResponse = new Subject<ProcedureType[]>();
+      const transitionsResponse = new Subject<RequestTransitions>();
+      service.getRequests.mockReturnValueOnce(requestsResponse).mockReturnValueOnce(replacement);
+      catalogService.getProcedures.mockReturnValue(catalogResponse);
+      service.getTransitions.mockReturnValue(transitionsResponse);
+      retry();
+      fixture.componentInstance['filters'].patchValue({ status: 'INGRESADO' });
+      expect(requestsResponse.observed).toBe(false);
+      complete(replacement, [mine]);
+      await fixture.whenStable();
+      expect(fixture.componentInstance['isRecovering']()).toBe(true);
+      expect(spinner()).not.toBeNull();
+      fixture.destroy();
+      expect(catalogResponse.observed).toBe(false);
+      expect(transitionsResponse.observed).toBe(false);
+      expect(fixture.componentInstance['isRecovering']()).toBe(false);
+    });
+  });
 
   describe('diálogo de cambio de estado', () => {
     const reason = '  Antecedentes incompletos.  ';
@@ -466,7 +1070,9 @@ describe('RequestsComponent', () => {
         });
         expect(service.changeStatus).toHaveBeenCalledTimes(1);
         expect(openSnackBar).not.toHaveBeenCalled();
-        expect(text()).toContain('No se pudieron cargar los trámites.');
+        expect(text()).toContain(
+          'No pudimos cargar la información de trámites. Intenta nuevamente.',
+        );
         expect(text()).not.toContain('El cambio se guardó, pero no pudimos actualizar la lista.');
         expect(document.activeElement).toBe(element.querySelector('#requests-list-title'));
       },

@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -26,9 +27,11 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
-import { Subject, catchError, of, switchMap, tap } from 'rxjs';
+import { Subject, catchError, finalize, of, switchMap, tap } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { CatalogService } from '../../core/catalog/catalog.service';
+import { ProcedureType } from '../../shared/models/procedure-type.model';
 import { Request, RequestStatus, RequestTransitions } from '../../shared/models/request.model';
 import { Role } from '../../shared/models/role';
 import { toDateKey } from './date-key';
@@ -45,14 +48,11 @@ import {
   RequestStatusDialogData,
   RequestStatusDialogResult,
 } from './request-status-dialog/request-status-dialog.component';
-import {
-  REQUEST_STATUSES,
-  REQUEST_STATUS_VIEW,
-  TIPOS_TRAMITE_PROVISIONAL,
-} from './requests.constants';
+import { REQUEST_STATUSES, REQUEST_STATUS_VIEW } from './requests.constants';
 import { RequestsService } from './requests.service';
 
 type LoadState = 'loading' | 'ready' | 'error';
+type LoadQuery = 'catalog' | 'requests' | 'transitions';
 
 // Sin columna Solicitante: el backend solo expone el oid (ver deuda técnica en el README)
 const COLUMNS = ['tipo', 'descripcion', 'estado', 'fecha'];
@@ -79,6 +79,7 @@ const COLUMNS = ['tipo', 'descripcion', 'estado', 'fecha'];
 export class RequestsComponent {
   private readonly auth = inject(AuthService);
   private readonly requestsService = inject(RequestsService);
+  private readonly catalogService = inject(CatalogService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly dialog = inject(MatDialog);
@@ -86,6 +87,7 @@ export class RequestsComponent {
   private readonly listTitle = viewChild.required<ElementRef<HTMLElement>>('listTitle');
   private readonly reload$ = new Subject<void>();
   private readonly transitionsReload$ = new Subject<void>();
+  private readonly catalogReload$ = new Subject<void>();
   private statusDialog: MatDialogRef<
     RequestStatusDialogComponent,
     RequestStatusDialogResult
@@ -93,8 +95,20 @@ export class RequestsComponent {
   private rejectionReasonDialog: MatDialogRef<RequestRejectionReasonDialogComponent, void> | null =
     null;
   private reloadAfterStatusChange = false;
+  private readonly recoveryPending = signal<LoadQuery[]>([]);
 
-  protected readonly tiposTramite = TIPOS_TRAMITE_PROVISIONAL;
+  protected readonly catalog = signal<ProcedureType[]>([]);
+  protected readonly catalogState = signal<LoadState>('loading');
+  protected readonly selectionChanged = signal(false);
+  protected readonly tiposTramite = computed(() =>
+    this.catalog().filter((type) => type.active === true),
+  );
+  private readonly typeLabels = computed(
+    () => new Map(this.catalog().map((type) => [type.value, type.label])),
+  );
+  protected readonly catalogAvailable = computed(
+    () => this.catalogState() === 'ready' && this.tiposTramite().length > 0,
+  );
   protected readonly statuses = REQUEST_STATUSES;
   protected readonly statusView = REQUEST_STATUS_VIEW;
 
@@ -110,9 +124,24 @@ export class RequestsComponent {
   protected readonly requests = signal<Request[]>([]);
   protected readonly transitionsState = signal<LoadState>('loading');
   protected readonly transitions = signal<RequestTransitions | null>(null);
+  protected readonly isRecovering = computed(() => this.recoveryPending().length > 0);
+  protected readonly informationLoading = computed(
+    () =>
+      this.isRecovering() ||
+      this.listState() === 'loading' ||
+      this.catalogState() === 'loading' ||
+      (this.isFuncionario() && this.transitionsState() === 'loading'),
+  );
+  protected readonly informationFailed = computed(
+    () =>
+      this.listState() === 'error' ||
+      this.catalogState() === 'error' ||
+      (this.isFuncionario() && this.transitionsState() === 'error'),
+  );
 
   protected readonly isSubmitting = signal(false);
-  protected readonly submitFailed = signal(false);
+  protected readonly submitError = signal<string | null>(null);
+  protected readonly submittedTypeUnavailable = signal(false);
 
   protected readonly createForm = this.formBuilder.group({
     procedureType: ['', Validators.required],
@@ -127,12 +156,44 @@ export class RequestsComponent {
   });
 
   constructor() {
+    this.catalogReload$
+      .pipe(
+        tap(() => {
+          this.catalogState.set('loading');
+          this.updateCreateControls();
+        }),
+        switchMap(() =>
+          this.catalogService.getProcedures().pipe(
+            catchError(() => of(null)),
+            finalize(() => this.finishRecovery('catalog')),
+          ),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe((catalog) => {
+        if (catalog !== null) {
+          this.catalog.set(catalog);
+          this.catalogState.set('ready');
+          const control = this.createForm.controls.procedureType;
+          if (control.value && !this.tiposTramite().some((type) => type.value === control.value)) {
+            control.setValue('', { emitEvent: false });
+            this.selectionChanged.set(true);
+          }
+        } else {
+          this.catalogState.set('error');
+        }
+        this.updateCreateControls();
+      });
+
     this.reload$
       .pipe(
         tap(() => this.listState.set('loading')),
         // switchMap descarta respuestas viejas si los filtros cambian antes de que llegue la anterior
         switchMap(() =>
-          this.requestsService.getRequests(this.currentFilters()).pipe(catchError(() => of(null))),
+          this.requestsService.getRequests(this.currentFilters()).pipe(
+            catchError(() => of(null)),
+            finalize(() => this.finishRecovery('requests')),
+          ),
         ),
         takeUntilDestroyed(),
       )
@@ -154,7 +215,12 @@ export class RequestsComponent {
           this.transitionsState.set('loading');
           this.transitions.set(null);
         }),
-        switchMap(() => this.requestsService.getTransitions().pipe(catchError(() => of(null)))),
+        switchMap(() =>
+          this.requestsService.getTransitions().pipe(
+            catchError(() => of(null)),
+            finalize(() => this.finishRecovery('transitions')),
+          ),
+        ),
         takeUntilDestroyed(),
       )
       .subscribe((transitions) => {
@@ -167,10 +233,46 @@ export class RequestsComponent {
       this.rejectionReasonDialog?.close();
     });
     this.filters.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.loadRequests());
+    this.createForm.controls.procedureType.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.selectionChanged.set(false));
+    this.loadCatalog();
     this.loadRequests();
     if (this.isFuncionario()) {
       this.loadTransitions();
     }
+  }
+
+  protected loadCatalog(): void {
+    this.catalogReload$.next();
+  }
+
+  protected retryFailedLoads(): void {
+    if (this.isRecovering()) {
+      return;
+    }
+    const failed: LoadQuery[] = [];
+    if (this.catalogState() === 'error') failed.push('catalog');
+    if (this.listState() === 'error') failed.push('requests');
+    if (this.isFuncionario() && this.transitionsState() === 'error') failed.push('transitions');
+    this.recoveryPending.set(failed);
+    for (const query of failed) {
+      switch (query) {
+        case 'catalog':
+          this.loadCatalog();
+          break;
+        case 'requests':
+          this.loadRequests();
+          break;
+        case 'transitions':
+          this.loadTransitions();
+          break;
+      }
+    }
+  }
+
+  private finishRecovery(query: LoadQuery): void {
+    this.recoveryPending.update((pending) => pending.filter((item) => item !== query));
   }
 
   protected loadRequests(afterStatusChange = false): void {
@@ -283,31 +385,74 @@ export class RequestsComponent {
     return REQUEST_STATUS_VIEW[request.status];
   }
 
-  /** Traduce el código guardado a su etiqueta. Si no está en la lista, muestra el código. */
+  /** Resuelve con el catálogo completo, incluidos inactivos. Sin coincidencia, muestra el código. */
   protected getTipoLabel(value: string): string {
-    return TIPOS_TRAMITE_PROVISIONAL.find((t) => t.value === value)?.label ?? value;
+    return this.typeLabels().get(value) ?? value;
   }
 
   protected submit(formDirective: FormGroupDirective): void {
-    if (this.createForm.invalid || this.isSubmitting()) {
+    if (
+      this.isSubmitting() ||
+      !this.catalogAvailable() ||
+      this.createForm.invalid ||
+      !this.tiposTramite().some(
+        (type) => type.value === this.createForm.controls.procedureType.value,
+      )
+    ) {
       return;
     }
 
     this.isSubmitting.set(true);
-    this.submitFailed.set(false);
+    this.submitError.set(null);
+    this.submittedTypeUnavailable.set(false);
+    this.updateCreateControls();
 
-    this.requestsService.createRequest(this.createForm.getRawValue()).subscribe({
-      next: () => {
-        formDirective.resetForm();
-        this.isSubmitting.set(false);
-        this.snackBar.open('Trámite ingresado.', undefined, { duration: 3000 });
-        this.loadRequests();
-      },
-      error: () => {
-        this.isSubmitting.set(false);
-        this.submitFailed.set(true);
-      },
-    });
+    this.requestsService
+      .createRequest(this.createForm.getRawValue())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          formDirective.resetForm();
+          this.isSubmitting.set(false);
+          this.updateCreateControls();
+          this.snackBar.open('Trámite ingresado.', undefined, { duration: 3000 });
+          this.loadRequests();
+        },
+        error: (error: unknown) => {
+          this.isSubmitting.set(false);
+          this.updateCreateControls();
+          const message = this.backendMessage(error);
+          this.submitError.set(message ?? 'No se pudo ingresar el trámite. Intenta nuevamente.');
+          this.submittedTypeUnavailable.set(
+            error instanceof HttpErrorResponse &&
+              error.status === 400 &&
+              (message === 'procedureType invalido' ||
+                message === 'El tipo de tramite no esta disponible'),
+          );
+        },
+      });
+  }
+
+  private updateCreateControls(): void {
+    if (this.isSubmitting()) {
+      this.createForm.disable({ emitEvent: false });
+      return;
+    }
+    this.createForm.controls.description.enable({ emitEvent: false });
+    this.createForm.controls.address.enable({ emitEvent: false });
+    const control = this.createForm.controls.procedureType;
+    if (this.catalogAvailable()) {
+      control.enable({ emitEvent: false });
+    } else {
+      control.disable({ emitEvent: false });
+    }
+  }
+
+  private backendMessage(error: unknown): string | null {
+    if (!(error instanceof HttpErrorResponse) || typeof error.error?.message !== 'string') {
+      return null;
+    }
+    return error.error.message.trim() ? error.error.message : null;
   }
 
   /** Query params de GET /api/requests. El Vecino no filtra. */
