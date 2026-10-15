@@ -7,6 +7,7 @@ import { of } from 'rxjs';
 
 import { routes } from './app.routes';
 import { AuthService } from './core/auth/auth.service';
+import { CatalogService } from './core/catalog/catalog.service';
 import { AuthenticatedLayoutComponent } from './core/layout/authenticated-layout.component';
 import { Role } from './shared/models/role';
 
@@ -36,6 +37,7 @@ describe('Ruta /admin', () => {
         provideRouter(routes),
         { provide: AuthService, useValue: auth },
         { provide: MsalGuard, useValue: msalGuard },
+        { provide: CatalogService, useValue: { getProcedures: () => of([]) } },
       ],
     });
   });

@@ -22,9 +22,27 @@ import { RequestsService } from './requests.service';
 
 describe('RequestsComponent', () => {
   const catalog: ProcedureType[] = [
-    { value: 'alumbrado', label: 'Iluminación municipal', active: true },
-    { value: 'otro', label: 'Otro servicio municipal', active: true },
-    { value: 'historico', label: 'Servicio anterior', active: false },
+    {
+      value: 'alumbrado',
+      label: 'Iluminación municipal',
+      active: true,
+      dailyQuota: 10,
+      remainingQuota: 4,
+    },
+    {
+      value: 'otro',
+      label: 'Otro servicio municipal',
+      active: true,
+      dailyQuota: null,
+      remainingQuota: null,
+    },
+    {
+      value: 'historico',
+      label: 'Servicio anterior',
+      active: false,
+      dailyQuota: 5,
+      remainingQuota: 0,
+    },
   ];
   const mine: Request = {
     id: 'propio',
@@ -548,6 +566,8 @@ describe('RequestsComponent', () => {
       [400, 'Otro error de validación', false],
       [503, 'Servicio no disponible', false],
       [500, '  ', false],
+      [500, 'ORA-01407: BARRIODIGITAL.PROCEDURE_TYPES.DAILY_QUOTA; update procedure_types', false],
+      [400, 'ORA-01407: BARRIODIGITAL.PROCEDURE_TYPES.DAILY_QUOTA', false],
     ] as const)(
       'POST %s (%s): conserva campos y ofrece actualizar solo para el rechazo de tipo',
       async (status, message, refresh) => {
@@ -560,8 +580,9 @@ describe('RequestsComponent', () => {
         await fixture.whenStable();
         expect(fixture.componentInstance['createForm'].getRawValue()).toEqual(payload);
         expect(text()).toContain(
-          message.trim() ? message : 'No se pudo ingresar el trámite. Intenta nuevamente.',
+          refresh ? message : 'No se pudo ingresar el trámite. Intenta nuevamente.',
         );
+        if (!refresh && message.trim()) expect(text()).not.toContain(message);
         const button = Array.from(element.querySelectorAll('button')).find(
           (button) => button.textContent?.trim() === 'Actualizar tipos de trámite',
         );

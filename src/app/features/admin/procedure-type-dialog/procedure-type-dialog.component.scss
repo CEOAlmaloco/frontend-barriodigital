@@ -1,0 +1,73 @@
+@use 'tokens' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  width: $measure-body;
+  max-width: 100%;
+  max-height: inherit;
+  min-height: 0;
+  min-width: 0;
+  --procedure-type-dialog-spinner-size: #{$space-6};
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.procedure-type-dialog__title {
+  padding: $space-6 $space-6 $space-4;
+  font-size: $font-h2;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.procedure-type-dialog__content {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  padding: $space-4 $space-6;
+  font-size: $font-body;
+  color: $color-text-primary;
+
+  mat-form-field {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.procedure-type-dialog__secondary,
+.procedure-type-dialog__feedback {
+  font-size: $font-body-sm;
+  overflow-wrap: anywhere;
+}
+
+.procedure-type-dialog__secondary {
+  color: $color-text-secondary;
+}
+
+.procedure-type-dialog__error {
+  color: $color-error;
+}
+
+.procedure-type-dialog__actions {
+  flex-shrink: 0;
+  gap: $space-2;
+  padding: $space-4 $space-6 $space-6;
+}
+
+.procedure-type-dialog__confirm {
+  position: relative;
+}
+
+.procedure-type-dialog__label--hidden {
+  visibility: hidden;
+}
+
+.procedure-type-dialog__spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
