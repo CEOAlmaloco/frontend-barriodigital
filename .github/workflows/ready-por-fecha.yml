@@ -1,0 +1,23 @@
+name: Pasar a Ready según la fecha de inicio
+
+# El token del workflow no puede escribir en un Project de usuario.
+# Hace falta un PAT clásico de CEOAlmaloco, scope project, guardado como
+# secret PROJECT_TOKEN en este repositorio.
+# El cron solo corre cuando este archivo está en la rama por defecto (main).
+
+on:
+  schedule:
+    # 08:15 en Chile (UTC-3). El día se calcula con America/Santiago.
+    - cron: "15 11 * * *"
+  workflow_dispatch:
+
+jobs:
+  ready:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Mover de Backlog a Ready
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: bash .github/scripts/ready-por-fecha.sh
