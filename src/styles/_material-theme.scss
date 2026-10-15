@@ -64,7 +64,8 @@ html {
   ));
 }
 
-.request-dialog {
+.request-dialog,
+.procedure-type-dialog {
   @include mat.dialog-overrides((
     container-shape: $radius-base,
   ));

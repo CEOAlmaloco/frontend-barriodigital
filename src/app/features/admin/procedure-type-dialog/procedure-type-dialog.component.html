@@ -1,0 +1,124 @@
+<h2 mat-dialog-title class="procedure-type-dialog__title">
+  {{ isEdit ? 'Editar tipo' : 'Nuevo tipo' }}
+</h2>
+
+<form [formGroup]="form" (ngSubmit)="submit()" [attr.aria-busy]="isSubmitting()" novalidate>
+  <mat-dialog-content class="procedure-type-dialog__content">
+    @if (isEdit) {
+      <p class="procedure-type-dialog__secondary">
+        Código: {{ data.mode === 'edit' ? data.procedure.value : '' }}
+      </p>
+    } @else {
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>Código</mat-label>
+        <input matInput formControlName="value" placeholder="semaforo" required />
+        <mat-hint
+          >Usa minúsculas, números, guion o guion bajo. No podrás modificarlo después</mat-hint
+        >
+        <mat-error>
+          @if (form.controls.value.hasError('required')) {
+            Indica un código que no esté vacío.
+          } @else if (form.controls.value.hasError('maxlength')) {
+            El código no puede superar 40 caracteres.
+          } @else {
+            Usa solo minúsculas, números, guion o guion bajo.
+          }
+        </mat-error>
+      </mat-form-field>
+    }
+
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Nombre</mat-label>
+      <input matInput formControlName="label" required />
+      <mat-error>
+        @if (form.controls.label.hasError('maxlength')) {
+          El nombre no puede superar 120 caracteres después de recortar los extremos.
+        } @else {
+          Indica un nombre que no esté vacío.
+        }
+      </mat-error>
+    </mat-form-field>
+
+    <div>
+      <mat-checkbox formControlName="active" aria-describedby="procedure-type-active-help"
+        >Activo</mat-checkbox
+      >
+      <p id="procedure-type-active-help" class="procedure-type-dialog__secondary">
+        @if (isEdit) {
+          Los tipos inactivos no están disponibles para crear nuevos trámites. Los trámites
+          existentes se conservan.
+        } @else {
+          Disponible para crear nuevos trámites
+        }
+      </p>
+    </div>
+
+    @if (isEdit) {
+      <mat-checkbox formControlName="unlimited">Sin límite diario</mat-checkbox>
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>Cupo diario</mat-label>
+        <input
+          matInput
+          type="number"
+          formControlName="dailyQuota"
+          min="1"
+          max="2147483647"
+          step="1"
+          [required]="!form.controls.unlimited.value"
+        />
+        <mat-hint>Introduce un número entero mayor o igual a 1</mat-hint>
+        <mat-error>
+          @if (form.controls.dailyQuota.hasError('max')) {
+            El cupo diario no puede superar 2.147.483.647.
+          } @else if (form.controls.dailyQuota.hasError('required')) {
+            Indica un cupo diario o selecciona «Sin límite diario».
+          } @else {
+            Introduce un número entero mayor o igual a 1.
+          }
+        </mat-error>
+      </mat-form-field>
+    } @else {
+      <p class="procedure-type-dialog__secondary">
+        El tipo se creará sin límite diario. Puedes configurar un cupo después desde “Editar”.
+      </p>
+    }
+
+    <div class="procedure-type-dialog__feedback" aria-live="polite" aria-atomic="true">
+      @if (isSubmitting()) {
+        <p>Guardando tipo de trámite.</p>
+      } @else if (submitError(); as error) {
+        <p class="procedure-type-dialog__error">{{ error }}</p>
+      }
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="procedure-type-dialog__actions" align="end">
+    <button matButton type="button" [disabled]="isSubmitting()" (click)="cancel()">Cancelar</button>
+    @if (requiresReload()) {
+      <button matButton="filled" type="button" (click)="cancel()">
+        Cerrar y actualizar catálogo
+      </button>
+    } @else {
+      <button
+        matButton="filled"
+        type="submit"
+        class="procedure-type-dialog__confirm"
+        [disabled]="isSubmitting() || (isEdit && (form.invalid || !hasChanges()))"
+        [attr.aria-busy]="isSubmitting()"
+      >
+        <span [class.procedure-type-dialog__label--hidden]="isSubmitting()">{{
+          isEdit ? 'Guardar cambios' : 'Crear tipo'
+        }}</span>
+        @if (isSubmitting()) {
+          <mat-progress-spinner
+            class="procedure-type-dialog__spinner"
+            mode="indeterminate"
+            [style.width]="'var(--procedure-type-dialog-spinner-size)'"
+            [style.height]="'var(--procedure-type-dialog-spinner-size)'"
+            aria-hidden="true"
+          />
+        }
+      </button>
+    }
+  </mat-dialog-actions>
+</form>

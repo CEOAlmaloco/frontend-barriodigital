@@ -452,7 +452,20 @@ export class RequestsComponent {
     if (!(error instanceof HttpErrorResponse) || typeof error.error?.message !== 'string') {
       return null;
     }
-    return error.error.message.trim() ? error.error.message : null;
+    const message = error.error.message;
+    const validationMessages = [
+      'procedureType invalido',
+      'El tipo de tramite no esta disponible',
+      'procedureType invalido. Debe ser minusculas, numeros, guion o guion bajo (maximo 40 caracteres)',
+    ];
+    if (error.status === 400 && validationMessages.includes(message)) return message;
+    if (
+      error.status === 503 &&
+      message === 'El catalogo de tipos de tramite no esta disponible. Intenta nuevamente en unos minutos.'
+    ) {
+      return message;
+    }
+    return null;
   }
 
   /** Query params de GET /api/requests. El Vecino no filtra. */
