@@ -58,6 +58,33 @@ $badge-tint: 0.12;
   }
 }
 
+.admin__actions {
+  display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  align-items: center;
+  gap: $space-2;
+  max-width: 100%;
+}
+
+.admin__refresh {
+  // El mismo tono neutro de la acción secundaria del header; Material conserva sus estados.
+  --mat-icon-button-icon-color: #{$color-text-secondary};
+  --mat-icon-button-state-layer-color: #{$color-text-secondary};
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .admin__refresh-icon--spinning {
+    animation: admin-refresh-spin 1s linear infinite;
+  }
+}
+
+@keyframes admin-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .admin__feedback {
   display: flex;
   flex-direction: column;
@@ -107,6 +134,14 @@ $badge-tint: 0.12;
   td,
   th {
     overflow-wrap: anywhere;
+  }
+
+  .mat-column-acciones {
+    width: $space-8 * 4;
+
+    button {
+      white-space: nowrap;
+    }
   }
 }
 

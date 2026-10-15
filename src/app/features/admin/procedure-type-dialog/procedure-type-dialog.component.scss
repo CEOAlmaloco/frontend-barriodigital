@@ -5,7 +5,7 @@
   flex-direction: column;
   width: $measure-body;
   max-width: 100%;
-  max-height: inherit;
+  max-height: 100dvh;
   min-height: 0;
   min-width: 0;
   --procedure-type-dialog-spinner-size: #{$space-6};

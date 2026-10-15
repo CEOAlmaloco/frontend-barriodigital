@@ -152,7 +152,7 @@ export class ProcedureTypeDialogComponent {
     const request =
       this.data.mode === 'create'
         ? this.catalogService.createProcedure({ value: value.trim(), label: update.label, active })
-        : this.catalogService.updateProcedure(this.data.procedure.value, update);
+        : this.catalogService.updateProcedure(this.initial!.value, update);
 
     this.isSubmitting.set(true);
     this.submitError.set(null);
@@ -177,11 +177,11 @@ export class ProcedureTypeDialogComponent {
     const { value, label, active, unlimited, dailyQuota } = this.form.controls;
     label.enable({ emitEvent: false });
     active.enable({ emitEvent: false });
+    value.enable({ emitEvent: false });
     if (this.isEdit) {
-      value.disable({ emitEvent: false });
+      value.setValue(this.initial!.value, { emitEvent: false });
       unlimited.enable({ emitEvent: false });
     } else {
-      value.enable({ emitEvent: false });
       unlimited.disable({ emitEvent: false });
     }
     if (!this.isEdit || this.form.controls.unlimited.value) {

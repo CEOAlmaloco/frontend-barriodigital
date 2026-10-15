@@ -80,6 +80,8 @@ describe('ProcedureTypeDialogComponent', () => {
   it('crea inicialmente activo, sin campos de cupo y con ayuda asociada al código', async () => {
     await open();
     expect(form().controls.active.value).toBe(true);
+    expect(input('value').readOnly).toBe(false);
+    expect(input('value').disabled).toBe(false);
     expect(overlay().textContent).toContain('El tipo se creará sin límite diario.');
     expect(input('dailyQuota')).toBeNull();
     expect(overlay().querySelector('mat-checkbox[formControlName="unlimited"]')).toBeNull();
@@ -146,11 +148,23 @@ describe('ProcedureTypeDialogComponent', () => {
     });
   });
 
-  it('edita sin input de código ni mutación del objeto de entrada y exige cambio efectivo', async () => {
+  it('edita con código de solo lectura enfocable y sin mutación del objeto de entrada, y exige cambio efectivo', async () => {
     const original = { ...limited };
     await open({ mode: 'edit', procedure: original });
-    expect(input('value')).toBeNull();
-    expect(overlay().textContent).toContain('Código: semaforo');
+    expect(input('value').value).toBe('semaforo');
+    expect(input('value').readOnly).toBe(true);
+    expect(input('value').disabled).toBe(false);
+    expect(input('value').tabIndex).toBe(0);
+    const codeField = input('value').closest('mat-form-field')!;
+    expect(codeField.querySelector('mat-label')?.textContent).toBe('Código');
+    const hint = codeField.querySelector('mat-hint')!;
+    expect(hint.textContent).toBe('El código no se puede modificar');
+    expect(input('value').getAttribute('aria-describedby')).toContain(hint.id);
+    input('value').focus();
+    input('value').select();
+    expect(document.activeElement).toBe(input('value'));
+    expect(input('value').selectionStart).toBe(0);
+    expect(input('value').selectionEnd).toBe('semaforo'.length);
     expect(input('dailyQuota').value).toBe('10');
     expect(input('dailyQuota').disabled).toBe(false);
     expect(form().controls.active.value).toBe(false);
@@ -174,7 +188,7 @@ describe('ProcedureTypeDialogComponent', () => {
       await open({ mode: 'edit', procedure: limited });
       if (field === 'label') write('label', '  Otro nombre  ');
       else form().controls.active.setValue(true);
-      // Aunque se altere el control oculto, el código usado es el de la URL original.
+      // Aunque se altere el control de solo lectura, la URL conserva el código original.
       form().controls.value.setValue('otro');
       const result = firstValueFrom(ref.afterClosed());
       submit();
@@ -207,6 +221,38 @@ describe('ProcedureTypeDialogComponent', () => {
       active: false,
       dailyQuota: null,
     });
+  });
+
+  it('bloquea el código al guardar y tras error restaura solo lectura sin cambiar el destino del PUT', async () => {
+    const response = new Subject<ProcedureType>();
+    service.updateProcedure.mockReturnValueOnce(response);
+    await open({ mode: 'edit', procedure: limited });
+    form().controls.value.setValue('otro');
+    write('label', 'Otro nombre');
+    submit();
+    await host.whenStable();
+    expect(input('value').disabled).toBe(true);
+    expect(input('value').readOnly).toBe(true);
+    expect(service.updateProcedure).toHaveBeenCalledWith('semaforo', {
+      label: 'Otro nombre',
+      active: false,
+      dailyQuota: 10,
+    });
+    response.error(new HttpErrorResponse({ status: 503 }));
+    await host.whenStable();
+    expect(input('value').disabled).toBe(false);
+    expect(input('value').readOnly).toBe(true);
+    expect(input('value').value).toBe('semaforo');
+    expect(input('label').value).toBe('Otro nombre');
+    expect(button('Guardar cambios').disabled).toBe(false);
+    submit();
+    expect(service.updateProcedure).toHaveBeenCalledTimes(2);
+    expect(service.updateProcedure).toHaveBeenLastCalledWith('semaforo', {
+      label: 'Otro nombre',
+      active: false,
+      dailyQuota: 10,
+    });
+    expect(service.updateProcedure.mock.calls[1][1]).not.toHaveProperty('remainingQuota');
   });
 
   it('inicia sin límite y al desmarcarlo exige un cupo sin inventar un valor', async () => {
@@ -309,7 +355,10 @@ describe('ProcedureTypeDialogComponent', () => {
       submit();
       await host.whenStable();
       expect(input('label').value).toBe('Otro nombre');
-      expect(form().controls.value.disabled).toBe(true);
+      expect(form().controls.value.enabled).toBe(true);
+      expect(input('value').readOnly).toBe(true);
+      expect(input('value').disabled).toBe(false);
+      expect(input('value').value).toBe('semaforo');
       expect(form().controls.unlimited.enabled).toBe(true);
       expect(input('dailyQuota').disabled).toBe(unlimited);
       expect(input('dailyQuota').value).toBe(unlimited ? '' : '10');

@@ -3,6 +3,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DEFAULT_OPTIONS, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTooltip } from '@angular/material/tooltip';
+import { By } from '@angular/platform-browser';
 import { Observable, Subject, Subscriber, firstValueFrom, of, throwError } from 'rxjs';
 
 import { CatalogService } from '../../core/catalog/catalog.service';
@@ -52,6 +54,10 @@ describe('AdminComponent', () => {
     await fixture.whenStable();
   };
   const text = () => element.textContent ?? '';
+  const refreshButton = () =>
+    element.querySelector<HTMLButtonElement>('button[aria-label="Actualizar catálogo"]');
+  const quotas = (selector: string) =>
+    Array.from(element.querySelectorAll(selector), (cell) => cell.textContent?.trim());
   const button = (label: string) =>
     Array.from(element.querySelectorAll<HTMLButtonElement>('button')).find(
       (item) => item.textContent?.trim() === label,
@@ -79,6 +85,9 @@ describe('AdminComponent', () => {
     expect(text()).toContain('Panel de administración');
     expect(text()).toContain('Gestiona los tipos de trámite disponibles para la atención vecinal.');
     expect(button('Nuevo tipo').disabled).toBe(false);
+    expect(refreshButton()?.disabled).toBe(true);
+    expect(element.querySelector('.admin__refresh-icon--spinning')).toBeNull();
+    fixture.componentInstance['refresh']();
     expect(element.querySelector('mat-progress-spinner')?.getAttribute('aria-label')).toBe(
       'Cargando tipos de trámite',
     );
@@ -96,24 +105,29 @@ describe('AdminComponent', () => {
   it('ofrece reintento explícito, reemplaza el error por spinner y evita consultas duplicadas', async () => {
     await render(() => throwError(() => new Error('sin red')));
     expect(text()).toContain('No pudimos cargar los tipos de trámite. Intenta nuevamente.');
+    expect(refreshButton()).toBeNull();
+    expect(element.querySelectorAll('button')).toHaveLength(2);
     const response = new Subject<ProcedureType[]>();
     service.getProcedures.mockReturnValue(response);
     button('Reintentar').click();
     fixture.componentInstance['retry']();
     await fixture.whenStable();
     expect(element.querySelector('mat-progress-spinner')).not.toBeNull();
+    expect(refreshButton()?.disabled).toBe(true);
+    expect(element.querySelector('.admin__refresh-icon--spinning')).toBeNull();
     expect(text()).not.toContain('No pudimos cargar');
     expect(service.getProcedures).toHaveBeenCalledTimes(2);
     response.next(catalog);
     response.complete();
     await fixture.whenStable();
     expect(text()).toContain('Bache en calle');
+    expect(refreshButton()?.disabled).toBe(false);
   });
 
   it('muestra vacío sin duplicar la acción de creación', async () => {
     await render(() => of([]));
     expect(text()).toContain('Todavía no hay tipos de trámite registrados.');
-    expect(element.querySelectorAll('button')).toHaveLength(1);
+    expect(element.querySelectorAll('button')).toHaveLength(2);
     expect(button('Nuevo tipo').disabled).toBe(false);
   });
 
@@ -124,6 +138,7 @@ describe('AdminComponent', () => {
       'Nombre',
       'Estado',
       'Cupo diario',
+      'Cupo disponible hoy',
       'Acciones',
     ]);
     for (const selector of ['.admin__table', '.admin__cards']) {
@@ -141,8 +156,144 @@ describe('AdminComponent', () => {
         Array.from(container.querySelectorAll('button'), (edit) => edit.getAttribute('aria-label')),
       ).toEqual(['Editar Bache en calle (bache)', 'Editar Servicio histórico (historico)']);
     }
-    expect(text()).not.toContain('restante');
+    expect(quotas('td.mat-column-disponible')).toEqual(['3', 'Sin límite']);
+    expect(quotas('.admin__fields > div:last-child dd')).toEqual(['3', 'Sin límite']);
     expect(element.querySelector('mat-checkbox')).toBeNull();
+  });
+
+  it('presenta cupos válidos, agotados e inconsistentes igual en tabla y tarjetas, incluso inactivos', async () => {
+    const cases: [unknown, unknown, string][] = [
+      [10, 3, '3'],
+      [1, 1, '1'],
+      [10, 10, '10'],
+      [10, 0, 'Agotado'],
+      [null, null, 'Sin límite'],
+      [undefined, undefined, 'No disponible'],
+      [null, undefined, 'No disponible'],
+      [undefined, null, 'No disponible'],
+      [undefined, 2, 'No disponible'],
+      [10, undefined, 'No disponible'],
+      [10, null, 'No disponible'],
+      [null, 2, 'No disponible'],
+      [null, 0, 'No disponible'],
+      [0, 0, 'No disponible'],
+      [-1, 0, 'No disponible'],
+      [1.5, 1, 'No disponible'],
+      [10, -1, 'No disponible'],
+      [10, 1.5, 'No disponible'],
+      [10, 11, 'No disponible'],
+      [10, Infinity, 'No disponible'],
+      [10, -Infinity, 'No disponible'],
+      [10, NaN, 'No disponible'],
+      [Infinity, 2, 'No disponible'],
+      [-Infinity, 2, 'No disponible'],
+      [NaN, 2, 'No disponible'],
+      ['10', 2, 'No disponible'],
+      [10, '2', 'No disponible'],
+      [10, '0', 'No disponible'],
+      [true, 0, 'No disponible'],
+      [10, false, 'No disponible'],
+    ];
+    const received = cases.map(([dailyQuota, remainingQuota], index) => ({
+      value: `tipo-${index}`,
+      label: `Tipo ${index}`,
+      active: false,
+      ...(dailyQuota === undefined ? {} : { dailyQuota }),
+      ...(remainingQuota === undefined ? {} : { remainingQuota }),
+    })) as unknown as ProcedureType[];
+    await render(() => of(received));
+    const expected = cases.map(([, , label]) => label);
+    expect(quotas('td.mat-column-disponible')).toEqual(expected);
+    expect(quotas('.admin__fields > div:last-child dd')).toEqual(expected);
+    expect(quotas('.admin__badge').every((label) => label === 'Inactivo')).toBe(true);
+    expect(
+      Array.from(element.querySelectorAll<HTMLButtonElement>('button[aria-label^="Editar"]')).every(
+        (edit) => !edit.disabled,
+      ),
+    ).toBe(true);
+  });
+
+  it('actualiza solo el catálogo, conserva datos y foco durante carga e impide activaciones duplicadas', async () => {
+    await render();
+    const snack = vi.spyOn(TestBed.inject(MatSnackBar), 'open');
+    const response = new Subject<ProcedureType[]>();
+    service.getProcedures.mockReturnValue(response);
+    const trigger = refreshButton()!;
+    expect(trigger.hasAttribute('mat-icon-button')).toBe(true);
+    expect(trigger.textContent?.trim()).toBe('refresh');
+    expect(
+      fixture.debugElement.query(By.directive(MatTooltip)).injector.get(MatTooltip).message,
+    ).toBe('Actualizar catálogo');
+    expect(trigger.querySelector('mat-icon')?.textContent).toBe('refresh');
+    expect(trigger.querySelector('mat-icon')?.getAttribute('aria-hidden')).toBe('true');
+    trigger.focus();
+    trigger.click();
+    trigger.click();
+    fixture.componentInstance['refresh']();
+    await fixture.whenStable();
+    expect(refreshButton()?.disabled).toBe(true);
+    expect(trigger.querySelector('.admin__refresh-icon--spinning')).not.toBeNull();
+    expect(service.getProcedures).toHaveBeenCalledTimes(2);
+    expect(element.querySelectorAll('mat-progress-spinner')).toHaveLength(1);
+    expect(quotas('td.mat-column-disponible')).toEqual(['3', 'Sin límite']);
+    expect(quotas('.admin__fields > div:last-child dd')).toEqual(['3', 'Sin límite']);
+    response.next([{ ...catalog[0], remainingQuota: 0 }]);
+    response.complete();
+    await fixture.whenStable();
+    expect(quotas('td.mat-column-disponible')).toEqual(['Agotado']);
+    expect(quotas('.admin__fields > div:last-child dd')).toEqual(['Agotado']);
+    expect(refreshButton()?.disabled).toBe(false);
+    expect(trigger.querySelector('.admin__refresh-icon--spinning')).toBeNull();
+    expect(element.querySelector('mat-progress-spinner')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+    expect(service.createProcedure).not.toHaveBeenCalled();
+    expect(service.updateProcedure).not.toHaveBeenCalled();
+    expect(snack).not.toHaveBeenCalled();
+  });
+
+  it('conserva los cupos tras error manual, ofrece solo Reintentar y se recupera con catálogo vacío', async () => {
+    await render();
+    const failedResponse = new Subject<ProcedureType[]>();
+    service.getProcedures.mockReturnValue(failedResponse);
+    refreshButton()!.click();
+    await fixture.whenStable();
+    expect(element.querySelector('.admin__refresh-icon--spinning')).not.toBeNull();
+    failedResponse.error(new Error('sin red'));
+    await fixture.whenStable();
+    expect(text()).toContain(
+      'No pudimos actualizar el catálogo. Se muestran los últimos datos disponibles.',
+    );
+    expect(refreshButton()).toBeNull();
+    expect(fixture.componentInstance['isRefreshing']()).toBe(false);
+    expect(element.querySelectorAll('.admin__error')).toHaveLength(1);
+    expect(
+      Array.from(element.querySelectorAll('button')).filter(
+        (item) => item.textContent?.trim() === 'Reintentar',
+      ),
+    ).toHaveLength(1);
+    expect(quotas('td.mat-column-disponible')).toEqual(['3', 'Sin límite']);
+    expect(quotas('.admin__fields > div:last-child dd')).toEqual(['3', 'Sin límite']);
+    fixture.componentInstance['refresh']();
+    expect(service.getProcedures).toHaveBeenCalledTimes(2);
+    const response = new Subject<ProcedureType[]>();
+    service.getProcedures.mockReturnValue(response);
+    button('Reintentar').click();
+    fixture.componentInstance['retry']();
+    fixture.componentInstance['refresh']();
+    await fixture.whenStable();
+    expect(refreshButton()?.disabled).toBe(true);
+    expect(text()).not.toContain('Reintentar');
+    expect(service.getProcedures).toHaveBeenCalledTimes(3);
+    response.next([]);
+    response.complete();
+    await fixture.whenStable();
+    expect(text()).toContain('Todavía no hay tipos de trámite registrados.');
+    expect(element.querySelector('.admin__table')).toBeNull();
+    expect(element.querySelector('.admin__cards')).toBeNull();
+    expect(element.querySelector('.admin__error')).toBeNull();
+    expect(refreshButton()?.disabled).toBe(false);
+    expect(service.createProcedure).not.toHaveBeenCalled();
+    expect(service.updateProcedure).not.toHaveBeenCalled();
   });
 
   it('abre edición con una copia, impide diálogos simultáneos y cancelar no escribe ni recarga', async () => {
@@ -209,6 +360,7 @@ describe('AdminComponent', () => {
           : 'Los cambios se guardaron, pero no pudimos actualizar el catálogo.';
       expect(text()).toContain(message);
       expect(element.querySelectorAll('.admin__error')).toHaveLength(1);
+      expect(refreshButton()).toBeNull();
       expect(element.querySelector('.admin__cards')?.textContent).toContain('Servicio histórico');
       service.getProcedures
         .mockReturnValueOnce(throwError(() => new Error('todavía sin red')))
@@ -220,6 +372,7 @@ describe('AdminComponent', () => {
       await fixture.whenStable();
       expect(text()).not.toContain(message);
       expect(text()).toContain('Todavía no hay tipos');
+      expect(refreshButton()?.disabled).toBe(false);
       expect(service.getProcedures).toHaveBeenCalledTimes(4);
       expect(
         mode === 'create' ? service.createProcedure : service.updateProcedure,
@@ -271,7 +424,7 @@ describe('AdminComponent', () => {
     },
   );
 
-  it('descarta respuestas anteriores y cancela consultas y diálogo al destruir', async () => {
+  it('guardar sustituye una actualización manual, detiene su giro y descarta respuestas anteriores; destruir cancela', async () => {
     const responses: Subscriber<ProcedureType[]>[] = [];
     await render(
       () =>
@@ -279,19 +432,27 @@ describe('AdminComponent', () => {
           responses.push(subscriber);
         }),
     );
+    responses[0].next(catalog);
+    responses[0].complete();
+    await fixture.whenStable();
+    refreshButton()!.click();
+    await fixture.whenStable();
+    expect(element.querySelector('.admin__refresh-icon--spinning')).not.toBeNull();
     const ref = await open('create');
     const closed = firstValueFrom(ref.afterClosed());
     ref.close({ kind: 'saved', mode: 'create' });
     await closed;
     await fixture.whenStable();
-    expect(responses[0].closed).toBe(true);
-    responses[1].next(catalog);
-    responses[0].next([]);
+    expect(responses[1].closed).toBe(true);
+    expect(element.querySelector('.admin__refresh-icon--spinning')).toBeNull();
+    expect(refreshButton()?.disabled).toBe(true);
+    responses[2].next(catalog);
+    responses[1].next([]);
     await fixture.whenStable();
     expect(element.querySelector('.admin__table')?.textContent).toContain('Bache en calle');
     await open('edit');
     fixture.destroy();
-    expect(responses[1].closed).toBe(true);
+    expect(responses[2].closed).toBe(true);
     expect(service.createProcedure).not.toHaveBeenCalled();
     expect(service.updateProcedure).not.toHaveBeenCalled();
   });
