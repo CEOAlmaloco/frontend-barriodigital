@@ -965,6 +965,116 @@ describe('RequestsComponent', () => {
       );
     });
 
+    it.each([
+      ['QUOTA_EXHAUSTED', 409, 'No queda cupo disponible para este tipo de trámite.'],
+      [
+        'PROCEDURE_TYPE_UNAVAILABLE',
+        409,
+        'El tipo de trámite asociado ya no está disponible en el catálogo.',
+      ],
+      ['QUOTA_RESERVATION_UNCONFIRMED', 502, 'No pudimos confirmar la reserva de cupo.'],
+      ['ADMISSION_RESULT_UNCONFIRMED', 502, 'No pudimos confirmar si el cambio se guardó.'],
+      [
+        'ADMISSION_RESPONSE_UNAVAILABLE',
+        502,
+        'El cambio se guardó, pero no pudimos obtener su respuesta completa.',
+      ],
+      [
+        'QUOTA_COMPENSATION_UNCONFIRMED',
+        502,
+        'El cambio fue rechazado y no pudimos confirmar la devolución del cupo.',
+      ],
+    ])(
+      '%s: explica el resultado, conserva el diálogo y solo permite consultar',
+      async (code, status, message) => {
+        fixture.componentInstance['filters'].patchValue({ status: 'INGRESADO' });
+        await fixture.whenStable();
+        service.changeStatus.mockReturnValue(
+          throwError(
+            () =>
+              new HttpErrorResponse({
+                status: Number(status),
+                error: { code, message: 'mensaje que no debe usarse' },
+              }),
+          ),
+        );
+        const dialogRef = await openDialog('ADMITIDO');
+        const callsBefore = service.getRequests.mock.calls.length;
+        dialogButton('Confirmar admisión').click();
+        await fixture.whenStable();
+        expect(overlay().textContent).toContain(message);
+        expect(overlay().textContent).not.toContain('El estado del trámite cambió');
+        expect(TestBed.inject(MatDialog).openDialogs).toContain(dialogRef);
+        expect(dialogRef.disableClose).toBe(false);
+        expect(overlay().querySelector('.status-dialog__summary')).not.toBeNull();
+        expect(dialogButton('Confirmar admisión')).toBeUndefined();
+        dialogRef.componentInstance['submit']();
+        expect(service.changeStatus).toHaveBeenCalledTimes(1);
+        expect(service.getRequests).toHaveBeenCalledTimes(callsBefore);
+        const closed = firstValueFrom(dialogRef.afterClosed());
+        dialogButton('Cerrar y actualizar lista').click();
+        expect(await closed).toEqual({ kind: 'reload' });
+        await fixture.whenStable();
+        expect(service.getRequests).toHaveBeenCalledTimes(callsBefore + 1);
+        expect(service.getRequests).toHaveBeenLastCalledWith({ status: 'INGRESADO' });
+        expect(service.changeStatus).toHaveBeenCalledTimes(1);
+        expect(document.activeElement).toBe(element.querySelector('#requests-list-title'));
+      },
+    );
+
+    it('admisión sin respuesta de red bloquea el reenvío aunque no llegue code', async () => {
+      service.changeStatus.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 0 })));
+      const dialogRef = await openDialog('ADMITIDO');
+      dialogButton('Confirmar admisión').click();
+      await fixture.whenStable();
+      expect(overlay().textContent).toContain('No pudimos confirmar si el cambio se guardó.');
+      dialogRef.componentInstance['submit']();
+      expect(service.changeStatus).toHaveBeenCalledTimes(1);
+      dialogButton('Cancelar').click();
+      await fixture.whenStable();
+    });
+
+    it.each([
+      [
+        400,
+        'rejectionReason es obligatorio cuando el estado es RECHAZADO',
+        'Indica un motivo de rechazo que no esté vacío.',
+      ],
+      [
+        400,
+        'rejectionReason no puede superar 500 caracteres',
+        'El motivo de rechazo no puede superar 500 caracteres.',
+      ],
+      [401, '', 'Tu sesión ya no permite confirmar el cambio. Inicia sesión nuevamente.'],
+      [
+        403,
+        'Solo un Funcionario puede cambiar el estado',
+        'Solo un Funcionario puede cambiar el estado',
+      ],
+    ])(
+      'HTTP %s: conserva los errores anteriores y el motivo',
+      async (status, message, expected) => {
+        service.changeStatus.mockReturnValue(
+          throwError(
+            () =>
+              new HttpErrorResponse({
+                status: Number(status),
+                error: { message },
+              }),
+          ),
+        );
+        const dialogRef = await openDialog();
+        const textarea = writeReason();
+        dialogButton('Confirmar rechazo').click();
+        await fixture.whenStable();
+        expect(overlay().textContent).toContain(expected);
+        expect(textarea.value).toBe(reason);
+        expect(service.changeStatus).toHaveBeenCalledTimes(1);
+        dialogRef.close();
+        await fixture.whenStable();
+      },
+    );
+
     it('mantiene el contador asociado al campo y visible cuando hay errores', async () => {
       const dialogRef = await openDialog();
       const textarea = overlay().querySelector<HTMLTextAreaElement>('textarea')!;
