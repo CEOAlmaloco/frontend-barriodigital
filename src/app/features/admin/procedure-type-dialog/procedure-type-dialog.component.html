@@ -5,9 +5,11 @@
 <form [formGroup]="form" (ngSubmit)="submit()" [attr.aria-busy]="isSubmitting()" novalidate>
   <mat-dialog-content class="procedure-type-dialog__content">
     @if (isEdit) {
-      <p class="procedure-type-dialog__secondary">
-        Código: {{ data.mode === 'edit' ? data.procedure.value : '' }}
-      </p>
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>Código</mat-label>
+        <input matInput formControlName="value" readonly />
+        <mat-hint>El código no se puede modificar</mat-hint>
+      </mat-form-field>
     } @else {
       <mat-form-field subscriptSizing="dynamic">
         <mat-label>Código</mat-label>

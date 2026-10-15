@@ -32,6 +32,13 @@ describe('CatalogService', () => {
         remainingQuota: 2,
       },
       {
+        value: 'agotado',
+        label: 'Cupo agotado',
+        active: true,
+        dailyQuota: 5,
+        remainingQuota: 0,
+      },
+      {
         value: 'anterior',
         label: 'Etiqueta histórica',
         active: false,
