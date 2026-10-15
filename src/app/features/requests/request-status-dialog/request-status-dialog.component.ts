@@ -27,6 +27,45 @@ export interface RequestStatusDialogData {
 
 export type RequestStatusDialogResult = { kind: 'saved'; request: Request } | { kind: 'reload' };
 
+const ADMISSION_ERRORS: Record<string, { message: string; requiresReload: boolean }> = {
+  QUOTA_EXHAUSTED: {
+    message: 'No queda cupo disponible para este tipo de trámite.',
+    requiresReload: true,
+  },
+  PROCEDURE_TYPE_UNAVAILABLE: {
+    message: 'El tipo de trámite asociado ya no está disponible en el catálogo.',
+    requiresReload: true,
+  },
+  ADMISSION_DEPENDENCY_INVALID_RESPONSE: {
+    message: 'No pudimos obtener información válida del trámite.',
+    requiresReload: false,
+  },
+  ADMISSION_DEPENDENCY_UNAVAILABLE: {
+    message: 'No pudimos consultar el trámite. Intenta consultar el listado más tarde.',
+    requiresReload: false,
+  },
+  QUOTA_RESERVATION_UNCONFIRMED: {
+    message:
+      'No pudimos confirmar la reserva de cupo. Cierra y consulta el listado; la operación requiere revisión.',
+    requiresReload: true,
+  },
+  ADMISSION_RESULT_UNCONFIRMED: {
+    message:
+      'No pudimos confirmar si el cambio se guardó. Cierra y consulta el listado antes de realizar otra operación.',
+    requiresReload: true,
+  },
+  ADMISSION_RESPONSE_UNAVAILABLE: {
+    message:
+      'El cambio se guardó, pero no pudimos obtener su respuesta completa. Cierra y actualiza el listado.',
+    requiresReload: true,
+  },
+  QUOTA_COMPENSATION_UNCONFIRMED: {
+    message:
+      'El cambio fue rechazado y no pudimos confirmar la devolución del cupo. La operación requiere revisión.',
+    requiresReload: true,
+  },
+};
+
 @Component({
   selector: 'app-request-status-dialog',
   imports: [
@@ -120,7 +159,11 @@ export class RequestStatusDialogComponent {
         error: (error: unknown) => {
           this.isSubmitting.set(false);
           this.requiresReload.set(
-            error instanceof HttpErrorResponse && (error.status === 404 || error.status === 409),
+            this.admissionError(error)?.requiresReload === true ||
+              (error instanceof HttpErrorResponse &&
+                (error.status === 404 ||
+                  error.status === 409 ||
+                  (this.isAdmission && error.status === 0))),
           );
           this.dialogRef.disableClose = false;
           this.rejectionForm.enable({ emitEvent: false });
@@ -130,6 +173,10 @@ export class RequestStatusDialogComponent {
   }
 
   private errorMessage(error: unknown): string {
+    const admission = this.admissionError(error);
+    if (admission) {
+      return admission.message;
+    }
     if (!(error instanceof HttpErrorResponse)) {
       return 'No pudimos confirmar el cambio. Inténtalo nuevamente.';
     }
@@ -137,6 +184,9 @@ export class RequestStatusDialogComponent {
     const message = typeof error.error?.message === 'string' ? error.error.message : '';
     switch (error.status) {
       case 0:
+        if (this.isAdmission) {
+          return ADMISSION_ERRORS['ADMISSION_RESULT_UNCONFIRMED'].message;
+        }
         return 'No pudimos confirmar el cambio. Revisa tu conexión e inténtalo nuevamente.';
       case 400:
         if (message === 'rejectionReason es obligatorio cuando el estado es RECHAZADO') {
@@ -170,5 +220,13 @@ export class RequestStatusDialogComponent {
       default:
         return 'No pudimos confirmar el cambio. Inténtalo nuevamente.';
     }
+  }
+
+  private admissionError(error: unknown): { message: string; requiresReload: boolean } | null {
+    if (!(error instanceof HttpErrorResponse)) return null;
+    const code: unknown = error.error?.code;
+    return typeof code === 'string' && Object.hasOwn(ADMISSION_ERRORS, code)
+      ? ADMISSION_ERRORS[code]
+      : null;
   }
 }
