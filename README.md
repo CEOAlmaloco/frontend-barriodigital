@@ -53,15 +53,15 @@ npm test                      # modo watch
 npm test -- --watch=false     # una sola ejecución
 ```
 
-Hoy hay 49 tests en 10 archivos: `AppComponent`, `AuthService`, los guards, la configuración de MSAL (incluido el interceptor HTTP), la lectura de claims del token, `LoginComponent`, `DashboardComponent`, `HeaderComponent`, `RequestsService` y `RequestsComponent`.
+Las pruebas cubren `AppComponent`, `AuthService`, los guards, la configuración de MSAL (incluido el interceptor HTTP), la lectura de claims del token, `LoginComponent`, `DashboardComponent`, `HeaderComponent`, `RequestsService`, `CatalogService` y `RequestsComponent`.
 
 ## Estructura
 
 ```
 src/
 ├── app/
-│   ├── core/          Servicios únicos de la app. Hoy: auth/ (configuración de MSAL, AuthService con sesión y roles, guards) y layout/ (contenedor de las rutas autenticadas)
-│   ├── shared/        Componentes, pipes y modelos compartidos entre features. Hoy: components/header y models/ (roles y trámites)
+│   ├── core/          Servicios únicos de la app: auth/ (MSAL, sesión, roles y guards), catalog/ (catálogo vía BFF) y layout/ (contenedor de las rutas autenticadas)
+│   ├── shared/        Componentes, pipes y modelos compartidos entre features. Hoy: components/header y models/ (roles, trámites y tipos de trámite)
 │   └── features/      Una carpeta por dominio: login/, dashboard/ (placeholder de /inicio) y requests/ (vista de trámites en /tramites)
 ├── styles/            _tokens.scss (paleta, tipografía, espaciado), _material-theme.scss y styles.scss global
 └── environments/      Configuración por entorno: Microsoft Entra ID y URL del BFF
@@ -89,17 +89,13 @@ Implementado:
 - Header compartido en todas las rutas autenticadas: navegación según rol (Trámites solo para Vecino y Funcionario), nombre de la cuenta y cierre de sesión. Bajo 768px la navegación se colapsa en un menú.
 - `/inicio` como placeholder: título Inicio, saludo con el nombre de la cuenta y un ejemplo temporal de contenido para Admin y para Vecino.
 - Vista de trámites en `/tramites` (EP1-08), conectada al BFF (`GET` y `POST /api/requests`): el Vecino ingresa trámites y ve solo los suyos, que el servidor filtra según el token; el Funcionario ve todos, con filtros de estado y fechas. Admin y Auditor no tienen acceso.
+- Catálogo real de tipos de trámite (EP1.5-14), obtenido con `GET /api/catalog/procedures` mediante el BFF para Vecino y Funcionario. El formulario ofrece solo tipos activos; los labels del listado y diálogos usan el catálogo completo, con el código como respaldo. La carga y el reintento son independientes del listado y las transiciones. Los errores conservan los textos del formulario; una recarga fallida conserva los últimos labels, pero bloquea la creación. El BFF vuelve a validar el tipo al crear. No se muestran cupos.
 - Flujo verificado de punta a punta contra la infraestructura real en AWS: login, creación y listado de trámites, con el header `Authorization` confirmado en las peticiones al backend real (cierra la verificación pendiente de EP1-06).
 
 El resto de la aplicación se construye issue por issue según el tablero del proyecto.
 
 ## Deuda técnica
 
-- **Tipos de trámite con lista fija provisional (EP1-08).** El catálogo
-  dinámico de tipos de trámite (ms-barriodigital-catalog) todavía no estaba
-  disponible. La lista vive hardcodeada en
-  `src/app/features/requests/requests.constants.ts`. Pendiente: reemplazar
-  por un servicio de catálogo real cuando el microservicio esté listo.
 - **Columna Solicitante oculta (EP1-15).** La columna Solicitante se ocultó
   porque el backend solo expone el oid del solicitante, sin nombre ni correo.
   Pendiente: opción a, que el BFF lea name/preferred_username del token y lo

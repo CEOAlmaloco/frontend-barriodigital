@@ -94,7 +94,11 @@ $badge-tint: 0.12;
   flex: 1 1 $filter-min-width;
 }
 
-.requests__actions-error {
+.requests__recovery[hidden] {
+  display: none;
+}
+
+.requests__recovery--compact {
   display: flex;
   flex-wrap: wrap;
   align-items: center;

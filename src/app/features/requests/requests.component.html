@@ -19,17 +19,34 @@
         [formGroup]="createForm"
         #createFormDirective="ngForm"
         (ngSubmit)="submit(createFormDirective)"
+        [attr.aria-busy]="isSubmitting()"
         novalidate
       >
         <mat-form-field>
           <mat-label>Tipo de trámite</mat-label>
-          <mat-select formControlName="procedureType">
-            @for (tipo of tiposTramite; track tipo.value) {
+          <mat-select formControlName="procedureType" aria-describedby="catalog-form-feedback catalog-selection-feedback">
+            @for (tipo of tiposTramite(); track tipo.value) {
               <mat-option [value]="tipo.value">{{ tipo.label }}</mat-option>
             }
           </mat-select>
           <mat-error>Selecciona el tipo de trámite.</mat-error>
         </mat-form-field>
+
+        <div id="catalog-form-feedback">
+          @if (catalogState() === 'ready' && tiposTramite().length === 0) {
+            <p class="requests__empty">No hay tipos de trámite disponibles</p>
+          } @else if (catalogState() === 'loading') {
+            <span class="cdk-visually-hidden">La selección de tipo está bloqueada mientras carga el catálogo.</span>
+          } @else if (catalogState() === 'error') {
+            <span class="cdk-visually-hidden">La selección de tipo está bloqueada. Recupera el catálogo con Reintentar en el listado de trámites.</span>
+          }
+        </div>
+
+        <div id="catalog-selection-feedback" aria-live="polite">
+          @if (selectionChanged()) {
+            <p class="requests__error">El tipo seleccionado ya no está disponible. Selecciona otro tipo de trámite.</p>
+          }
+        </div>
 
         <mat-form-field>
           <mat-label>Descripción</mat-label>
@@ -47,7 +64,7 @@
           matButton="filled"
           type="submit"
           class="requests__submit"
-          [disabled]="isSubmitting()"
+          [disabled]="isSubmitting() || !catalogAvailable()"
           [attr.aria-busy]="isSubmitting()"
         >
           <span [class.requests__submit-label--hidden]="isSubmitting()">Ingresar trámite</span>
@@ -57,8 +74,13 @@
         </button>
 
         <div aria-live="polite">
-          @if (submitFailed()) {
-            <p class="requests__error">No se pudo ingresar el trámite. Intenta nuevamente.</p>
+          @if (submitError(); as error) {
+            <p class="requests__error">{{ error }}</p>
+            @if (submittedTypeUnavailable()) {
+              <button matButton type="button" [disabled]="catalogState() === 'loading'" (click)="loadCatalog()">
+                Actualizar tipos de trámite
+              </button>
+            }
           }
         </div>
       </form>
@@ -101,35 +123,33 @@
         </mat-form-field>
       </form>
 
-      <div aria-live="polite">
-        @if (transitionsState() === 'error') {
-          <div class="requests__actions-error">
-            <p class="requests__error">No se pudieron cargar las acciones disponibles.</p>
-            <button matButton type="button" (click)="loadTransitions()">Reintentar acciones</button>
-          </div>
-        }
-      </div>
     }
 
+    <div
+      class="requests__recovery"
+      [class.requests__status]="listState() !== 'ready'"
+      [class.requests__recovery--compact]="listState() === 'ready'"
+      [hidden]="!informationLoading() && !informationFailed()"
+      [attr.aria-busy]="informationLoading()"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      @if (informationLoading()) {
+        <mat-progress-spinner mode="indeterminate" [diameter]="listState() === 'ready' ? 20 : 40" aria-label="Cargando información de trámites" />
+      } @else if (informationFailed()) {
+        <p class="requests__error">
+          @if (statusChangeReloadFailed()) {
+            El cambio se guardó, pero no pudimos actualizar la lista.
+          } @else {
+            No pudimos cargar la información de trámites. Intenta nuevamente.
+          }
+        </p>
+        <button matButton type="button" (click)="retryFailedLoads()">Reintentar</button>
+      }
+    </div>
+
     @switch (listState()) {
-      @case ('loading') {
-        <div class="requests__status">
-          <mat-progress-spinner mode="indeterminate" [diameter]="40" aria-label="Cargando trámites" />
-        </div>
-      }
-      @case ('error') {
-        <div class="requests__status" role="alert">
-          <p class="requests__error">
-            @if (statusChangeReloadFailed()) {
-              El cambio se guardó, pero no pudimos actualizar la lista.
-            } @else {
-              No se pudieron cargar los trámites.
-            }
-          </p>
-          <button matButton type="button" (click)="loadRequests()">Reintentar</button>
-        </div>
-      }
-      @default {
+      @case ('ready') {
         @if (requests().length === 0) {
           <p class="requests__empty">
             @if (isFuncionario()) {
