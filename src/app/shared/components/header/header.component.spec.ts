@@ -13,7 +13,10 @@ describe('HeaderComponent', () => {
   const render = async (userRoles: Role[]) => {
     const roles = signal<string[]>(userRoles);
     const auth = {
-      account: signal({ name: 'Usuario de prueba', username: 'usuario@cloudproyecto.onmicrosoft.com' }),
+      account: signal({
+        name: 'Usuario de prueba',
+        username: 'usuario@cloudproyecto.onmicrosoft.com',
+      }),
       roles,
       hasRole: (role: string) => roles().includes(role),
       logout,
@@ -21,7 +24,10 @@ describe('HeaderComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [HeaderComponent],
-      providers: [provideRouter([]), { provide: AuthService, useValue: auth }],
+      providers: [
+        provideRouter([{ path: 'reports', children: [] }]),
+        { provide: AuthService, useValue: auth },
+      ],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(HeaderComponent);
@@ -39,11 +45,12 @@ describe('HeaderComponent', () => {
     expect(linkLabels()).toEqual(['Inicio', 'Trámites']);
   });
 
-  it('Admin ve Inicio y Administración', async () => {
+  it('Admin ve Inicio, Administración y Reportes', async () => {
     await render([Role.Admin]);
 
-    expect(linkLabels()).toEqual(['Inicio', 'Administración']);
+    expect(linkLabels()).toEqual(['Inicio', 'Administración', 'Reportes']);
     expect(element.querySelector('a[href="/admin"]')).not.toBeNull();
+    expect(element.querySelector('a[href="/reports"]')).not.toBeNull();
   });
 
   it.each([Role.Auditor, undefined])('%s ve solo Inicio', async (role) => {
@@ -55,7 +62,9 @@ describe('HeaderComponent', () => {
   it('muestra solo el nombre de la cuenta y cierra sesión desde el header', async () => {
     await render([Role.Vecino]);
 
-    expect(element.querySelector('.header__account-name')?.textContent?.trim()).toBe('Usuario de prueba');
+    expect(element.querySelector('.header__account-name')?.textContent?.trim()).toBe(
+      'Usuario de prueba',
+    );
 
     element.querySelector<HTMLButtonElement>('.header__sign-out')?.click();
     expect(logout).toHaveBeenCalled();
@@ -72,5 +81,23 @@ describe('HeaderComponent', () => {
 
     expect(toggle?.getAttribute('aria-expanded')).toBe('true');
     expect(element.querySelector('.header__nav--open')).not.toBeNull();
+  });
+
+  it('navegar a Reportes cierra el menú móvil y marca el enlace activo', async () => {
+    const fixture = await render([Role.Admin]);
+    const toggle = element.querySelector<HTMLButtonElement>('.header__menu-toggle');
+    const link = element.querySelector<HTMLAnchorElement>('a[href="/reports"]');
+
+    toggle?.click();
+    await fixture.whenStable();
+    expect(toggle?.getAttribute('aria-expanded')).toBe('true');
+
+    link?.click();
+    await fixture.whenStable();
+
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(element.querySelector('.header__nav--open')).toBeNull();
+    expect(link?.classList.contains('header__link--active')).toBe(true);
+    expect(link?.getAttribute('aria-current')).toBe('page');
   });
 });

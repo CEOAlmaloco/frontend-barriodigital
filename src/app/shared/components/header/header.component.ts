@@ -17,6 +17,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   { label: 'Inicio', path: '/inicio' },
   { label: 'Trámites', path: '/tramites', roles: REQUESTS_ROLES },
   { label: 'Administración', path: '/admin', roles: [Role.Admin] },
+  { label: 'Reportes', path: '/reports', roles: [Role.Admin] },
 ];
 
 @Component({

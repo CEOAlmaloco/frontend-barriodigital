@@ -6,12 +6,16 @@ import { MsalGuard } from '@azure/msal-angular';
 import { of } from 'rxjs';
 
 import { routes } from './app.routes';
+import { authGuard, roleGuard } from './core/auth/auth.guard';
 import { AuthService } from './core/auth/auth.service';
 import { CatalogService } from './core/catalog/catalog.service';
 import { AuthenticatedLayoutComponent } from './core/layout/authenticated-layout.component';
 import { Role } from './shared/models/role';
 
-describe('Ruta /admin', () => {
+describe.each([
+  { path: 'admin', selector: 'app-admin', heading: 'Panel de administración' },
+  { path: 'reports', selector: 'app-reports', heading: 'Reportes' },
+])('Ruta /$path', ({ path, selector, heading }) => {
   const roles = signal<Role[]>([]);
   const auth = {
     account: signal({
@@ -42,18 +46,26 @@ describe('Ruta /admin', () => {
     });
   });
 
-  it('Admin accede al panel con el header compartido', async () => {
+  it('configura la ruta con el layout autenticado, el guard de Admin y carga diferida', () => {
+    const layout = routes.find((route) => route.component === AuthenticatedLayoutComponent);
+    const route = layout?.children?.find((child) => child.path === path);
+
+    expect(layout?.canActivate).toContain(authGuard);
+    expect(route?.canActivate).toEqual([roleGuard]);
+    expect(route?.data?.['roles']).toEqual([Role.Admin]);
+    expect(route?.loadComponent).toBeTypeOf('function');
+  });
+
+  it('Admin accede a la pantalla con el header compartido', async () => {
     roles.set([Role.Admin]);
     const harness = await RouterTestingHarness.create();
 
-    await harness.navigateByUrl('/admin', AuthenticatedLayoutComponent);
+    await harness.navigateByUrl(`/${path}`, AuthenticatedLayoutComponent);
 
-    expect(TestBed.inject(Router).url).toBe('/admin');
+    expect(TestBed.inject(Router).url).toBe(`/${path}`);
     expect(msalGuard.canActivate).toHaveBeenCalled();
     expect(harness.routeNativeElement?.querySelectorAll('app-header')).toHaveLength(1);
-    expect(harness.routeNativeElement?.querySelector('app-admin h1')?.textContent).toBe(
-      'Panel de administración',
-    );
+    expect(harness.routeNativeElement?.querySelector(`${selector} h1`)?.textContent).toBe(heading);
   });
 
   it.each([Role.Vecino, Role.Funcionario, Role.Auditor, undefined])(
@@ -62,7 +74,7 @@ describe('Ruta /admin', () => {
       roles.set(role ? [role] : []);
       const harness = await RouterTestingHarness.create();
 
-      await harness.navigateByUrl('/admin');
+      await harness.navigateByUrl(`/${path}`);
 
       expect(TestBed.inject(Router).url).toBe('/inicio');
     },
@@ -72,7 +84,7 @@ describe('Ruta /admin', () => {
     auth.hasSession.mockReturnValue(of(false));
     const harness = await RouterTestingHarness.create();
 
-    await harness.navigateByUrl('/admin');
+    await harness.navigateByUrl(`/${path}`);
 
     expect(TestBed.inject(Router).url).toBe('/');
     expect(msalGuard.canActivate).not.toHaveBeenCalled();
