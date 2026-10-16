@@ -25,7 +25,10 @@ describe('HeaderComponent', () => {
     await TestBed.configureTestingModule({
       imports: [HeaderComponent],
       providers: [
-        provideRouter([{ path: 'reports', children: [] }]),
+        provideRouter([
+          { path: 'reports', children: [] },
+          { path: 'audit', children: [] },
+        ]),
         { provide: AuthService, useValue: auth },
       ],
     }).compileComponents();
@@ -53,8 +56,21 @@ describe('HeaderComponent', () => {
     expect(element.querySelector('a[href="/reports"]')).not.toBeNull();
   });
 
-  it.each([Role.Auditor, undefined])('%s ve solo Inicio', async (role) => {
-    await render(role ? [role] : []);
+  it('Auditor ve Inicio y Auditoría', async () => {
+    await render([Role.Auditor]);
+
+    expect(linkLabels()).toEqual(['Inicio', 'Auditoría']);
+    expect(element.querySelector('a[href="/audit"]')).not.toBeNull();
+  });
+
+  it('Admin con Auditor conserva ambos grupos de navegación', async () => {
+    await render([Role.Admin, Role.Auditor]);
+
+    expect(linkLabels()).toEqual(['Inicio', 'Administración', 'Reportes', 'Auditoría']);
+  });
+
+  it('sin roles ve solo Inicio', async () => {
+    await render([]);
 
     expect(linkLabels()).toEqual(['Inicio']);
   });
@@ -83,10 +99,13 @@ describe('HeaderComponent', () => {
     expect(element.querySelector('.header__nav--open')).not.toBeNull();
   });
 
-  it('navegar a Reportes cierra el menú móvil y marca el enlace activo', async () => {
-    const fixture = await render([Role.Admin]);
+  it.each([
+    { label: 'Reportes', path: '/reports', role: Role.Admin },
+    { label: 'Auditoría', path: '/audit', role: Role.Auditor },
+  ])('navegar a $label cierra el menú móvil y marca el enlace activo', async ({ path, role }) => {
+    const fixture = await render([role]);
     const toggle = element.querySelector<HTMLButtonElement>('.header__menu-toggle');
-    const link = element.querySelector<HTMLAnchorElement>('a[href="/reports"]');
+    const link = element.querySelector<HTMLAnchorElement>(`a[href="${path}"]`);
 
     toggle?.click();
     await fixture.whenStable();

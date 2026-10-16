@@ -49,6 +49,14 @@ export const routes: Routes = [
           import('./features/reports/reports.component').then((m) => m.ReportsComponent),
         title: 'Reportes | BarrioDigital',
       },
+      {
+        path: 'audit',
+        canActivate: [roleGuard],
+        data: { roles: [Role.Auditor] },
+        loadComponent: () =>
+          import('./features/audit/audit.component').then((m) => m.AuditComponent),
+        title: 'Auditoría | BarrioDigital',
+      },
     ],
   },
   { path: '**', redirectTo: '' },
