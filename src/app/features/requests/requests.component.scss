@@ -11,6 +11,7 @@ $badge-tint: 0.12;
   flex-direction: column;
   gap: $space-6;
   max-width: $content-max-width;
+  min-width: 0;
   margin-inline: auto;
   padding: $space-6;
 
@@ -114,14 +115,16 @@ $badge-tint: 0.12;
 }
 
 .requests__rejection-reason {
-  @include mat.button-overrides((
-    text-container-shape: 0,
-    text-label-text-color: $color-primary,
-    text-hover-state-layer-opacity: 0,
-    text-focus-state-layer-opacity: 0,
-    text-pressed-state-layer-opacity: 0,
-    text-ripple-color: transparent,
-  ));
+  @include mat.button-overrides(
+    (
+      text-container-shape: 0,
+      text-label-text-color: $color-primary,
+      text-hover-state-layer-opacity: 0,
+      text-focus-state-layer-opacity: 0,
+      text-pressed-state-layer-opacity: 0,
+      text-ripple-color: transparent,
+    )
+  );
   max-width: 100%;
   min-height: $size-touch-target;
   height: auto;
@@ -188,9 +191,11 @@ $badge-tint: 0.12;
   }
 
   .requests__rejection-reason {
-    @include mat.button-overrides((
-      text-touch-target-size: $space-6,
-    ));
+    @include mat.button-overrides(
+      (
+        text-touch-target-size: $space-6,
+      )
+    );
     min-width: 0;
     min-height: $space-6;
     align-self: stretch;
@@ -209,6 +214,30 @@ $badge-tint: 0.12;
   }
 }
 
+// La columna adicional necesita más espacio. Vecino conserva la tabla desde md.
+.requests__table-wrapper--staff {
+  @media (min-width: $breakpoint-md) {
+    display: none;
+  }
+
+  @media (min-width: $breakpoint-lg) {
+    display: block;
+  }
+}
+
+.requests__table--staff {
+  table-layout: fixed;
+
+  .mat-column-fecha {
+    width: $space-12 * 2 + $space-6;
+  }
+
+  .mat-column-acciones {
+    // Incluye las etiquetas largas de transición, el desplegable y el padding de la celda.
+    width: $size-touch-target * 5 + $space-4;
+  }
+}
+
 .requests__cards {
   display: flex;
   flex-direction: column;
@@ -222,7 +251,18 @@ $badge-tint: 0.12;
   }
 }
 
+.requests__cards--staff {
+  @media (min-width: $breakpoint-md) {
+    display: flex;
+  }
+
+  @media (min-width: $breakpoint-lg) {
+    display: none;
+  }
+}
+
 .requests__item {
+  min-width: 0;
   padding: $space-4;
 }
 
@@ -232,6 +272,7 @@ $badge-tint: 0.12;
 
 .requests__fields {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: $space-3;
   margin: 0;
 

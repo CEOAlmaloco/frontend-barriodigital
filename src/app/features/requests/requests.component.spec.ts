@@ -53,12 +53,14 @@ describe('RequestsComponent', () => {
     rejectionReason: null,
     createdAt: '2026-09-01T12:00:00.000Z',
     solicitanteId: 'vecino-actual',
+    solicitanteNombre: 'Ana María Soto',
   };
   const other: Request = {
     ...mine,
     id: 'ajeno',
     description: 'Bache de otro vecino',
     solicitanteId: 'otro-vecino',
+    solicitanteNombre: 'Luis Pérez',
   };
 
   let service: {
@@ -105,6 +107,14 @@ describe('RequestsComponent', () => {
   const headers = () =>
     Array.from(element.querySelectorAll('th'), (header) => header.textContent?.trim());
   const submitButton = () => element.querySelector<HTMLButtonElement>('.requests__submit');
+  const solicitanteNames = () => ({
+    table: Array.from(element.querySelectorAll('td.mat-column-solicitante'), (cell) =>
+      cell.textContent?.trim(),
+    ),
+    cards: Array.from(element.querySelectorAll('.requests__fields dt'))
+      .filter((label) => label.textContent?.trim() === 'Solicitante')
+      .map((label) => label.nextElementSibling?.textContent?.trim()),
+  });
 
   it('Vecino: ve el formulario, sin filtros, y lo que entrega el servidor sin volver a filtrarlo', async () => {
     await render(Role.Vecino);
@@ -116,9 +126,12 @@ describe('RequestsComponent', () => {
     expect(text()).toContain('Rama sobre el cable');
     expect(text()).toContain('Bache de otro vecino');
     expect(headers()).toEqual(['Tipo', 'Descripción', 'Estado', 'Fecha']);
+    expect(solicitanteNames()).toEqual({ table: [], cards: [] });
+    expect(text()).not.toContain(mine.solicitanteNombre);
+    expect(text()).not.toContain(other.solicitanteNombre);
   });
 
-  it('Funcionario: sin formulario, con filtros, todos los trámites y sin columna Solicitante', async () => {
+  it('Funcionario: sin formulario, con filtros y Solicitante después de Descripción en tabla y tarjetas', async () => {
     await render(Role.Funcionario);
 
     expect(element.querySelector('.requests__card')).toBeNull();
@@ -127,8 +140,46 @@ describe('RequestsComponent', () => {
     );
     expect(element.querySelector('.requests__filters')).not.toBeNull();
     expect(text()).toContain('Bache de otro vecino');
-    expect(headers()).toEqual(['Tipo', 'Descripción', 'Estado', 'Fecha', 'Acciones']);
+    expect(headers()).toEqual([
+      'Tipo',
+      'Descripción',
+      'Solicitante',
+      'Estado',
+      'Fecha',
+      'Acciones',
+    ]);
+    expect(solicitanteNames()).toEqual({
+      table: [mine.solicitanteNombre, other.solicitanteNombre],
+      cards: [mine.solicitanteNombre, other.solicitanteNombre],
+    });
+    expect(
+      Array.from(element.querySelectorAll('.requests__fields dt'))
+        .slice(0, 5)
+        .map((label) => label.textContent?.trim()),
+    ).toEqual(['Tipo', 'Descripción', 'Solicitante', 'Estado', 'Fecha']);
     expect(text()).not.toContain('otro-vecino');
+  });
+
+  it.each([
+    { name: null, expected: 'Sin nombre' },
+    { name: undefined, expected: 'Sin nombre' },
+    { name: '', expected: 'Sin nombre' },
+    { name: '   ', expected: 'Sin nombre' },
+    { name: '  Ana María Soto  ', expected: 'Ana María Soto' },
+    { name: 'oid-del-creador', expected: 'oid-del-creador' },
+    {
+      name: 'Nombre extenso '.repeat(14).slice(0, 200),
+      expected: 'Nombre extenso '.repeat(14).slice(0, 200).trim(),
+    },
+    { name: 'X'.repeat(200), expected: 'X'.repeat(200) },
+    { name: '<b>Ana</b>', expected: '<b>Ana</b>' },
+  ])('presenta $name como $expected en ambas vistas', async ({ name, expected }) => {
+    const request: Request = { ...mine, solicitanteNombre: name };
+    if (name === undefined) delete request.solicitanteNombre;
+    await render(Role.Funcionario, () => of([request]));
+
+    expect(solicitanteNames()).toEqual({ table: [expected], cards: [expected] });
+    expect(element.querySelector('td.mat-column-solicitante b')).toBeNull();
   });
 
   it('Funcionario: pide el listado con los filtros elegidos', async () => {
@@ -963,6 +1014,32 @@ describe('RequestsComponent', () => {
         () => of([mine, other]),
         () => of(transitions),
       );
+    });
+
+    it('conserva el nombre del creador en ambas vistas después del cambio de estado y la recarga', async () => {
+      const saved: Request = { ...mine, status: 'ADMITIDO' };
+      service.changeStatus.mockReturnValueOnce(of(saved));
+      service.getRequests.mockReturnValueOnce(of([saved, other]));
+      const callsBeforeDialog = service.getRequests.mock.calls.length;
+      const dialogRef = await openDialog('ADMITIDO');
+      const closed = firstValueFrom(dialogRef.afterClosed());
+
+      dialogRef.componentInstance['submit']();
+      expect(await closed).toEqual({ kind: 'saved', request: saved });
+      await fixture.whenStable();
+
+      expect(TestBed.inject(MatDialog).openDialogs).toHaveLength(0);
+      expect(service.getRequests).toHaveBeenCalledTimes(callsBeforeDialog + 1);
+      expect(fixture.componentInstance['requests']()[0].status).toBe('ADMITIDO');
+      expect(solicitanteNames()).toEqual({
+        table: [mine.solicitanteNombre, other.solicitanteNombre],
+        cards: [mine.solicitanteNombre, other.solicitanteNombre],
+      });
+
+      fixture.componentInstance['loadRequests']();
+      await fixture.whenStable();
+      expect(solicitanteNames().table).toEqual([mine.solicitanteNombre, other.solicitanteNombre]);
+      expect(solicitanteNames().cards).toEqual([mine.solicitanteNombre, other.solicitanteNombre]);
     });
 
     it.each([
