@@ -54,7 +54,6 @@ import { RequestsService } from './requests.service';
 type LoadState = 'loading' | 'ready' | 'error';
 type LoadQuery = 'catalog' | 'requests' | 'transitions';
 
-// Sin columna Solicitante: el backend solo expone el oid (ver deuda técnica en el README)
 const COLUMNS = ['tipo', 'descripcion', 'estado', 'fecha'];
 
 @Component({
@@ -115,7 +114,9 @@ export class RequestsComponent {
   /** Admin y Auditor no llegan a esta vista (roleGuard), así que quien no es Funcionario es Vecino. */
   protected readonly isFuncionario = computed(() => this.auth.hasRole(Role.Funcionario));
   protected readonly columns = computed(() =>
-    this.isFuncionario() ? [...COLUMNS, 'acciones'] : COLUMNS,
+    this.isFuncionario()
+      ? ['tipo', 'descripcion', 'solicitante', 'estado', 'fecha', 'acciones']
+      : COLUMNS,
   );
 
   protected readonly listState = signal<LoadState>('loading');
@@ -390,6 +391,10 @@ export class RequestsComponent {
     return this.typeLabels().get(value) ?? value;
   }
 
+  protected getSolicitanteNombre(request: Request): string {
+    return request.solicitanteNombre?.trim() || 'Sin nombre';
+  }
+
   protected submit(formDirective: FormGroupDirective): void {
     if (
       this.isSubmitting() ||
@@ -461,7 +466,8 @@ export class RequestsComponent {
     if (error.status === 400 && validationMessages.includes(message)) return message;
     if (
       error.status === 503 &&
-      message === 'El catalogo de tipos de tramite no esta disponible. Intenta nuevamente en unos minutos.'
+      message ===
+        'El catalogo de tipos de tramite no esta disponible. Intenta nuevamente en unos minutos.'
     ) {
       return message;
     }

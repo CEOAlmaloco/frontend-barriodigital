@@ -61,6 +61,7 @@ function toRequest({
   rejectionReason,
   createdAt,
   solicitanteId,
+  solicitanteNombre,
 }: RequestResponse): Request {
   return {
     id,
@@ -71,5 +72,6 @@ function toRequest({
     rejectionReason,
     createdAt,
     solicitanteId,
+    solicitanteNombre,
   };
 }
