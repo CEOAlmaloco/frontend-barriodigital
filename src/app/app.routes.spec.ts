@@ -13,9 +13,15 @@ import { AuthenticatedLayoutComponent } from './core/layout/authenticated-layout
 import { Role } from './shared/models/role';
 
 describe.each([
-  { path: 'admin', selector: 'app-admin', heading: 'Panel de administración' },
-  { path: 'reports', selector: 'app-reports', heading: 'Reportes' },
-])('Ruta /$path', ({ path, selector, heading }) => {
+  {
+    path: 'admin',
+    selector: 'app-admin',
+    heading: 'Panel de administración',
+    allowedRole: Role.Admin,
+  },
+  { path: 'reports', selector: 'app-reports', heading: 'Reportes', allowedRole: Role.Admin },
+  { path: 'audit', selector: 'app-audit', heading: 'Auditoría', allowedRole: Role.Auditor },
+])('Ruta /$path', ({ path, selector, heading, allowedRole }) => {
   const roles = signal<Role[]>([]);
   const auth = {
     account: signal({
@@ -46,30 +52,35 @@ describe.each([
     });
   });
 
-  it('configura la ruta con el layout autenticado, el guard de Admin y carga diferida', () => {
+  it('configura la ruta con el layout autenticado, el guard de roles y carga diferida', () => {
     const layout = routes.find((route) => route.component === AuthenticatedLayoutComponent);
     const route = layout?.children?.find((child) => child.path === path);
 
     expect(layout?.canActivate).toContain(authGuard);
     expect(route?.canActivate).toEqual([roleGuard]);
-    expect(route?.data?.['roles']).toEqual([Role.Admin]);
+    expect(route?.data?.['roles']).toEqual([allowedRole]);
     expect(route?.loadComponent).toBeTypeOf('function');
   });
 
-  it('Admin accede a la pantalla con el header compartido', async () => {
-    roles.set([Role.Admin]);
-    const harness = await RouterTestingHarness.create();
+  it.each([{ userRoles: [allowedRole] }, { userRoles: Object.values(Role) }])(
+    'los roles $userRoles acceden a la pantalla con el header compartido',
+    async ({ userRoles }) => {
+      roles.set(userRoles);
+      const harness = await RouterTestingHarness.create();
 
-    await harness.navigateByUrl(`/${path}`, AuthenticatedLayoutComponent);
+      await harness.navigateByUrl(`/${path}`, AuthenticatedLayoutComponent);
 
-    expect(TestBed.inject(Router).url).toBe(`/${path}`);
-    expect(msalGuard.canActivate).toHaveBeenCalled();
-    expect(harness.routeNativeElement?.querySelectorAll('app-header')).toHaveLength(1);
-    expect(harness.routeNativeElement?.querySelector(`${selector} h1`)?.textContent).toBe(heading);
-  });
+      expect(TestBed.inject(Router).url).toBe(`/${path}`);
+      expect(msalGuard.canActivate).toHaveBeenCalled();
+      expect(harness.routeNativeElement?.querySelectorAll('app-header')).toHaveLength(1);
+      expect(harness.routeNativeElement?.querySelector(`${selector} h1`)?.textContent).toBe(
+        heading,
+      );
+    },
+  );
 
-  it.each([Role.Vecino, Role.Funcionario, Role.Auditor, undefined])(
-    '%s sin rol Admin vuelve al inicio',
+  it.each([...Object.values(Role).filter((role) => role !== allowedRole), undefined])(
+    '%s sin el rol requerido vuelve al inicio',
     async (role) => {
       roles.set(role ? [role] : []);
       const harness = await RouterTestingHarness.create();
