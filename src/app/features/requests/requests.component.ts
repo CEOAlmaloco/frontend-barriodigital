@@ -328,7 +328,13 @@ export class RequestsComponent {
           // La recarga puede quitar la fila; el título del listado conserva el foco.
           this.listTitle().nativeElement.focus({ preventScroll: true });
           if (result.kind === 'saved') {
-            this.snackBar.open('Estado del trámite actualizado.', undefined, { duration: 3000 });
+            const message =
+              result.request.status === 'ADMITIDO' ||
+              result.request.status === 'EN_TERRENO' ||
+              result.request.status === 'RESUELTO'
+                ? 'Estado actualizado. La notificación al vecino se procesa en segundo plano.'
+                : 'Estado actualizado.';
+            this.snackBar.open(message, undefined, { duration: 3000 });
             this.loadRequests(true);
           } else {
             this.reloadAfterStatusChange = false;

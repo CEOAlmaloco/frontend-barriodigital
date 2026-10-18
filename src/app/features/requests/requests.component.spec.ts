@@ -992,9 +992,9 @@ describe('RequestsComponent', () => {
       Array.from(overlay().querySelectorAll<HTMLButtonElement>('button')).find(
         (button) => button.textContent?.trim() === label,
       )!;
-    const openDialog = async (status: RequestStatus = 'RECHAZADO') => {
+    const openDialog = async (status: RequestStatus = 'RECHAZADO', request: Request = mine) => {
       const trigger = element.querySelector<HTMLButtonElement>('app-request-actions button')!;
-      fixture.componentInstance['openStatusDialog'](mine, { status, trigger });
+      fixture.componentInstance['openStatusDialog'](request, { status, trigger });
       await fixture.whenStable();
       return TestBed.inject(MatDialog).openDialogs[0] as MatDialogRef<
         RequestStatusDialogComponent,
@@ -1014,6 +1014,69 @@ describe('RequestsComponent', () => {
         () => of([mine, other]),
         () => of(transitions),
       );
+    });
+
+    it.each([
+      ['INGRESADO', 'ADMITIDO', true],
+      ['ADMITIDO', 'EN_GESTION', false],
+      ['EN_GESTION', 'EN_TERRENO', true],
+      ['EN_TERRENO', 'RESUELTO', true],
+      ['INGRESADO', 'RECHAZADO', false],
+    ] as const)(
+      '%s → %s: avisa una sola vez según el estado de la respuesta',
+      async (previousStatus, status, notifies) => {
+        const request: Request = { ...mine, status: previousStatus };
+        const responseStatus = vi.fn(() => status);
+        const saved: Request = {
+          ...request,
+          get status() {
+            return responseStatus();
+          },
+          rejectionReason: status === 'RECHAZADO' ? reason.trim() : null,
+        };
+        service.getRequests.mockReturnValue(of([request, other]));
+        fixture.componentInstance['loadRequests']();
+        await fixture.whenStable();
+        service.getRequests.mockReturnValueOnce(new Subject<Request[]>());
+        service.changeStatus.mockReturnValueOnce(of(saved));
+        const openSnackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open');
+        const dialogRef = await openDialog(status, request);
+        if (status === 'RECHAZADO') writeReason();
+        const closed = firstValueFrom(dialogRef.afterClosed());
+
+        dialogRef.componentInstance['submit']();
+        await closed;
+        await fixture.whenStable();
+
+        // La recarga sigue pendiente; el aviso ya leyó el estado de la respuesta del PUT.
+        expect(responseStatus).toHaveBeenCalled();
+        expect(openSnackBar).toHaveBeenCalledExactlyOnceWith(
+          notifies
+            ? 'Estado actualizado. La notificación al vecino se procesa en segundo plano.'
+            : 'Estado actualizado.',
+          undefined,
+          { duration: 3000 },
+        );
+        expect(service.changeStatus).toHaveBeenCalledTimes(1);
+        expect(document.activeElement).toBe(element.querySelector('#requests-list-title'));
+
+        service.getRequests.mockReturnValueOnce(of([saved, other]));
+        fixture.componentInstance['loadRequests']();
+        await fixture.whenStable();
+        expect(openSnackBar).toHaveBeenCalledTimes(1);
+      },
+    );
+
+    it('cancelar sin enviar no muestra éxito ni recarga', async () => {
+      const openSnackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open');
+      const callsBefore = service.getRequests.mock.calls.length;
+      await openDialog('ADMITIDO');
+      dialogButton('Cancelar').click();
+      await fixture.whenStable();
+
+      expect(openSnackBar).not.toHaveBeenCalled();
+      expect(service.changeStatus).not.toHaveBeenCalled();
+      expect(service.getRequests).toHaveBeenCalledTimes(callsBefore);
     });
 
     it('conserva el nombre del creador en ambas vistas después del cambio de estado y la recarga', async () => {
@@ -1064,6 +1127,7 @@ describe('RequestsComponent', () => {
     ])(
       '%s: explica el resultado, conserva el diálogo y solo permite consultar',
       async (code, status, message) => {
+        const openSnackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open');
         fixture.componentInstance['filters'].patchValue({ status: 'INGRESADO' });
         await fixture.whenStable();
         service.changeStatus.mockReturnValue(
@@ -1088,6 +1152,7 @@ describe('RequestsComponent', () => {
         dialogRef.componentInstance['submit']();
         expect(service.changeStatus).toHaveBeenCalledTimes(1);
         expect(service.getRequests).toHaveBeenCalledTimes(callsBefore);
+        expect(openSnackBar).not.toHaveBeenCalled();
         const closed = firstValueFrom(dialogRef.afterClosed());
         dialogButton('Cerrar y actualizar lista').click();
         expect(await closed).toEqual({ kind: 'reload' });
@@ -1095,11 +1160,13 @@ describe('RequestsComponent', () => {
         expect(service.getRequests).toHaveBeenCalledTimes(callsBefore + 1);
         expect(service.getRequests).toHaveBeenLastCalledWith({ status: 'INGRESADO' });
         expect(service.changeStatus).toHaveBeenCalledTimes(1);
+        expect(openSnackBar).not.toHaveBeenCalled();
         expect(document.activeElement).toBe(element.querySelector('#requests-list-title'));
       },
     );
 
     it('admisión sin respuesta de red bloquea el reenvío aunque no llegue code', async () => {
+      const openSnackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open');
       service.changeStatus.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 0 })));
       const dialogRef = await openDialog('ADMITIDO');
       dialogButton('Confirmar admisión').click();
@@ -1109,6 +1176,7 @@ describe('RequestsComponent', () => {
       expect(service.changeStatus).toHaveBeenCalledTimes(1);
       dialogButton('Cancelar').click();
       await fixture.whenStable();
+      expect(openSnackBar).not.toHaveBeenCalled();
     });
 
     it.each([
@@ -1131,6 +1199,7 @@ describe('RequestsComponent', () => {
     ])(
       'HTTP %s: conserva los errores anteriores y el motivo',
       async (status, message, expected) => {
+        const openSnackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open');
         service.changeStatus.mockReturnValue(
           throwError(
             () =>
@@ -1149,6 +1218,7 @@ describe('RequestsComponent', () => {
         expect(service.changeStatus).toHaveBeenCalledTimes(1);
         dialogRef.close();
         await fixture.whenStable();
+        expect(openSnackBar).not.toHaveBeenCalled();
       },
     );
 
@@ -1330,6 +1400,10 @@ describe('RequestsComponent', () => {
     it.each([0, 500])(
       'HTTP %s: conserva el motivo y permite reintentar el cambio',
       async (status) => {
+        const filters = { status: 'INGRESADO', from: new Date(2026, 8, 1), to: null };
+        fixture.componentInstance['filters'].setValue(filters);
+        await fixture.whenStable();
+        const callsBeforeDialog = service.getRequests.mock.calls.length;
         const saved: Request = { ...mine, status: 'RECHAZADO', rejectionReason: reason.trim() };
         service.changeStatus
           .mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status })))
@@ -1345,6 +1419,7 @@ describe('RequestsComponent', () => {
         expect(overlay().textContent).not.toContain('Cerrar y actualizar lista');
         expect(dialogRef.disableClose).toBe(false);
         expect(dialogButton('Confirmar rechazo').disabled).toBe(false);
+        expect(openSnackBar).not.toHaveBeenCalled();
 
         const result = firstValueFrom(dialogRef.afterClosed());
         service.getRequests.mockReturnValueOnce(throwError(() => new Error('sin red')));
@@ -1353,11 +1428,29 @@ describe('RequestsComponent', () => {
         await fixture.whenStable();
 
         expect(service.changeStatus).toHaveBeenCalledTimes(2);
-        expect(service.getRequests).toHaveBeenCalledTimes(2);
-        expect(openSnackBar).toHaveBeenCalledWith('Estado del trámite actualizado.', undefined, {
+        expect(service.getRequests).toHaveBeenCalledTimes(callsBeforeDialog + 1);
+        expect(openSnackBar).toHaveBeenCalledExactlyOnceWith('Estado actualizado.', undefined, {
           duration: 3000,
         });
         expect(text()).toContain('El cambio se guardó, pero no pudimos actualizar la lista.');
+        expect(fixture.componentInstance['requests']()).toEqual([mine, other]);
+        expect(fixture.componentInstance['filters'].getRawValue()).toEqual(filters);
+        expect(service.getRequests).toHaveBeenLastCalledWith({
+          status: 'INGRESADO',
+          from: '2026-09-01',
+        });
+
+        service.getRequests.mockReturnValueOnce(of([]));
+        fixture.componentInstance['retryFailedLoads']();
+        await fixture.whenStable();
+        expect(service.getRequests).toHaveBeenCalledTimes(callsBeforeDialog + 2);
+        expect(service.getRequests).toHaveBeenLastCalledWith({
+          status: 'INGRESADO',
+          from: '2026-09-01',
+        });
+        expect(service.changeStatus).toHaveBeenCalledTimes(2);
+        expect(openSnackBar).toHaveBeenCalledTimes(1);
+        expect(text()).not.toContain('El cambio se guardó, pero no pudimos actualizar la lista.');
       },
     );
   });
