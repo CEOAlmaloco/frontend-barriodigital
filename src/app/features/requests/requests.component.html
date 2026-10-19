@@ -19,17 +19,44 @@
         [formGroup]="createForm"
         #createFormDirective="ngForm"
         (ngSubmit)="submit(createFormDirective)"
+        [attr.aria-busy]="isSubmitting()"
         novalidate
       >
         <mat-form-field>
           <mat-label>Tipo de trámite</mat-label>
-          <mat-select formControlName="procedureType">
-            @for (tipo of tiposTramite; track tipo.value) {
+          <mat-select
+            formControlName="procedureType"
+            aria-describedby="catalog-form-feedback catalog-selection-feedback"
+          >
+            @for (tipo of tiposTramite(); track tipo.value) {
               <mat-option [value]="tipo.value">{{ tipo.label }}</mat-option>
             }
           </mat-select>
           <mat-error>Selecciona el tipo de trámite.</mat-error>
         </mat-form-field>
+
+        <div id="catalog-form-feedback">
+          @if (catalogState() === 'ready' && tiposTramite().length === 0) {
+            <p class="requests__empty">No hay tipos de trámite disponibles</p>
+          } @else if (catalogState() === 'loading') {
+            <span class="cdk-visually-hidden"
+              >La selección de tipo está bloqueada mientras carga el catálogo.</span
+            >
+          } @else if (catalogState() === 'error') {
+            <span class="cdk-visually-hidden"
+              >La selección de tipo está bloqueada. Recupera el catálogo con Reintentar en el
+              listado de trámites.</span
+            >
+          }
+        </div>
+
+        <div id="catalog-selection-feedback" aria-live="polite">
+          @if (selectionChanged()) {
+            <p class="requests__error">
+              El tipo seleccionado ya no está disponible. Selecciona otro tipo de trámite.
+            </p>
+          }
+        </div>
 
         <mat-form-field>
           <mat-label>Descripción</mat-label>
@@ -47,26 +74,45 @@
           matButton="filled"
           type="submit"
           class="requests__submit"
-          [disabled]="isSubmitting()"
+          [disabled]="isSubmitting() || !catalogAvailable()"
           [attr.aria-busy]="isSubmitting()"
         >
           <span [class.requests__submit-label--hidden]="isSubmitting()">Ingresar trámite</span>
           @if (isSubmitting()) {
-            <mat-progress-spinner class="requests__submit-spinner" mode="indeterminate" [diameter]="20" aria-hidden="true" />
+            <mat-progress-spinner
+              class="requests__submit-spinner"
+              mode="indeterminate"
+              [diameter]="20"
+              aria-hidden="true"
+            />
           }
         </button>
 
         <div aria-live="polite">
-          @if (submitFailed()) {
-            <p class="requests__error">No se pudo ingresar el trámite. Intenta nuevamente.</p>
+          @if (submitError(); as error) {
+            <p class="requests__error">{{ error }}</p>
+            @if (submittedTypeUnavailable()) {
+              <button
+                matButton
+                type="button"
+                [disabled]="catalogState() === 'loading'"
+                (click)="loadCatalog()"
+              >
+                Actualizar tipos de trámite
+              </button>
+            }
           }
         </div>
       </form>
     </section>
   }
 
-  <section class="requests__list" aria-labelledby="requests-list-title" [attr.aria-busy]="listState() === 'loading'">
-    <h2 id="requests-list-title" class="requests__section-title">
+  <section
+    class="requests__list"
+    aria-labelledby="requests-list-title"
+    [attr.aria-busy]="listState() === 'loading'"
+  >
+    <h2 id="requests-list-title" class="requests__section-title" #listTitle tabindex="-1">
       @if (isFuncionario()) {
         Todos los trámites
       } @else {
@@ -102,19 +148,35 @@
       </form>
     }
 
+    <div
+      class="requests__recovery"
+      [class.requests__status]="listState() !== 'ready'"
+      [class.requests__recovery--compact]="listState() === 'ready'"
+      [hidden]="!informationLoading() && !informationFailed()"
+      [attr.aria-busy]="informationLoading()"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      @if (informationLoading()) {
+        <mat-progress-spinner
+          mode="indeterminate"
+          [diameter]="listState() === 'ready' ? 20 : 40"
+          aria-label="Cargando información de trámites"
+        />
+      } @else if (informationFailed()) {
+        <p class="requests__error">
+          @if (statusChangeReloadFailed()) {
+            El cambio se guardó, pero no pudimos actualizar la lista.
+          } @else {
+            No pudimos cargar la información de trámites. Intenta nuevamente.
+          }
+        </p>
+        <button matButton type="button" (click)="retryFailedLoads()">Reintentar</button>
+      }
+    </div>
+
     @switch (listState()) {
-      @case ('loading') {
-        <div class="requests__status">
-          <mat-progress-spinner mode="indeterminate" [diameter]="40" aria-label="Cargando trámites" />
-        </div>
-      }
-      @case ('error') {
-        <div class="requests__status" role="alert">
-          <p class="requests__error">No se pudieron cargar los trámites.</p>
-          <button matButton type="button" (click)="loadRequests()">Reintentar</button>
-        </div>
-      }
-      @default {
+      @case ('ready') {
         @if (requests().length === 0) {
           <p class="requests__empty">
             @if (isFuncionario()) {
@@ -124,11 +186,21 @@
             }
           </p>
         } @else {
-          <div class="requests__table-wrapper">
-            <table mat-table [dataSource]="requests()" class="requests__table">
+          <div
+            class="requests__table-wrapper"
+            [class.requests__table-wrapper--staff]="isFuncionario()"
+          >
+            <table
+              mat-table
+              [dataSource]="requests()"
+              class="requests__table"
+              [class.requests__table--staff]="isFuncionario()"
+            >
               <ng-container matColumnDef="tipo">
                 <th mat-header-cell *matHeaderCellDef>Tipo</th>
-                <td mat-cell *matCellDef="let request">{{ getTipoLabel(request.procedureType) }}</td>
+                <td mat-cell *matCellDef="let request">
+                  {{ getTipoLabel(request.procedureType) }}
+                </td>
               </ng-container>
 
               <ng-container matColumnDef="descripcion">
@@ -136,24 +208,62 @@
                 <td mat-cell *matCellDef="let request">{{ request.description }}</td>
               </ng-container>
 
+              @if (isFuncionario()) {
+                <ng-container matColumnDef="solicitante">
+                  <th mat-header-cell *matHeaderCellDef>Solicitante</th>
+                  <td mat-cell *matCellDef="let request">{{ getSolicitanteNombre(request) }}</td>
+                </ng-container>
+              }
+
               <ng-container matColumnDef="estado">
                 <th mat-header-cell *matHeaderCellDef>Estado</th>
                 <td mat-cell *matCellDef="let request">
-                  <span class="badge badge--{{ statusOf(request).tone }}">{{ statusOf(request).label }}</span>
+                  <div class="requests__state">
+                    <span class="badge badge--{{ statusOf(request).tone }}">{{
+                      statusOf(request).label
+                    }}</span>
+                    @if (hasRejectionReason(request)) {
+                      <button
+                        matButton
+                        type="button"
+                        class="requests__rejection-reason"
+                        [attr.aria-label]="'Ver motivo del rechazo del trámite ' + request.id"
+                        (click)="openRejectionReasonDialog(request, $event)"
+                      >
+                        Ver motivo
+                      </button>
+                    }
+                  </div>
                 </td>
               </ng-container>
 
               <ng-container matColumnDef="fecha">
                 <th mat-header-cell *matHeaderCellDef>Fecha</th>
-                <td mat-cell *matCellDef="let request">{{ request.createdAt | date: 'dd-MM-yyyy' }}</td>
+                <td mat-cell *matCellDef="let request">
+                  {{ request.createdAt | date: 'dd-MM-yyyy' }}
+                </td>
               </ng-container>
 
-              <tr mat-header-row *matHeaderRowDef="columns"></tr>
-              <tr mat-row *matRowDef="let row; columns: columns"></tr>
+              @if (isFuncionario()) {
+                <ng-container matColumnDef="acciones">
+                  <th mat-header-cell *matHeaderCellDef>Acciones</th>
+                  <td mat-cell *matCellDef="let request">
+                    <app-request-actions
+                      [requestId]="request.id"
+                      [status]="request.status"
+                      [allowedStatuses]="transitionsFor(request)"
+                      (changeStatus)="openStatusDialog(request, $event)"
+                    />
+                  </td>
+                </ng-container>
+              }
+
+              <tr mat-header-row *matHeaderRowDef="columns()"></tr>
+              <tr mat-row *matRowDef="let row; columns: columns()"></tr>
             </table>
           </div>
 
-          <ul class="requests__cards">
+          <ul class="requests__cards" [class.requests__cards--staff]="isFuncionario()">
             @for (request of requests(); track request.id) {
               <li class="requests__item">
                 <dl class="requests__fields">
@@ -165,10 +275,31 @@
                     <dt>Descripción</dt>
                     <dd>{{ request.description }}</dd>
                   </div>
+                  @if (isFuncionario()) {
+                    <div>
+                      <dt>Solicitante</dt>
+                      <dd>{{ getSolicitanteNombre(request) }}</dd>
+                    </div>
+                  }
                   <div>
                     <dt>Estado</dt>
                     <dd>
-                      <span class="badge badge--{{ statusOf(request).tone }}">{{ statusOf(request).label }}</span>
+                      <div class="requests__state">
+                        <span class="badge badge--{{ statusOf(request).tone }}">{{
+                          statusOf(request).label
+                        }}</span>
+                        @if (hasRejectionReason(request)) {
+                          <button
+                            matButton
+                            type="button"
+                            class="requests__rejection-reason"
+                            [attr.aria-label]="'Ver motivo del rechazo del trámite ' + request.id"
+                            (click)="openRejectionReasonDialog(request, $event)"
+                          >
+                            Ver motivo
+                          </button>
+                        }
+                      </div>
                     </dd>
                   </div>
                   <div>
@@ -176,6 +307,21 @@
                     <dd>{{ request.createdAt | date: 'dd-MM-yyyy' }}</dd>
                   </div>
                 </dl>
+                @if (
+                  isFuncionario() &&
+                  (transitionsFor(request).length ||
+                    request.status === 'RESUELTO' ||
+                    request.status === 'RECHAZADO')
+                ) {
+                  <div class="requests__item-actions">
+                    <app-request-actions
+                      [requestId]="request.id"
+                      [status]="request.status"
+                      [allowedStatuses]="transitionsFor(request)"
+                      (changeStatus)="openStatusDialog(request, $event)"
+                    />
+                  </div>
+                }
               </li>
             }
           </ul>

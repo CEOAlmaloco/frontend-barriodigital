@@ -13,7 +13,10 @@ describe('HeaderComponent', () => {
   const render = async (userRoles: Role[]) => {
     const roles = signal<string[]>(userRoles);
     const auth = {
-      account: signal({ name: 'Usuario de prueba', username: 'usuario@cloudproyecto.onmicrosoft.com' }),
+      account: signal({
+        name: 'Usuario de prueba',
+        username: 'usuario@cloudproyecto.onmicrosoft.com',
+      }),
       roles,
       hasRole: (role: string) => roles().includes(role),
       logout,
@@ -21,7 +24,13 @@ describe('HeaderComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [HeaderComponent],
-      providers: [provideRouter([]), { provide: AuthService, useValue: auth }],
+      providers: [
+        provideRouter([
+          { path: 'reports', children: [] },
+          { path: 'audit', children: [] },
+        ]),
+        { provide: AuthService, useValue: auth },
+      ],
     }).compileComponents();
 
     const fixture = TestBed.createComponent(HeaderComponent);
@@ -39,8 +48,29 @@ describe('HeaderComponent', () => {
     expect(linkLabels()).toEqual(['Inicio', 'Trámites']);
   });
 
-  it.each([Role.Admin, Role.Auditor])('%s ve solo Inicio', async (role) => {
-    await render([role]);
+  it('Admin ve Inicio, Administración y Reportes', async () => {
+    await render([Role.Admin]);
+
+    expect(linkLabels()).toEqual(['Inicio', 'Administración', 'Reportes']);
+    expect(element.querySelector('a[href="/admin"]')).not.toBeNull();
+    expect(element.querySelector('a[href="/reports"]')).not.toBeNull();
+  });
+
+  it('Auditor ve Inicio y Auditoría', async () => {
+    await render([Role.Auditor]);
+
+    expect(linkLabels()).toEqual(['Inicio', 'Auditoría']);
+    expect(element.querySelector('a[href="/audit"]')).not.toBeNull();
+  });
+
+  it('Admin con Auditor conserva ambos grupos de navegación', async () => {
+    await render([Role.Admin, Role.Auditor]);
+
+    expect(linkLabels()).toEqual(['Inicio', 'Administración', 'Reportes', 'Auditoría']);
+  });
+
+  it('sin roles ve solo Inicio', async () => {
+    await render([]);
 
     expect(linkLabels()).toEqual(['Inicio']);
   });
@@ -48,7 +78,9 @@ describe('HeaderComponent', () => {
   it('muestra solo el nombre de la cuenta y cierra sesión desde el header', async () => {
     await render([Role.Vecino]);
 
-    expect(element.querySelector('.header__account-name')?.textContent?.trim()).toBe('Usuario de prueba');
+    expect(element.querySelector('.header__account-name')?.textContent?.trim()).toBe(
+      'Usuario de prueba',
+    );
 
     element.querySelector<HTMLButtonElement>('.header__sign-out')?.click();
     expect(logout).toHaveBeenCalled();
@@ -65,5 +97,26 @@ describe('HeaderComponent', () => {
 
     expect(toggle?.getAttribute('aria-expanded')).toBe('true');
     expect(element.querySelector('.header__nav--open')).not.toBeNull();
+  });
+
+  it.each([
+    { label: 'Reportes', path: '/reports', role: Role.Admin },
+    { label: 'Auditoría', path: '/audit', role: Role.Auditor },
+  ])('navegar a $label cierra el menú móvil y marca el enlace activo', async ({ path, role }) => {
+    const fixture = await render([role]);
+    const toggle = element.querySelector<HTMLButtonElement>('.header__menu-toggle');
+    const link = element.querySelector<HTMLAnchorElement>(`a[href="${path}"]`);
+
+    toggle?.click();
+    await fixture.whenStable();
+    expect(toggle?.getAttribute('aria-expanded')).toBe('true');
+
+    link?.click();
+    await fixture.whenStable();
+
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(element.querySelector('.header__nav--open')).toBeNull();
+    expect(link?.classList.contains('header__link--active')).toBe(true);
+    expect(link?.getAttribute('aria-current')).toBe('page');
   });
 });

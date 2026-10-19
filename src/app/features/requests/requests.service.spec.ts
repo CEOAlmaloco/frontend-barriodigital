@@ -15,8 +15,10 @@ describe('RequestsService', () => {
     procedureType: 'bache',
     address: 'Calle 1',
     status: 'INGRESADO',
+    rejectionReason: null,
     createdAt: '2026-09-13T15:04:05.123456Z',
     solicitanteId: 'oid-vecino',
+    solicitanteNombre: '  Ana María Soto  ',
   };
   // Forma de MunicipalRequest serializada por ms-barriodigital-requests y reenviada por el BFF
   const response = { ...request, title: 'Bache en calle — Calle 1', updatedAt: request.createdAt };
@@ -25,7 +27,9 @@ describe('RequestsService', () => {
   let backend: HttpTestingController;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     service = TestBed.inject(RequestsService);
     backend = TestBed.inject(HttpTestingController);
   });
@@ -44,7 +48,9 @@ describe('RequestsService', () => {
   });
 
   it('manda solo los filtros con valor como query params status, from y to', async () => {
-    const result = firstValueFrom(service.getRequests({ status: 'RESUELTO', from: '2026-09-01', to: '' }));
+    const result = firstValueFrom(
+      service.getRequests({ status: 'RESUELTO', from: '2026-09-01', to: '' }),
+    );
 
     const call = backend.expectOne((req) => req.url === url);
     expect(call.request.params.get('status')).toBe('RESUELTO');
@@ -56,7 +62,11 @@ describe('RequestsService', () => {
   });
 
   it('crea con POST mandando solo procedureType, description y address', async () => {
-    const payload = { procedureType: 'bache', description: 'Hueco frente al 123', address: 'Calle 1' };
+    const payload = {
+      procedureType: 'bache',
+      description: 'Hueco frente al 123',
+      address: 'Calle 1',
+    };
     const result = firstValueFrom(service.createRequest(payload));
 
     const call = backend.expectOne(url);
@@ -70,8 +80,48 @@ describe('RequestsService', () => {
   it('propaga el error del BFF para que la vista muestre su estado de error', async () => {
     const result = firstValueFrom(service.getRequests());
 
-    backend.expectOne(url).flush({ error: 'Bad Request' }, { status: 400, statusText: 'Bad Request' });
+    backend
+      .expectOne(url)
+      .flush({ error: 'Bad Request' }, { status: 400, statusText: 'Bad Request' });
 
     await expect(result).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('cambia el estado con PUT y conserva el nombre persistido y la identidad del creador', async () => {
+    const result = firstValueFrom(service.changeStatus(request.id, { status: 'ADMITIDO' }));
+    const call = backend.expectOne(`${url}/${request.id}/status`);
+
+    expect(call.request.method).toBe('PUT');
+    expect(call.request.body).toEqual({ status: 'ADMITIDO' });
+    call.flush({ ...response, status: 'ADMITIDO' });
+
+    expect(await result).toEqual({ ...request, status: 'ADMITIDO' });
+  });
+
+  describe.each(['GET', 'POST', 'PUT'] as const)('mapeo %s', (method) => {
+    it.each([null, undefined, '', '   '])(
+      'conserva el nombre %j sin aplicar un respaldo',
+      async (name) => {
+        const raw = { ...response, solicitanteNombre: name };
+        if (name === undefined) delete raw.solicitanteNombre;
+        const payload = { procedureType: 'bache', description: 'Descripción', address: 'Calle 1' };
+        const result = firstValueFrom<Request | Request[]>(
+          method === 'GET'
+            ? service.getRequests()
+            : method === 'POST'
+              ? service.createRequest(payload)
+              : service.changeStatus(request.id, { status: 'ADMITIDO' }),
+        );
+
+        const call = backend.expectOne(method === 'PUT' ? `${url}/${request.id}/status` : url);
+        expect(call.request.method).toBe(method);
+        call.flush(method === 'GET' ? [raw] : raw);
+
+        const mapped = await result;
+        const item = Array.isArray(mapped) ? mapped[0] : mapped;
+        expect(item.solicitanteNombre).toBe(name);
+        expect(item.solicitanteId).toBe(request.solicitanteId);
+      },
+    );
   });
 });

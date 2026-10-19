@@ -64,6 +64,13 @@ html {
   ));
 }
 
+.request-dialog,
+.procedure-type-dialog {
+  @include mat.dialog-overrides((
+    container-shape: $radius-base,
+  ));
+}
+
 // Hover del botón primario: morado profundo en vez de la capa clara por defecto de M3
 .mat-mdc-unelevated-button:not(:disabled):hover {
   @include mat.button-overrides((

@@ -1,0 +1,53 @@
+@if (isTerminal()) {
+  <span class="request-actions__finished">Flujo finalizado</span>
+} @else if (primaryAction(); as action) {
+  <div class="request-actions">
+    <button
+      matButton="filled"
+      type="button"
+      class="request-actions__primary"
+      [class.request-actions__primary--split]="canReject()"
+      [attr.aria-label]="actionLabels[action] + '. Trámite ' + requestId()"
+      (click)="selectAction(action, $event)"
+    >
+      {{ actionLabels[action] }}
+    </button>
+
+    @if (canReject()) {
+      <button
+        matButton="filled"
+        type="button"
+        class="request-actions__menu-trigger"
+        #menuButton
+        #menuTrigger="matMenuTrigger"
+        [matMenuTriggerFor]="rejectionMenu"
+        (menuOpened)="menuTrigger.restoreFocus = true"
+        [attr.aria-label]="'Más acciones para el trámite ' + requestId()"
+      >
+        <mat-icon>arrow_drop_down</mat-icon>
+      </button>
+
+      <mat-menu #rejectionMenu="matMenu">
+        <button
+          mat-menu-item
+          type="button"
+          class="request-actions__reject"
+          [attr.aria-label]="'Rechazar el trámite ' + requestId()"
+          (click)="selectAction('RECHAZADO', $event, menuTrigger)"
+        >
+          Rechazar
+        </button>
+      </mat-menu>
+    }
+  </div>
+} @else if (canReject()) {
+  <button
+    matButton
+    type="button"
+    class="request-actions__reject"
+    [attr.aria-label]="'Rechazar el trámite ' + requestId()"
+    (click)="selectAction('RECHAZADO', $event)"
+  >
+    Rechazar
+  </button>
+}

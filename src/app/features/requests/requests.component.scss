@@ -1,4 +1,5 @@
 @use 'sass:color';
+@use '@angular/material' as mat;
 @use 'tokens' as *;
 
 $content-max-width: 1200px;
@@ -10,6 +11,7 @@ $badge-tint: 0.12;
   flex-direction: column;
   gap: $space-6;
   max-width: $content-max-width;
+  min-width: 0;
   margin-inline: auto;
   padding: $space-6;
 
@@ -44,6 +46,11 @@ $badge-tint: 0.12;
 .requests__section-title {
   margin-bottom: $space-4;
   font-size: $font-h3;
+
+  &:focus-visible {
+    outline: $border-width-strong solid $color-primary-dark;
+    outline-offset: $space-1;
+  }
 }
 
 .requests__form {
@@ -88,6 +95,64 @@ $badge-tint: 0.12;
   flex: 1 1 $filter-min-width;
 }
 
+.requests__recovery[hidden] {
+  display: none;
+}
+
+.requests__recovery--compact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-2;
+  margin-bottom: $space-4;
+}
+
+.requests__state {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-2;
+}
+
+.requests__rejection-reason {
+  @include mat.button-overrides(
+    (
+      text-container-shape: 0,
+      text-label-text-color: $color-primary,
+      text-hover-state-layer-opacity: 0,
+      text-focus-state-layer-opacity: 0,
+      text-pressed-state-layer-opacity: 0,
+      text-ripple-color: transparent,
+    )
+  );
+  max-width: 100%;
+  min-height: $size-touch-target;
+  height: auto;
+  padding: $space-2;
+  font-size: $font-body-sm;
+  font-weight: $font-weight-medium;
+  color: $color-primary;
+  line-height: $line-height-body;
+  white-space: normal;
+  overflow-wrap: normal;
+  text-decoration: underline;
+  background-color: transparent;
+  border: 0;
+
+  &:hover {
+    color: $color-primary-dark;
+  }
+
+  &:focus-visible {
+    outline: $border-width-strong solid $color-primary-dark;
+    outline-offset: $space-1;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: color $transition-base;
+  }
+}
+
 .requests__status {
   display: flex;
   flex-direction: column;
@@ -99,7 +164,8 @@ $badge-tint: 0.12;
 // Mobile: tarjetas apiladas. Desde md: tabla
 .requests__table-wrapper {
   display: none;
-  overflow: hidden;
+  max-width: 100%;
+  overflow-x: auto;
 
   @media (min-width: $breakpoint-md) {
     display: block;
@@ -111,6 +177,64 @@ $badge-tint: 0.12;
 
   td {
     overflow-wrap: anywhere;
+  }
+
+  td.mat-column-estado {
+    text-align: start;
+    vertical-align: middle;
+  }
+
+  .requests__state {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: $space-1;
+  }
+
+  .requests__rejection-reason {
+    @include mat.button-overrides(
+      (
+        text-touch-target-size: $space-6,
+      )
+    );
+    min-width: 0;
+    min-height: $space-6;
+    align-self: stretch;
+    align-items: center;
+    padding-block: 0;
+    padding-inline: 0;
+    text-align: center;
+  }
+
+  .mat-column-fecha {
+    white-space: nowrap;
+  }
+
+  .mat-column-acciones {
+    min-width: $size-touch-target * 4;
+  }
+}
+
+// La columna adicional necesita más espacio. Vecino conserva la tabla desde md.
+.requests__table-wrapper--staff {
+  @media (min-width: $breakpoint-md) {
+    display: none;
+  }
+
+  @media (min-width: $breakpoint-lg) {
+    display: block;
+  }
+}
+
+.requests__table--staff {
+  table-layout: fixed;
+
+  .mat-column-fecha {
+    width: $space-12 * 2 + $space-6;
+  }
+
+  .mat-column-acciones {
+    // Incluye las etiquetas largas de transición, el desplegable y el padding de la celda.
+    width: $size-touch-target * 5 + $space-4;
   }
 }
 
@@ -127,12 +251,28 @@ $badge-tint: 0.12;
   }
 }
 
+.requests__cards--staff {
+  @media (min-width: $breakpoint-md) {
+    display: flex;
+  }
+
+  @media (min-width: $breakpoint-lg) {
+    display: none;
+  }
+}
+
 .requests__item {
+  min-width: 0;
   padding: $space-4;
+}
+
+.requests__item-actions {
+  margin-top: $space-4;
 }
 
 .requests__fields {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: $space-3;
   margin: 0;
 

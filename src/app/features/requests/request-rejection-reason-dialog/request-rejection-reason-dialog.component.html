@@ -1,0 +1,22 @@
+<h2 mat-dialog-title class="rejection-reason-dialog__title">Motivo del rechazo</h2>
+
+<mat-dialog-content class="rejection-reason-dialog__content">
+  <dl class="rejection-reason-dialog__summary">
+    <div>
+      <dt>Tipo de trámite</dt>
+      <dd>{{ data.procedureTypeLabel }}</dd>
+    </div>
+    <div>
+      <dt>Dirección o ubicación</dt>
+      <dd>{{ data.request.address }}</dd>
+    </div>
+    <div>
+      <dt>Motivo</dt>
+      <dd class="rejection-reason-dialog__reason">{{ data.request.rejectionReason }}</dd>
+    </div>
+  </dl>
+</mat-dialog-content>
+
+<mat-dialog-actions class="rejection-reason-dialog__actions" align="end">
+  <button matButton type="button" mat-dialog-close>Cerrar</button>
+</mat-dialog-actions>

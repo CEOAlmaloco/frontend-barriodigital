@@ -1,0 +1,206 @@
+@use 'sass:color';
+@use 'tokens' as *;
+
+$content-max-width: 1200px;
+$badge-tint: 0.12;
+
+.admin {
+  display: flex;
+  flex-direction: column;
+  gap: $space-8;
+  max-width: $content-max-width;
+  min-width: 0;
+  margin-inline: auto;
+  padding: $space-6;
+
+  @media (min-width: $breakpoint-lg) {
+    padding: $space-12;
+  }
+}
+
+.admin__header {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  min-width: 0;
+}
+
+.admin__text,
+.admin__empty,
+.admin__code {
+  color: $color-text-secondary;
+}
+
+.admin__catalog {
+  min-width: 0;
+}
+
+.admin__heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $space-4;
+  margin-bottom: $space-6;
+
+  @media (min-width: $breakpoint-md) {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  button {
+    flex-shrink: 0;
+  }
+
+  h2:focus-visible {
+    outline: $border-width-strong solid $color-primary-dark;
+    outline-offset: $space-1;
+  }
+}
+
+.admin__actions {
+  display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  align-items: center;
+  gap: $space-2;
+  max-width: 100%;
+}
+
+.admin__refresh {
+  // El mismo tono neutro de la acción secundaria del header; Material conserva sus estados.
+  --mat-icon-button-icon-color: #{$color-text-secondary};
+  --mat-icon-button-state-layer-color: #{$color-text-secondary};
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .admin__refresh-icon--spinning {
+    animation: admin-refresh-spin 1s linear infinite;
+  }
+}
+
+@keyframes admin-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.admin__feedback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-4;
+  padding-block: $space-12;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.admin__feedback--compact {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: $space-2;
+  padding-block: 0;
+  margin-bottom: $space-4;
+}
+
+.admin__error {
+  font-size: $font-body-sm;
+  color: $color-error;
+}
+
+.admin__table-wrapper,
+.admin__item {
+  background-color: $color-surface;
+  border-radius: $radius-base;
+  box-shadow: $shadow-elevated;
+}
+
+.admin__table-wrapper {
+  display: none;
+  max-width: 100%;
+  overflow-x: auto;
+
+  @media (min-width: $breakpoint-md) {
+    display: block;
+  }
+}
+
+.admin__table {
+  width: 100%;
+  table-layout: fixed;
+
+  td,
+  th {
+    overflow-wrap: anywhere;
+  }
+
+  .mat-column-acciones {
+    width: $space-8 * 4;
+
+    button {
+      white-space: nowrap;
+    }
+  }
+}
+
+.admin__name {
+  font-weight: $font-weight-semibold;
+  overflow-wrap: anywhere;
+}
+
+.admin__code {
+  font-size: $font-body-sm;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.admin__cards {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  @media (min-width: $breakpoint-md) {
+    display: none;
+  }
+}
+
+.admin__item {
+  min-width: 0;
+  padding: $space-4;
+}
+
+.admin__fields {
+  display: grid;
+  gap: $space-3;
+  margin-block: $space-4;
+
+  dt {
+    font-size: $font-label;
+    color: $color-text-secondary;
+  }
+
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.admin__badge {
+  display: inline-block;
+  padding: $space-1 $space-2;
+  font-size: $font-label;
+  font-weight: $font-weight-medium;
+  border-radius: $radius-base;
+  color: $color-primary-dark;
+  background-color: color.change($color-primary-light, $alpha: $badge-tint * 2);
+}
+
+.admin__badge--active {
+  color: $color-success;
+  background-color: color.change($color-success, $alpha: $badge-tint);
+}
