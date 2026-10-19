@@ -1,6 +1,7 @@
 # See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
 # Compiled output
+target/
 /dist
 /tmp
 /out-tsc
@@ -8,6 +9,10 @@
 
 # Node
 /node_modules
+.env
+.env.*
+!.env.example
+wallet/
 npm-debug.log
 yarn-error.log
 
