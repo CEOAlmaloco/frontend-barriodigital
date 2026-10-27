@@ -28,13 +28,13 @@ $badge-tint: 0.12;
 
 .requests__subtitle,
 .requests__empty {
-  color: $color-text-secondary;
+  color: var(--bd-text-muted);
 }
 
 .requests__card,
 .requests__item,
 .requests__table-wrapper {
-  background-color: $color-surface;
+  background-color: var(--bd-surface);
   border-radius: $radius-base;
   box-shadow: $shadow-elevated;
 }
@@ -131,7 +131,7 @@ $badge-tint: 0.12;
   padding: $space-2;
   font-size: $font-body-sm;
   font-weight: $font-weight-medium;
-  color: $color-primary;
+  color: var(--bd-primary);
   line-height: $line-height-body;
   white-space: normal;
   overflow-wrap: normal;
@@ -279,7 +279,7 @@ $badge-tint: 0.12;
   dt {
     font-size: $font-label;
     font-weight: $font-weight-medium;
-    color: $color-text-secondary;
+    color: var(--bd-text-muted);
   }
 
   dd {

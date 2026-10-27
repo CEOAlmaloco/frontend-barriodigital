@@ -15,7 +15,7 @@ $panel-max-width: 400px;
 .login__panel {
   width: 100%;
   padding: $space-8;
-  background-color: $color-surface;
+  background-color: var(--bd-surface);
   border-radius: $radius-base;
   box-shadow: $shadow-elevated;
   text-align: center;
@@ -36,13 +36,13 @@ $panel-max-width: 400px;
 .login__title {
   font-size: $font-h1;
   font-weight: $font-weight-semibold;
-  color: $color-text-primary;
+  color: var(--bd-text);
 }
 
 .login__subtitle {
   margin-top: $space-2;
   font-size: $font-body;
-  color: $color-text-secondary;
+  color: var(--bd-text-muted);
 }
 
 .login__button {
@@ -63,15 +63,15 @@ $panel-max-width: 400px;
 
 .login__footer {
   font-size: $font-body-sm;
-  color: $color-text-secondary;
+  color: var(--bd-text-muted);
   text-align: center;
 }
 
 .login__link {
-  color: $color-primary;
+  color: var(--bd-primary);
 
   &:hover {
-    color: $color-primary-dark;
+    color: var(--bd-primary-dark);
   }
 
   @media (prefers-reduced-motion: no-preference) {

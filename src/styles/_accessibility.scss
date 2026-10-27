@@ -1,0 +1,160 @@
+@use 'tokens' as *;
+
+:root {
+  --bd-background: #{$color-background};
+  --bd-surface: #{$color-surface};
+  --bd-text: #{$color-text-primary};
+  --bd-text-muted: #{$color-text-secondary};
+  --bd-border: #{$color-border};
+  --bd-primary: #{$color-primary};
+  --bd-primary-dark: #{$color-primary-dark};
+  --bd-on-primary: #{$color-surface};
+  --bd-error: #{$color-error};
+  --bd-field: #{$color-surface};
+  --bd-font: #{$font-family-base};
+}
+
+.app-shell {
+  min-height: 100vh;
+  background-color: var(--bd-background);
+  color: var(--bd-text);
+}
+
+html[data-bd-scale='-1'] {
+  zoom: 0.875;
+}
+
+html[data-bd-scale='1'] {
+  zoom: 1.125;
+}
+
+html[data-bd-scale='2'] {
+  zoom: 1.25;
+}
+
+html[data-bd-scale='3'] {
+  zoom: 1.375;
+}
+
+html[data-bd-scale='4'] {
+  zoom: 1.5;
+}
+
+html[data-bd-contrast='high'] {
+  --bd-background: #ffffff;
+  --bd-surface: #ffffff;
+  --bd-field: #ffffff;
+  --bd-text: #000000;
+  --bd-text-muted: #000000;
+  --bd-border: #000000;
+  --bd-primary: #000000;
+  --bd-primary-dark: #000000;
+  --bd-on-primary: #ffffff;
+  --mat-sys-background: #ffffff;
+  --mat-sys-on-background: #000000;
+  --mat-sys-surface: #ffffff;
+  --mat-sys-on-surface: #000000;
+  --mat-sys-primary: #000000;
+  --mat-sys-on-primary: #ffffff;
+  --mat-sys-outline: #000000;
+}
+
+html[data-bd-contrast='dark'] {
+  color-scheme: dark;
+  --bd-background: #17141c;
+  --bd-surface: #241f2b;
+  --bd-field: #17141c;
+  --bd-text: #f6f1f8;
+  --bd-text-muted: #e4d7ea;
+  --bd-border: #b7a4c2;
+  --bd-primary: #e4bce9;
+  --bd-primary-dark: #f3d7f6;
+  --bd-on-primary: #241228;
+  --mat-sys-background: #17141c;
+  --mat-sys-on-background: #f6f1f8;
+  --mat-sys-surface: #241f2b;
+  --mat-sys-on-surface: #f6f1f8;
+  --mat-sys-on-surface-variant: #e4d7ea;
+  --mat-sys-primary: #e4bce9;
+  --mat-sys-on-primary: #241228;
+  --mat-sys-outline: #b7a4c2;
+}
+
+// El estilo del componente compiló el fondo de la tarjeta como blanco. Esta regla gana
+// por especificidad y vuelve a enganchar la superficie al modo activo.
+html[data-bd-contrast='dark'] .requests__card,
+html[data-bd-contrast='dark'] .requests__item,
+html[data-bd-contrast='dark'] .requests__table-wrapper,
+html[data-bd-contrast='dark'] .dashboard__role-demo,
+html[data-bd-contrast='dark'] .admin__table-wrapper,
+html[data-bd-contrast='dark'] .admin__item,
+html[data-bd-contrast='dark'] .login__panel,
+html[data-bd-contrast='high'] .requests__card,
+html[data-bd-contrast='high'] .requests__item,
+html[data-bd-contrast='high'] .requests__table-wrapper,
+html[data-bd-contrast='high'] .dashboard__role-demo,
+html[data-bd-contrast='high'] .admin__table-wrapper,
+html[data-bd-contrast='high'] .admin__item,
+html[data-bd-contrast='high'] .login__panel {
+  background-color: var(--bd-surface);
+  color: var(--bd-text);
+}
+
+html[data-bd-contrast='dark'] .mdc-floating-label,
+html[data-bd-contrast='dark'] .mat-mdc-select-min-line,
+html[data-bd-contrast='dark'] .mat-mdc-select-placeholder,
+html[data-bd-contrast='dark'] .mat-mdc-select-arrow,
+html[data-bd-contrast='high'] .mdc-floating-label,
+html[data-bd-contrast='high'] .mat-mdc-select-min-line,
+html[data-bd-contrast='high'] .mat-mdc-select-placeholder,
+html[data-bd-contrast='high'] .mat-mdc-select-arrow {
+  color: var(--bd-text) !important;
+  opacity: 1 !important;
+}
+
+html[data-bd-contrast='dark'] .mdc-notched-outline__leading,
+html[data-bd-contrast='dark'] .mdc-notched-outline__notch,
+html[data-bd-contrast='dark'] .mdc-notched-outline__trailing,
+html[data-bd-contrast='high'] .mdc-notched-outline__leading,
+html[data-bd-contrast='high'] .mdc-notched-outline__notch,
+html[data-bd-contrast='high'] .mdc-notched-outline__trailing {
+  border-color: var(--bd-border) !important;
+}
+
+html[data-bd-contrast='negative'] .app-shell {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+html[data-bd-grayscale] .app-shell {
+  filter: grayscale(1);
+}
+
+html[data-bd-grayscale][data-bd-contrast='negative'] .app-shell {
+  filter: grayscale(1) invert(1) hue-rotate(180deg);
+}
+
+html[data-bd-font='on'] .app-shell :not(.mat-icon):not(.material-icons) {
+  font-family: 'Atkinson Hyperlegible', 'Inter', sans-serif !important;
+}
+
+html[data-bd-links='on'] .app-shell a {
+  text-decoration-line: underline !important;
+  text-underline-offset: 0.15em;
+}
+
+html[data-bd-motion='on'] .app-shell *,
+html[data-bd-motion='on'] .app-shell *::before,
+html[data-bd-motion='on'] .app-shell *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-bd-contrast='high'] .mat-mdc-unelevated-button {
+  --mdc-filled-button-container-color: #000000;
+  --mdc-filled-button-label-text-color: #ffffff;
+  --mdc-filled-button-disabled-container-color: #000000;
+  --mdc-filled-button-disabled-label-text-color: #ffffff;
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
