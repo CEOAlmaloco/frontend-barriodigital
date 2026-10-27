@@ -2,7 +2,7 @@
 
 :host {
   position: fixed;
-  z-index: 30;
+  z-index: 1100;
   left: $space-4;
   bottom: $space-4;
   font-family: var(--bd-font, #{$font-family-base});
@@ -24,15 +24,15 @@
   border: 0;
   border-radius: $radius-base;
   font-family: inherit;
-  background: $color-primary;
-  color: $color-surface;
-  box-shadow: 0 8px 20px rgba(37, 35, 41, 0.18);
+  background: #814b8b !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #241228;
 
   svg {
     width: 26px;
     height: 26px;
     fill: none;
-    stroke: currentColor;
+    stroke: #ffffff;
     stroke-width: 1.75;
     stroke-linecap: round;
     stroke-linejoin: round;

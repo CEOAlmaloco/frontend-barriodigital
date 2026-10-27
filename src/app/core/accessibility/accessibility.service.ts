@@ -63,10 +63,17 @@ export class AccessibilityService {
   }
 
   private update(patch: Partial<AccessibilityPreferences>): void {
+    const view = this.document.defaultView;
+    const keepPlace = patch.textStep !== undefined;
+    const left = view?.scrollX ?? 0;
+    const top = view?.scrollY ?? 0;
     const next = { ...this.preferences(), ...patch };
     this.preferences.set(next);
-    this.document.defaultView?.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    view?.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     this.apply(next);
+    if (keepPlace) {
+      view?.requestAnimationFrame(() => view.scrollTo({ left, top, behavior: 'auto' }));
+    }
   }
 
   private read(): AccessibilityPreferences {

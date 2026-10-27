@@ -10,7 +10,7 @@
   padding: $space-6 $space-6 $space-4;
   font-size: $font-h2;
   font-weight: $font-weight-semibold;
-  color: $color-text-primary;
+  color: var(--bd-text);
 }
 
 .status-dialog__content {
@@ -19,7 +19,7 @@
   gap: $space-4;
   padding: $space-4 $space-6;
   font-size: $font-body;
-  color: $color-text-primary;
+  color: var(--bd-text);
 }
 
 .status-dialog__summary {
@@ -30,7 +30,7 @@
   dt {
     margin-bottom: $space-1;
     font-size: $font-label;
-    color: $color-text-secondary;
+    color: var(--bd-text-muted);
   }
 
   dd {
@@ -44,6 +44,11 @@
   flex-wrap: wrap;
   align-items: center;
   gap: $space-2;
+  color: var(--bd-text);
+
+  mat-icon {
+    color: var(--bd-text);
+  }
 }
 
 .status-dialog__feedback {
@@ -59,7 +64,7 @@
 .status-dialog__counter {
   margin: 0;
   font-size: $font-body-sm;
-  color: $color-text-secondary;
+  color: var(--bd-text-muted);
   text-align: end;
 }
 
