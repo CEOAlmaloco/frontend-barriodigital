@@ -17,5 +17,5 @@ $content-max-width: 1200px;
 }
 
 .audit__text {
-  color: $color-text-secondary;
+  color: var(--bd-text-muted);
 }

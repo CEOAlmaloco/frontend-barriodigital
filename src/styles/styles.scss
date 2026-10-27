@@ -1,4 +1,5 @@
 @use 'tokens' as *;
+@use 'accessibility';
 @use 'material-theme';
 
 *,
@@ -9,9 +10,9 @@
 
 body {
   margin: 0;
-  background-color: $color-background;
-  color: $color-text-primary;
-  font-family: $font-family-base;
+  background-color: var(--bd-background);
+  color: var(--bd-text);
+  font-family: var(--bd-font);
   font-size: $font-body;
   font-weight: $font-weight-regular;
   line-height: $line-height-body;
@@ -21,7 +22,7 @@ h1,
 h2,
 h3 {
   margin: 0;
-  color: $color-text-primary;
+  color: var(--bd-text);
   font-weight: $font-weight-semibold;
 }
 

@@ -1,0 +1,383 @@
+@use 'tokens' as *;
+
+:root {
+  --bd-background: #{$color-background};
+  --bd-surface: #{$color-surface};
+  --bd-text: #{$color-text-primary};
+  --bd-text-muted: #{$color-text-secondary};
+  --bd-border: #{$color-border};
+  --bd-primary: #{$color-primary};
+  --bd-primary-dark: #{$color-primary-dark};
+  --bd-on-primary: #{$color-surface};
+  --bd-error: #{$color-error};
+  --bd-field: #{$color-surface};
+  --bd-font: #{$font-family-base};
+}
+
+.app-shell {
+  min-height: 100vh;
+  background-color: var(--bd-background);
+  color: var(--bd-text);
+}
+
+// Escala solo la letra. zoom en html mueve el scroll y desfasa el clic del panel fijo.
+html[data-bd-scale='-1'] {
+  --bd-text-scale: 0.875;
+}
+
+html[data-bd-scale='1'] {
+  --bd-text-scale: 1.125;
+}
+
+html[data-bd-scale='2'] {
+  --bd-text-scale: 1.25;
+}
+
+html[data-bd-scale='3'] {
+  --bd-text-scale: 1.375;
+}
+
+html[data-bd-scale='4'] {
+  --bd-text-scale: 1.5;
+}
+
+html[data-bd-scale] .app-shell {
+  font-size: calc(#{$font-body} * var(--bd-text-scale));
+}
+
+html[data-bd-scale] .app-shell h1 {
+  font-size: calc(#{$font-h1} * var(--bd-text-scale));
+}
+
+html[data-bd-scale] .app-shell h2 {
+  font-size: calc(#{$font-h2} * var(--bd-text-scale));
+}
+
+html[data-bd-scale] .app-shell h3 {
+  font-size: calc(#{$font-h3} * var(--bd-text-scale));
+}
+
+html[data-bd-scale] .app-shell :is(
+  p, li, td, th, dd, dt, label, button, a, input, textarea, small, legend,
+  .mdc-floating-label, .mat-mdc-select-min-line, .mat-mdc-select-placeholder,
+  .mdc-list-item__primary-text, .mdc-button__label, .mat-mdc-option
+) {
+  font-size: calc(#{$font-body} * var(--bd-text-scale));
+}
+
+html[data-bd-scale] .cdk-overlay-container :is(
+  .mat-mdc-option, .mdc-list-item__primary-text, .mat-calendar-body-cell-content,
+  .mat-calendar-body-label, .mat-calendar-table-header th, .mat-calendar-period-button,
+  .mdc-button__label
+) {
+  font-size: calc(#{$font-body} * var(--bd-text-scale));
+}
+
+html[data-bd-contrast='high'] {
+  --bd-background: #ffffff;
+  --bd-surface: #ffffff;
+  --bd-field: #ffffff;
+  --bd-text: #000000;
+  --bd-text-muted: #000000;
+  --bd-border: #000000;
+  --bd-primary: #000000;
+  --bd-primary-dark: #000000;
+  --bd-on-primary: #ffffff;
+  --mat-sys-background: #ffffff;
+  --mat-sys-on-background: #000000;
+  --mat-sys-surface: #ffffff;
+  --mat-sys-on-surface: #000000;
+  --mat-sys-primary: #000000;
+  --mat-sys-on-primary: #ffffff;
+  --mat-sys-outline: #000000;
+}
+
+html[data-bd-contrast='dark'] {
+  color-scheme: dark;
+  --bd-background: #17141c;
+  --bd-surface: #241f2b;
+  --bd-field: #17141c;
+  --bd-text: #f6f1f8;
+  --bd-text-muted: #e4d7ea;
+  --bd-border: #b7a4c2;
+  --bd-primary: #e4bce9;
+  --bd-primary-dark: #f3d7f6;
+  --bd-on-primary: #241228;
+  --mat-sys-background: #17141c;
+  --mat-sys-on-background: #f6f1f8;
+  --mat-sys-surface: #241f2b;
+  --mat-sys-on-surface: #f6f1f8;
+  --mat-sys-on-surface-variant: #e4d7ea;
+  --mat-sys-primary: #e4bce9;
+  --mat-sys-on-primary: #241228;
+  --mat-sys-outline: #b7a4c2;
+}
+
+// El estilo del componente compiló el fondo de la tarjeta como blanco. Esta regla gana
+// por especificidad y vuelve a enganchar la superficie al modo activo.
+html[data-bd-contrast='dark'] .requests__card,
+html[data-bd-contrast='dark'] .requests__item,
+html[data-bd-contrast='dark'] .requests__table-wrapper,
+html[data-bd-contrast='dark'] .dashboard__role-demo,
+html[data-bd-contrast='dark'] .admin__table-wrapper,
+html[data-bd-contrast='dark'] .admin__item,
+html[data-bd-contrast='dark'] .login__panel,
+html[data-bd-contrast='high'] .requests__card,
+html[data-bd-contrast='high'] .requests__item,
+html[data-bd-contrast='high'] .requests__table-wrapper,
+html[data-bd-contrast='high'] .dashboard__role-demo,
+html[data-bd-contrast='high'] .admin__table-wrapper,
+html[data-bd-contrast='high'] .admin__item,
+html[data-bd-contrast='high'] .login__panel,
+html[data-bd-contrast='negative'] .requests__card,
+html[data-bd-contrast='negative'] .requests__item,
+html[data-bd-contrast='negative'] .requests__table-wrapper,
+html[data-bd-contrast='negative'] .dashboard__role-demo,
+html[data-bd-contrast='negative'] .admin__table-wrapper,
+html[data-bd-contrast='negative'] .admin__item,
+html[data-bd-contrast='negative'] .login__panel {
+  background-color: var(--bd-surface);
+  color: var(--bd-text);
+}
+
+html[data-bd-contrast='dark'] .mdc-floating-label,
+html[data-bd-contrast='dark'] .mat-mdc-select-min-line,
+html[data-bd-contrast='dark'] .mat-mdc-select-placeholder,
+html[data-bd-contrast='dark'] .mat-mdc-select-arrow,
+html[data-bd-contrast='high'] .mdc-floating-label,
+html[data-bd-contrast='high'] .mat-mdc-select-min-line,
+html[data-bd-contrast='high'] .mat-mdc-select-placeholder,
+html[data-bd-contrast='high'] .mat-mdc-select-arrow,
+html[data-bd-contrast='negative'] .mdc-floating-label,
+html[data-bd-contrast='negative'] .mat-mdc-select-min-line,
+html[data-bd-contrast='negative'] .mat-mdc-select-placeholder,
+html[data-bd-contrast='negative'] .mat-mdc-select-arrow {
+  color: var(--bd-text) !important;
+  opacity: 1 !important;
+}
+
+html[data-bd-contrast='dark'] .mdc-notched-outline__leading,
+html[data-bd-contrast='dark'] .mdc-notched-outline__notch,
+html[data-bd-contrast='dark'] .mdc-notched-outline__trailing,
+html[data-bd-contrast='high'] .mdc-notched-outline__leading,
+html[data-bd-contrast='high'] .mdc-notched-outline__notch,
+html[data-bd-contrast='high'] .mdc-notched-outline__trailing,
+html[data-bd-contrast='negative'] .mdc-notched-outline__leading,
+html[data-bd-contrast='negative'] .mdc-notched-outline__notch,
+html[data-bd-contrast='negative'] .mdc-notched-outline__trailing {
+  border-color: var(--bd-border) !important;
+}
+
+html[data-bd-contrast='negative'] {
+  color-scheme: dark;
+  background-color: #000000;
+  --bd-background: #000000;
+  --bd-surface: #111111;
+  --bd-field: #000000;
+  --bd-text: #ffffff;
+  --bd-text-muted: #ffffff;
+  --bd-border: #ffffff;
+  --bd-primary: #ffffff;
+  --bd-primary-dark: #ffffff;
+  --bd-on-primary: #000000;
+  --mat-sys-background: #000000;
+  --mat-sys-on-background: #ffffff;
+  --mat-sys-surface: #111111;
+  --mat-sys-on-surface: #ffffff;
+  --mat-sys-on-surface-variant: #ffffff;
+  --mat-sys-primary: #ffffff;
+  --mat-sys-on-primary: #000000;
+  --mat-sys-outline: #ffffff;
+  --mat-sys-surface-container: #111111;
+  --mat-sys-surface-container-high: #111111;
+}
+
+html[data-bd-contrast='dark'] {
+  --mat-sys-surface-container: #241f2b;
+  --mat-sys-surface-container-high: #241f2b;
+}
+
+html[data-bd-contrast='dark'] .cdk-overlay-container .mat-datepicker-content,
+html[data-bd-contrast='dark'] .cdk-overlay-container .mat-calendar,
+html[data-bd-contrast='dark'] .cdk-overlay-container .mat-mdc-select-panel,
+html[data-bd-contrast='dark'] .cdk-overlay-container .mat-mdc-menu-panel,
+html[data-bd-contrast='dark'] .cdk-overlay-container .mdc-dialog__surface,
+html[data-bd-contrast='high'] .cdk-overlay-container .mat-datepicker-content,
+html[data-bd-contrast='high'] .cdk-overlay-container .mat-calendar,
+html[data-bd-contrast='high'] .cdk-overlay-container .mat-mdc-select-panel,
+html[data-bd-contrast='high'] .cdk-overlay-container .mat-mdc-menu-panel,
+html[data-bd-contrast='high'] .cdk-overlay-container .mdc-dialog__surface,
+html[data-bd-contrast='negative'] .cdk-overlay-container .mat-datepicker-content,
+html[data-bd-contrast='negative'] .cdk-overlay-container .mat-calendar,
+html[data-bd-contrast='negative'] .cdk-overlay-container .mat-mdc-select-panel,
+html[data-bd-contrast='negative'] .cdk-overlay-container .mat-mdc-menu-panel,
+html[data-bd-contrast='negative'] .cdk-overlay-container .mdc-dialog__surface {
+  background-color: var(--bd-surface) !important;
+  color: var(--bd-text) !important;
+}
+
+html[data-bd-contrast='dark'] .cdk-overlay-container :is(
+  .mat-calendar-body-cell-content,
+  .mat-calendar-body-label,
+  .mat-calendar-table-header th,
+  .mat-calendar-period-button,
+  .mat-calendar-previous-button,
+  .mat-calendar-next-button,
+  .mat-calendar-arrow,
+  .mat-mdc-option,
+  .mdc-list-item__primary-text
+),
+html[data-bd-contrast='high'] .cdk-overlay-container :is(
+  .mat-calendar-body-cell-content,
+  .mat-calendar-body-label,
+  .mat-calendar-table-header th,
+  .mat-calendar-period-button,
+  .mat-calendar-previous-button,
+  .mat-calendar-next-button,
+  .mat-calendar-arrow,
+  .mat-mdc-option,
+  .mdc-list-item__primary-text
+),
+html[data-bd-contrast='negative'] .cdk-overlay-container :is(
+  .mat-calendar-body-cell-content,
+  .mat-calendar-body-label,
+  .mat-calendar-table-header th,
+  .mat-calendar-period-button,
+  .mat-calendar-previous-button,
+  .mat-calendar-next-button,
+  .mat-calendar-arrow,
+  .mat-mdc-option,
+  .mdc-list-item__primary-text
+) {
+  color: var(--bd-text) !important;
+  opacity: 1 !important;
+}
+
+html[data-bd-contrast='dark'] .cdk-overlay-container .mat-calendar-body-selected,
+html[data-bd-contrast='high'] .cdk-overlay-container .mat-calendar-body-selected,
+html[data-bd-contrast='negative'] .cdk-overlay-container .mat-calendar-body-selected {
+  background-color: var(--bd-primary) !important;
+  color: var(--bd-on-primary) !important;
+}
+
+html[data-bd-contrast='negative'] .mat-mdc-unelevated-button {
+  --mdc-filled-button-container-color: #ffffff;
+  --mdc-filled-button-label-text-color: #000000;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+html[data-bd-contrast='dark'] .badge--neutral,
+html[data-bd-contrast='dark'] .admin__badge {
+  color: #241228;
+  background-color: #e4bce9;
+}
+
+html[data-bd-contrast='dark'] .badge--secondary {
+  color: #062326;
+  background-color: #9fd4d8;
+}
+
+html[data-bd-contrast='dark'] .badge--success,
+html[data-bd-contrast='dark'] .admin__badge--active {
+  color: #062214;
+  background-color: #8fd4ae;
+}
+
+html[data-bd-contrast='dark'] .badge--error {
+  color: #2a0909;
+  background-color: #f0b4b3;
+}
+
+html[data-bd-contrast='negative'] .badge,
+html[data-bd-contrast='negative'] .admin__badge {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+html[data-bd-contrast='high'] .badge,
+html[data-bd-contrast='high'] .admin__badge {
+  color: #000000;
+  background-color: #ffffff;
+  box-shadow: inset 0 0 0 2px #000000;
+}
+
+html[data-bd-contrast='dark'] .request-actions__finished,
+html[data-bd-contrast='negative'] .request-actions__finished {
+  color: var(--bd-text);
+}
+
+html[data-bd-contrast='dark'] .cdk-overlay-container .mat-mdc-menu-item,
+html[data-bd-contrast='negative'] .cdk-overlay-container .mat-mdc-menu-item,
+html[data-bd-contrast='high'] .cdk-overlay-container .mat-mdc-menu-item {
+  color: var(--bd-text) !important;
+}
+
+html[data-bd-contrast='dark'] .cdk-overlay-container .request-actions__reject,
+html[data-bd-contrast='dark'] .cdk-overlay-container .request-actions__reject .mdc-list-item__primary-text {
+  color: #ffd0cc !important;
+}
+
+html[data-bd-contrast='negative'] .cdk-overlay-container .mat-mdc-menu-panel {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #ffffff;
+}
+
+html[data-bd-contrast='negative'] .request-actions__reject,
+html[data-bd-contrast='negative'] .request-actions__reject .mdc-list-item__primary-text {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+html[data-bd-contrast='negative'] .a11y__launcher {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: 0 0 0 2px #000000, 0 0 0 4px #ffffff;
+}
+
+html[data-bd-contrast='negative'] .a11y__launcher svg {
+  stroke: #000000 !important;
+}
+
+// Daltonismo: gris en la página y en la capa de menús y diálogos.
+// El filtro del contenedor no alcanza a esa capa, así que va también en cada panel.
+html[data-bd-grayscale='on'] .app-shell,
+html[data-bd-grayscale='on'] .cdk-overlay-container,
+html[data-bd-grayscale='on'] .cdk-overlay-pane,
+html[data-bd-grayscale='on'] .cdk-overlay-backdrop,
+html[data-bd-grayscale='on'] .mat-mdc-menu-panel,
+html[data-bd-grayscale='on'] .mat-mdc-dialog-container,
+html[data-bd-grayscale='on'] .mdc-dialog__surface,
+html[data-bd-grayscale='on'] .mat-mdc-select-panel,
+html[data-bd-grayscale='on'] .mat-datepicker-content,
+html[data-bd-grayscale='on'] app-accessibility-widget {
+  filter: grayscale(1);
+}
+
+html[data-bd-font='on'] .app-shell :not(.mat-icon):not(.material-icons) {
+  font-family: 'Atkinson Hyperlegible', 'Inter', sans-serif !important;
+}
+
+html[data-bd-links='on'] .app-shell a {
+  text-decoration-line: underline !important;
+  text-underline-offset: 0.15em;
+}
+
+html[data-bd-motion='on'] .app-shell *,
+html[data-bd-motion='on'] .app-shell *::before,
+html[data-bd-motion='on'] .app-shell *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-bd-contrast='high'] .mat-mdc-unelevated-button {
+  --mdc-filled-button-container-color: #000000;
+  --mdc-filled-button-label-text-color: #ffffff;
+  --mdc-filled-button-disabled-container-color: #000000;
+  --mdc-filled-button-disabled-label-text-color: #ffffff;
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}

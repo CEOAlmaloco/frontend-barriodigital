@@ -17,8 +17,8 @@ $header-layer: 10;
   gap: $space-4;
   height: $header-height;
   padding-inline: $space-6;
-  background-color: $color-surface;
-  border-bottom: $border-width solid $color-border;
+  background-color: var(--bd-surface);
+  border-bottom: $border-width solid var(--bd-border);
 
   @media (min-width: $breakpoint-lg) {
     padding-inline: $space-12;
@@ -29,7 +29,7 @@ $header-layer: 10;
   flex-shrink: 0;
   font-size: $font-h3;
   font-weight: $font-weight-semibold;
-  color: $color-primary;
+  color: var(--bd-primary);
   white-space: nowrap;
 }
 
@@ -54,8 +54,8 @@ $header-layer: 10;
     display: flex;
     flex-direction: column;
     padding: $space-2 $space-6;
-    background-color: $color-surface;
-    border-bottom: $border-width solid $color-border;
+    background-color: var(--bd-surface);
+    border-bottom: $border-width solid var(--bd-border);
   }
 
   @media (min-width: $breakpoint-md) {
@@ -79,7 +79,7 @@ $header-layer: 10;
   height: 100%;
   padding-block: $space-3;
   font-size: $font-body;
-  color: $color-text-primary;
+  color: var(--bd-text);
   text-decoration: none;
   border-bottom: $border-width-strong solid transparent;
 
@@ -88,14 +88,14 @@ $header-layer: 10;
   }
 
   &:hover {
-    color: $color-primary;
+    color: var(--bd-primary);
   }
 }
 
 .header__link--active {
   font-weight: $font-weight-medium;
-  color: $color-primary;
-  border-bottom-color: $color-primary;
+  color: var(--bd-primary);
+  border-bottom-color: var(--bd-primary);
 }
 
 .header__menu-toggle {
@@ -116,14 +116,14 @@ $header-layer: 10;
   min-width: 0;
   overflow: hidden;
   font-size: $font-body-sm;
-  color: $color-text-secondary;
+  color: var(--bd-text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 // Tokens de Material en el propio botón: gris en reposo para no competir con el botón primario de la página
 .header__sign-out {
-  --mat-button-text-label-text-color: #{$color-text-secondary};
-  --mat-button-text-state-layer-color: #{$color-text-secondary};
+  --mat-button-text-label-text-color: var(--bd-text-muted);
+  --mat-button-text-state-layer-color: var(--bd-text-muted);
   flex-shrink: 0;
 }
