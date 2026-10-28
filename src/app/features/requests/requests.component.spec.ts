@@ -104,6 +104,27 @@ describe('RequestsComponent', () => {
   };
 
   const text = () => element.textContent ?? '';
+  const openDetails = async (root: ParentNode, requestId?: string) => {
+    const trigger = [...root.querySelectorAll<HTMLButtonElement>('.requests__details')].find(
+      (button) => !requestId || button.getAttribute('aria-label')?.includes(requestId),
+    );
+    if (!trigger) {
+      throw new Error('No está el menú del trámite');
+    }
+    trigger.click();
+    await fixture.whenStable();
+    return trigger;
+  };
+  const menuAction = (label: string) => {
+    const overlay = TestBed.inject(OverlayContainer).getContainerElement();
+    const item = [...overlay.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent?.trim() === label,
+    );
+    if (!item) {
+      throw new Error(`No está la acción ${label}`);
+    }
+    return item;
+  };
   const headers = () =>
     Array.from(element.querySelectorAll('th'), (header) => header.textContent?.trim());
   const submitButton = () => element.querySelector<HTMLButtonElement>('.requests__submit');
@@ -195,6 +216,63 @@ describe('RequestsComponent', () => {
     expect(service.getRequests).toHaveBeenLastCalledWith({
       status: 'RESUELTO',
       from: '2026-09-01',
+    });
+  });
+
+  it('Funcionario: Hasta anterior a Desde no se consulta', async () => {
+    await render(Role.Funcionario);
+
+    fixture.componentInstance['filters'].setValue({
+      status: '',
+      from: new Date(2026, 9, 8),
+      to: new Date(2017, 5, 22),
+    });
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance['filters'].controls.to.value).toBeNull();
+    expect(service.getRequests).toHaveBeenLastCalledWith({ from: '2026-10-08' });
+
+    fixture.componentInstance['filters'].setValue({
+      status: '',
+      from: new Date(2026, 9, 8),
+      to: new Date(2026, 9, 8),
+    });
+    await fixture.whenStable();
+
+    expect(service.getRequests).toHaveBeenLastCalledWith({
+      from: '2026-10-08',
+      to: '2026-10-08',
+    });
+  });
+
+  it('Funcionario: no consulta fechas anteriores a la municipalidad', async () => {
+    await render(Role.Funcionario);
+
+    fixture.componentInstance['filters'].setValue({
+      status: '',
+      from: new Date(1123, 0, 1),
+      to: new Date(1123, 5, 22),
+    });
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance['filters'].getRawValue()).toEqual({
+      status: '',
+      from: null,
+      to: null,
+    });
+    expect(service.getRequests).toHaveBeenLastCalledWith({});
+
+    const installation = new Date(2004, 11, 6);
+    fixture.componentInstance['filters'].setValue({
+      status: '',
+      from: installation,
+      to: installation,
+    });
+    await fixture.whenStable();
+
+    expect(service.getRequests).toHaveBeenLastCalledWith({
+      from: '2004-12-06',
+      to: '2004-12-06',
     });
   });
 
@@ -319,26 +397,32 @@ describe('RequestsComponent', () => {
       const overlay = TestBed.inject(OverlayContainer).getContainerElement();
 
       for (const container of ['.requests__table', '.requests__cards']) {
-        const triggers = element.querySelectorAll<HTMLButtonElement>(
-          `${container} .requests__rejection-reason`,
-        );
-        expect(triggers).toHaveLength(1);
+        const scope = element.querySelector(container)!;
+        const triggers = scope.querySelectorAll<HTMLButtonElement>('.requests__details');
+        expect(triggers).toHaveLength(3);
         const trigger = triggers[0];
-        expect(trigger.textContent?.trim()).toBe('Ver motivo');
-        expect(trigger.tagName).toBe('BUTTON');
-        expect(trigger.parentElement?.classList.contains('requests__state')).toBe(true);
-        expect(trigger.previousElementSibling?.classList.contains('badge')).toBe(true);
+        expect(trigger.querySelector('mat-icon')?.textContent?.trim()).toBe('more_vert');
+        expect(trigger.closest('.requests__state')?.querySelector('.badge')).not.toBeNull();
         expect(trigger.getAttribute('aria-label')).toContain(mine.id);
-        expect(trigger.getAttribute('aria-label')).toContain('Ver motivo del rechazo');
+        expect(trigger.getAttribute('aria-label')).toContain('Más información del trámite');
+        expect(scope.textContent).not.toContain('Ver motivo');
         expect(element.textContent).not.toContain(reason);
         vi.spyOn(trigger, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
         trigger.click();
+        await fixture.whenStable();
+        const reasonItem = menuAction('Ver motivo');
+        expect(menuAction('Actividad')).not.toBeNull();
+        expect(reasonItem.getAttribute('aria-label')).toContain('Ver motivo del rechazo');
+        reasonItem.click();
         await fixture.whenStable();
 
         const dialogRef = TestBed.inject(MatDialog).openDialogs[0];
         expect(dialogRef.disableClose).toBe(false);
         expect(
-          overlay.querySelector('.cdk-overlay-pane')?.classList.contains('request-dialog'),
+          overlay
+            .querySelector('mat-dialog-container')
+            ?.closest('.cdk-overlay-pane')
+            ?.classList.contains('request-dialog'),
         ).toBe(true);
         expect(overlay.textContent).toContain('Motivo del rechazo');
         expect(overlay.textContent).toContain('Iluminación municipal');
@@ -349,7 +433,7 @@ describe('RequestsComponent', () => {
         expect(overlay.querySelector('dd.rejection-reason-dialog__reason')).not.toBeNull();
         expect(overlay.querySelector('.rejection-reason-dialog__reason')?.textContent).toBe(reason);
         const closed = firstValueFrom(dialogRef.afterClosed());
-        overlay.querySelector<HTMLButtonElement>('button')!.click();
+        overlay.querySelector<HTMLButtonElement>('mat-dialog-container button')!.click();
         await closed;
         await fixture.whenStable();
 
@@ -371,7 +455,8 @@ describe('RequestsComponent', () => {
       await render(Role.Vecino, () =>
         of([{ ...mine, status: 'RECHAZADO', rejectionReason: 'Antecedentes incompletos.' }]),
       );
-      element.querySelector<HTMLButtonElement>('.requests__rejection-reason')!.click();
+      await openDetails(element);
+      menuAction('Ver motivo').click();
       await fixture.whenStable();
       const overlay = TestBed.inject(OverlayContainer).getContainerElement();
       const closed = firstValueFrom(TestBed.inject(MatDialog).openDialogs[0].afterClosed());
@@ -383,7 +468,8 @@ describe('RequestsComponent', () => {
             new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }),
           );
       } else {
-        overlay.querySelector<HTMLElement>('.cdk-overlay-backdrop')!.click();
+        const backdrops = overlay.querySelectorAll<HTMLElement>('.cdk-overlay-backdrop');
+        backdrops[backdrops.length - 1]!.click();
       }
       await closed;
       await fixture.whenStable();
@@ -601,7 +687,8 @@ describe('RequestsComponent', () => {
       statusDialog.close();
       await statusClosed;
       await fixture.whenStable();
-      element.querySelector<HTMLButtonElement>('.requests__rejection-reason')!.click();
+      await openDetails(element, 'historico-rechazado');
+      menuAction('Ver motivo').click();
       await fixture.whenStable();
       expect(overlay.textContent).toContain('Nuevo label histórico');
       const reasonDialog = TestBed.inject(MatDialog).openDialogs[0];
@@ -916,7 +1003,8 @@ describe('RequestsComponent', () => {
         () => of(transitions),
         fail,
       );
-      element.querySelector<HTMLButtonElement>('.requests__rejection-reason')!.click();
+      await openDetails(element);
+      menuAction('Ver motivo').click();
       await fixture.whenStable();
       const dialog = TestBed.inject(MatDialog).openDialogs[0];
       const focused = document.activeElement;

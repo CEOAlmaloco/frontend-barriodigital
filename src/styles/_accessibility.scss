@@ -197,16 +197,19 @@ html[data-bd-contrast='dark'] {
   --mat-sys-surface-container-high: #241f2b;
 }
 
+html[data-bd-contrast='dark'] .cdk-overlay-container .mat-timepicker-panel,
 html[data-bd-contrast='dark'] .cdk-overlay-container .mat-datepicker-content,
 html[data-bd-contrast='dark'] .cdk-overlay-container .mat-calendar,
 html[data-bd-contrast='dark'] .cdk-overlay-container .mat-mdc-select-panel,
 html[data-bd-contrast='dark'] .cdk-overlay-container .mat-mdc-menu-panel,
 html[data-bd-contrast='dark'] .cdk-overlay-container .mdc-dialog__surface,
+html[data-bd-contrast='high'] .cdk-overlay-container .mat-timepicker-panel,
 html[data-bd-contrast='high'] .cdk-overlay-container .mat-datepicker-content,
 html[data-bd-contrast='high'] .cdk-overlay-container .mat-calendar,
 html[data-bd-contrast='high'] .cdk-overlay-container .mat-mdc-select-panel,
 html[data-bd-contrast='high'] .cdk-overlay-container .mat-mdc-menu-panel,
 html[data-bd-contrast='high'] .cdk-overlay-container .mdc-dialog__surface,
+html[data-bd-contrast='negative'] .cdk-overlay-container .mat-timepicker-panel,
 html[data-bd-contrast='negative'] .cdk-overlay-container .mat-datepicker-content,
 html[data-bd-contrast='negative'] .cdk-overlay-container .mat-calendar,
 html[data-bd-contrast='negative'] .cdk-overlay-container .mat-mdc-select-panel,
@@ -351,6 +354,7 @@ html[data-bd-grayscale='on'] .mat-mdc-menu-panel,
 html[data-bd-grayscale='on'] .mat-mdc-dialog-container,
 html[data-bd-grayscale='on'] .mdc-dialog__surface,
 html[data-bd-grayscale='on'] .mat-mdc-select-panel,
+html[data-bd-grayscale='on'] .mat-timepicker-panel,
 html[data-bd-grayscale='on'] .mat-datepicker-content,
 html[data-bd-grayscale='on'] app-accessibility-widget {
   filter: grayscale(1);

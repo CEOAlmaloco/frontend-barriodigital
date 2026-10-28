@@ -1,5 +1,4 @@
 @use 'sass:color';
-@use '@angular/material' as mat;
 @use 'tokens' as *;
 
 $content-max-width: 1200px;
@@ -108,48 +107,23 @@ $badge-tint: 0.12;
 }
 
 .requests__state {
-  display: inline-flex;
-  flex-direction: column;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: $space-2;
+  width: 100%;
+  white-space: nowrap;
 }
 
-.requests__rejection-reason {
-  @include mat.button-overrides(
-    (
-      text-container-shape: 0,
-      text-label-text-color: $color-primary,
-      text-hover-state-layer-opacity: 0,
-      text-focus-state-layer-opacity: 0,
-      text-pressed-state-layer-opacity: 0,
-      text-ripple-color: transparent,
-    )
-  );
-  max-width: 100%;
-  min-height: $size-touch-target;
-  height: auto;
-  padding: $space-2;
-  font-size: $font-body-sm;
-  font-weight: $font-weight-medium;
-  color: var(--bd-primary);
-  line-height: $line-height-body;
-  white-space: normal;
-  overflow-wrap: normal;
-  text-decoration: underline;
-  background-color: transparent;
-  border: 0;
-
-  &:hover {
-    color: $color-primary-dark;
-  }
+.requests__details {
+  flex: 0 0 $size-touch-target;
+  width: $size-touch-target;
+  height: $size-touch-target;
+  color: var(--bd-text-muted);
 
   &:focus-visible {
     outline: $border-width-strong solid $color-primary-dark;
     outline-offset: $space-1;
-  }
-
-  @media (prefers-reduced-motion: no-preference) {
-    transition: color $transition-base;
   }
 }
 
@@ -175,34 +149,24 @@ $badge-tint: 0.12;
 .requests__table {
   width: 100%;
 
+  .mat-mdc-header-cell,
+  .mat-mdc-cell {
+    padding-block: $space-4;
+  }
+
   td {
     overflow-wrap: anywhere;
   }
 
   td.mat-column-estado {
+    overflow: visible;
     text-align: start;
     vertical-align: middle;
   }
 
-  .requests__state {
-    display: inline-flex;
-    align-items: flex-start;
-    gap: $space-1;
-  }
-
-  .requests__rejection-reason {
-    @include mat.button-overrides(
-      (
-        text-touch-target-size: $space-6,
-      )
-    );
-    min-width: 0;
-    min-height: $space-6;
-    align-self: stretch;
-    align-items: center;
-    padding-block: 0;
-    padding-inline: 0;
-    text-align: center;
+  .mat-column-descripcion {
+    text-align: start;
+    vertical-align: middle;
   }
 
   .mat-column-fecha {
@@ -227,6 +191,28 @@ $badge-tint: 0.12;
 
 .requests__table--staff {
   table-layout: fixed;
+
+  .mat-column-tipo,
+  .mat-column-descripcion,
+  .mat-column-solicitante {
+    padding-inline: $space-2;
+  }
+
+  .mat-column-tipo {
+    width: $space-12 * 4 + $space-4;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .mat-column-solicitante {
+    width: $space-12 * 3;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .mat-column-estado {
+    width: $size-touch-target * 4 + $space-4;
+  }
 
   .mat-column-fecha {
     width: $space-12 * 2 + $space-6;
@@ -259,6 +245,47 @@ $badge-tint: 0.12;
   @media (min-width: $breakpoint-lg) {
     display: none;
   }
+}
+
+.requests__description {
+  position: relative;
+  text-align: start;
+}
+
+.requests__description-text {
+  margin: 0;
+  line-height: $line-height-body;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.requests__description-fade {
+  background-image: linear-gradient(to right, var(--bd-text) 10%, transparent);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.requests__description-more {
+  display: inline-flex;
+  align-items: baseline;
+  vertical-align: baseline;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  margin: 0 0 0 $space-2;
+  padding: 0;
+  color: var(--bd-primary);
+  font-weight: $font-weight-semibold;
+  line-height: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.requests__description-full {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: start;
 }
 
 .requests__item {

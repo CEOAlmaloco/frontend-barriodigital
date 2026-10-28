@@ -1,0 +1,83 @@
+@use 'tokens' as *;
+
+.activity-dialog__title {
+  padding: $space-6 $space-6 $space-4;
+  color: var(--bd-text);
+}
+
+.activity-dialog__content {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  color: var(--bd-text);
+}
+
+.activity-dialog__times {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: $space-3;
+  margin: 0;
+
+  dt {
+    color: var(--bd-text-muted);
+    font-size: $font-label;
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.activity-dialog__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.activity-dialog__timeline {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding-bottom: $space-3;
+    border-bottom: 1px solid var(--bd-border, rgba(255, 255, 255, 0.12));
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.activity-dialog__when,
+.activity-dialog__actor,
+.activity-dialog__hint {
+  color: var(--bd-text-muted);
+}
+
+.activity-dialog__when-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: $space-3;
+
+  @media (max-width: $breakpoint-sm) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.activity-dialog__form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+
+  h3 {
+    margin: 0;
+  }
+}
+
+.activity-dialog__error {
+  color: var(--bd-error);
+}

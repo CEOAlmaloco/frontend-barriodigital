@@ -1,0 +1,147 @@
+<h2 mat-dialog-title class="activity-dialog__title">Actividad del trámite</h2>
+
+<mat-dialog-content class="activity-dialog__content">
+  @if (state() === 'loading') {
+    <p>Cargando el historial.</p>
+  } @else if (state() === 'error') {
+    <p class="activity-dialog__error" role="alert">No se pudo leer el historial.</p>
+    <button matButton type="button" (click)="load()">Reintentar</button>
+  } @else if (activity(); as activity) {
+    @if (hasSummary(activity)) {
+    <dl class="activity-dialog__times">
+      @if (activity.tiempos.desdeElIngresoSegundos != null) {
+        <div>
+          <dt>Desde el ingreso</dt>
+          <dd>{{ duration(activity.tiempos.desdeElIngresoSegundos) }}</dd>
+        </div>
+      }
+      @if (activity.tiempos.totalResolucionSegundos != null) {
+        <div>
+          <dt>Hasta el cierre</dt>
+          <dd>{{ duration(activity.tiempos.totalResolucionSegundos) }}</dd>
+        </div>
+      }
+      @if (activity.tiempos.primeraAtencionSegundos != null) {
+        <div>
+          <dt>Primera atención</dt>
+          <dd>{{ duration(activity.tiempos.primeraAtencionSegundos) }}</dd>
+        </div>
+      }
+      @if (activity.tiempos.gestionMunicipalSegundos != null) {
+        <div>
+          <dt>Gestión municipal</dt>
+          <dd>{{ duration(activity.tiempos.gestionMunicipalSegundos) }}</dd>
+        </div>
+      }
+      @if (activity.contacto; as contacto) {
+        @if (contacto.intentos > 0) {
+          <div>
+            <dt>Intentos</dt>
+            <dd>{{ contacto.intentos }}</dd>
+          </div>
+        }
+        @if (contacto.siguienteAccion) {
+          <div>
+            <dt>Siguiente acción</dt>
+            <dd>
+              {{ contacto.siguienteAccion }}
+              @if (contacto.siguienteIntento) {
+                · {{ contacto.siguienteIntento | date: 'dd/MM/yyyy HH:mm' }}
+              }
+            </dd>
+          </div>
+        }
+      }
+    </dl>
+    }
+
+    @if (hasEvents()) {
+    <div class="activity-dialog__filters" role="group" aria-label="Filtrar actividad">
+      @for (item of filters; track item.id) {
+        <button
+          matButton
+          type="button"
+          [attr.aria-pressed]="filter() === item.id"
+          (click)="filter.set(item.id)"
+        >
+          {{ item.label }}
+        </button>
+      }
+    </div>
+    }
+
+    @if (visibleEvents().length === 0) {
+      <p>{{ emptyMessage() }}</p>
+    } @else {
+      <ol class="activity-dialog__timeline">
+        @for (event of visibleEvents(); track event.id) {
+          <li>
+            <p class="activity-dialog__when">{{ event.occurredAt | date: 'dd/MM/yyyy HH:mm:ss' }}</p>
+            <p>{{ event.summary }}</p>
+            <p class="activity-dialog__actor">{{ event.actorName || event.actorId }}</p>
+            @if (event.note) {
+              <p>{{ event.note }}</p>
+            }
+          </li>
+        }
+      </ol>
+    }
+
+    @if (data.canRegister) {
+      <form class="activity-dialog__form" [formGroup]="gestionForm" (ngSubmit)="register()">
+        <h3>Registrar gestión</h3>
+        <p class="activity-dialog__hint">Anota el intento. No confirma que el vecino haya atendido.</p>
+        <mat-form-field>
+          <mat-label>Canal</mat-label>
+          <mat-select formControlName="channel">
+            @for (channel of channels; track channel.value) {
+              <mat-option [value]="channel.value">{{ channel.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Resultado</mat-label>
+          <mat-select formControlName="result">
+            @for (result of results; track result.value) {
+              <mat-option [value]="result.value">{{ result.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Nota</mat-label>
+          <textarea matInput formControlName="note" rows="2" maxlength="500"></textarea>
+        </mat-form-field>
+        <div class="activity-dialog__when-fields">
+          <mat-form-field>
+            <mat-label>Próximo intento</mat-label>
+            <input matInput [matDatepicker]="attemptPicker" formControlName="nextAttemptDate" [min]="today" />
+            <mat-datepicker-toggle matIconSuffix [for]="attemptPicker" />
+            <mat-datepicker #attemptPicker />
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Hora</mat-label>
+            <input matInput [matTimepicker]="attemptTime" formControlName="nextAttemptTime" />
+            <mat-timepicker-toggle matIconSuffix [for]="attemptTime" />
+            <mat-timepicker #attemptTime interval="15m" />
+          </mat-form-field>
+        </div>
+        @if (
+          gestionForm.hasError('nextAttemptIncomplete') &&
+          (gestionForm.controls.nextAttemptDate.touched || gestionForm.controls.nextAttemptTime.touched)
+        ) {
+          <p class="activity-dialog__error" role="alert">Indica la fecha y la hora del próximo intento.</p>
+        }
+        @if (saveError()) {
+          <p class="activity-dialog__error" role="alert">{{ saveError() }}</p>
+        }
+        <button matButton="filled" type="submit" [disabled]="saving()">
+          {{ saving() ? 'Guardando' : 'Registrar' }}
+        </button>
+      </form>
+    }
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button matButton type="button" mat-dialog-close>Cerrar</button>
+</mat-dialog-actions>
