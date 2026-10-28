@@ -1,10 +1,11 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
   ElementRef,
+  TemplateRef,
   computed,
   inject,
   signal,
@@ -17,12 +18,21 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { MatButton } from '@angular/material/button';
+import { MatButton, MatIconButton } from '@angular/material/button';
 import { MAT_DATE_LOCALE, provideNativeDateAdapter } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import {
+  MatDialog,
+  MatDialogActions,
+  MatDialogClose,
+  MatDialogContent,
+  MatDialogRef,
+  MatDialogTitle,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIcon } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -34,11 +44,15 @@ import { CatalogService } from '../../core/catalog/catalog.service';
 import { ProcedureType } from '../../shared/models/procedure-type.model';
 import { Request, RequestStatus, RequestTransitions } from '../../shared/models/request.model';
 import { Role } from '../../shared/models/role';
-import { toDateKey } from './date-key';
+import { MUNICIPALITY_SINCE, toDateKey } from './date-key';
 import {
   RequestActionsComponent,
   RequestStatusAction,
 } from './request-actions/request-actions.component';
+import {
+  RequestActivityDialogComponent,
+  RequestActivityDialogData,
+} from './request-activity-dialog/request-activity-dialog.component';
 import {
   RequestRejectionReasonDialogComponent,
   RequestRejectionReasonDialogData,
@@ -55,13 +69,25 @@ type LoadState = 'loading' | 'ready' | 'error';
 type LoadQuery = 'catalog' | 'requests' | 'transitions';
 
 const COLUMNS = ['tipo', 'descripcion', 'estado', 'fecha'];
+/** A partir de aquí «Ver» sigue al texto y el resto se abre aparte. */
+const DESCRIPTION_PREVIEW_CHARS = 72;
 
 @Component({
   selector: 'app-requests',
   imports: [
     DatePipe,
+    NgTemplateOutlet,
     MatButton,
+    MatIconButton,
+    MatIcon,
+    MatMenu,
+    MatMenuItem,
+    MatMenuTrigger,
     MatDatepickerModule,
+    MatDialogActions,
+    MatDialogClose,
+    MatDialogContent,
+    MatDialogTitle,
     MatFormFieldModule,
     MatInputModule,
     MatProgressSpinner,
@@ -84,6 +110,10 @@ export class RequestsComponent {
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
   private readonly listTitle = viewChild.required<ElementRef<HTMLElement>>('listTitle');
+  private readonly descriptionDialogTemplate =
+    viewChild.required<TemplateRef<{ $implicit: string }>>('descriptionDialog');
+  /** El ítem del menú se destruye al cerrarse. El foco vuelve a los tres puntos. */
+  private detailsAnchor: HTMLButtonElement | null = null;
   private readonly reload$ = new Subject<void>();
   private readonly transitionsReload$ = new Subject<void>();
   private readonly catalogReload$ = new Subject<void>();
@@ -93,6 +123,8 @@ export class RequestsComponent {
   > | null = null;
   private rejectionReasonDialog: MatDialogRef<RequestRejectionReasonDialogComponent, void> | null =
     null;
+  private activityDialog: MatDialogRef<RequestActivityDialogComponent, void> | null = null;
+  private descriptionDialog: MatDialogRef<unknown, void> | null = null;
   private reloadAfterStatusChange = false;
   private readonly recoveryPending = signal<LoadQuery[]>([]);
 
@@ -155,6 +187,12 @@ export class RequestsComponent {
     from: this.formBuilder.control<Date | null>(null),
     to: this.formBuilder.control<Date | null>(null),
   });
+
+  /** Ningún filtro puede ser anterior a la instalación de la municipalidad. */
+  protected readonly municipalitySince = MUNICIPALITY_SINCE;
+
+  /** Hasta no puede caer antes de Desde ni antes de la municipalidad. */
+  protected readonly toMin = signal(MUNICIPALITY_SINCE);
 
   constructor() {
     this.catalogReload$
@@ -232,8 +270,21 @@ export class RequestsComponent {
     this.destroyRef.onDestroy(() => {
       this.statusDialog?.close();
       this.rejectionReasonDialog?.close();
+      this.activityDialog?.close();
     });
-    this.filters.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.loadRequests());
+    this.filters.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      const from = this.filters.controls.from.value;
+      if (from && isBeforeDay(from, MUNICIPALITY_SINCE)) {
+        this.filters.controls.from.setValue(null, { emitEvent: false });
+      }
+      const floor = laterDay(this.filters.controls.from.value, MUNICIPALITY_SINCE);
+      this.toMin.set(floor);
+      const to = this.filters.controls.to.value;
+      if (to && isBeforeDay(to, floor)) {
+        this.filters.controls.to.setValue(null, { emitEvent: false });
+      }
+      this.loadRequests();
+    });
     this.createForm.controls.procedureType.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.selectionChanged.set(false));
@@ -298,6 +349,8 @@ export class RequestsComponent {
       !this.isFuncionario() ||
       this.statusDialog ||
       this.rejectionReasonDialog ||
+      this.activityDialog ||
+      this.descriptionDialog ||
       !this.transitionsFor(request).includes(action.status)
     ) {
       return;
@@ -348,16 +401,98 @@ export class RequestsComponent {
       });
   }
 
+  protected isLongDescription(request: Request): boolean {
+    return (request.description?.trim().length ?? 0) > DESCRIPTION_PREVIEW_CHARS;
+  }
+
+  /** Corta en una palabra. La última se desvanece y «Ver más» sigue pegado. */
+  protected descriptionLead(request: Request): string {
+    const preview = this.cutDescription(request);
+    const space = preview.lastIndexOf(' ');
+    return space < 0 ? '' : preview.slice(0, space + 1);
+  }
+
+  protected descriptionFade(request: Request): string {
+    const preview = this.cutDescription(request);
+    const space = preview.lastIndexOf(' ');
+    return space < 0 ? preview : preview.slice(space + 1);
+  }
+
+  private cutDescription(request: Request): string {
+    const text = request.description?.trim() ?? '';
+    const slice = text.slice(0, DESCRIPTION_PREVIEW_CHARS - 8);
+    const space = slice.lastIndexOf(' ');
+    return (space > 24 ? slice.slice(0, space) : slice).trim();
+  }
+
+  protected openDescription(request: Request): void {
+    if (this.statusDialog || this.rejectionReasonDialog || this.activityDialog || this.descriptionDialog) {
+      return;
+    }
+    this.descriptionDialog = this.dialog.open(this.descriptionDialogTemplate(), {
+      data: request.description,
+      panelClass: 'request-dialog',
+      autoFocus: 'first-heading',
+      width: '36rem',
+      maxWidth: 'calc(100vw - 2rem)',
+    });
+    this.descriptionDialog
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.descriptionDialog = null;
+      });
+  }
+
   protected hasRejectionReason(request: Request): boolean {
     return request.status === 'RECHAZADO' && !!request.rejectionReason?.trim();
   }
 
-  protected openRejectionReasonDialog(request: Request, event: Event): void {
-    if (!this.hasRejectionReason(request) || this.statusDialog || this.rejectionReasonDialog) {
+  protected rememberDetails(event: Event): void {
+    this.detailsAnchor = event.currentTarget as HTMLButtonElement;
+  }
+
+  protected openActivityDialog(request: Request, menu: MatMenuTrigger): void {
+    if (this.statusDialog || this.rejectionReasonDialog || this.activityDialog || this.descriptionDialog) {
+      return;
+    }
+    menu.restoreFocus = false;
+    menu.closeMenu();
+    const trigger = this.detailsAnchor;
+    this.activityDialog = this.dialog.open<RequestActivityDialogComponent, RequestActivityDialogData, void>(
+      RequestActivityDialogComponent,
+      {
+        data: { requestId: request.id, canRegister: this.isFuncionario() },
+        panelClass: 'request-dialog',
+        autoFocus: 'first-heading',
+        restoreFocus: false,
+        width: '52rem',
+        maxWidth: 'calc(100vw - 2rem)',
+      },
+    );
+    this.activityDialog
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.activityDialog = null;
+        this.restoreDetailsFocus(trigger);
+      });
+  }
+
+  protected openRejectionReasonDialog(request: Request, menu: MatMenuTrigger): void {
+    if (
+      !this.hasRejectionReason(request) ||
+      this.statusDialog ||
+      this.rejectionReasonDialog ||
+      this.activityDialog ||
+      this.descriptionDialog
+    ) {
       return;
     }
 
-    const trigger = event.currentTarget as HTMLButtonElement;
+    menu.restoreFocus = false;
+    menu.closeMenu();
+    const trigger = this.detailsAnchor;
     this.rejectionReasonDialog = this.dialog.open<
       RequestRejectionReasonDialogComponent,
       RequestRejectionReasonDialogData,
@@ -377,12 +512,16 @@ export class RequestsComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.rejectionReasonDialog = null;
-        if (trigger.isConnected && trigger.getClientRects().length) {
-          trigger.focus({ preventScroll: true });
-        } else {
-          this.listTitle().nativeElement.focus({ preventScroll: true });
-        }
+        this.restoreDetailsFocus(trigger);
       });
+  }
+
+  private restoreDetailsFocus(trigger: HTMLButtonElement | null): void {
+    if (trigger?.isConnected && trigger.getClientRects().length) {
+      trigger.focus({ preventScroll: true });
+    } else {
+      this.listTitle().nativeElement.focus({ preventScroll: true });
+    }
   }
 
   /** Etiqueta y tono del badge. Método tipado porque en las celdas de mat-table la fila llega como any. */
@@ -487,10 +626,30 @@ export class RequestsComponent {
     }
 
     const { status, from, to } = this.filters.getRawValue();
+    const fromOk = from && !isBeforeDay(from, MUNICIPALITY_SINCE) ? from : null;
+    const floor = laterDay(fromOk, MUNICIPALITY_SINCE);
+    const toOk = to && !isBeforeDay(to, floor) ? to : null;
     return {
       ...(status ? { status } : {}),
-      ...(from ? { from: toDateKey(from) } : {}),
-      ...(to ? { to: toDateKey(to) } : {}),
+      ...(fromOk ? { from: toDateKey(fromOk) } : {}),
+      ...(toOk ? { to: toDateKey(toOk) } : {}),
     };
   }
+}
+
+/** Compara el día civil local. La misma fecha es válida en los dos extremos. */
+function isBeforeDay(value: Date, limit: Date): boolean {
+  if (Number.isNaN(value.getTime()) || Number.isNaN(limit.getTime())) {
+    return false;
+  }
+  const valueDay = new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+  const limitDay = new Date(limit.getFullYear(), limit.getMonth(), limit.getDate()).getTime();
+  return valueDay < limitDay;
+}
+
+function laterDay(value: Date | null, floor: Date): Date {
+  if (!value || isBeforeDay(value, floor)) {
+    return floor;
+  }
+  return value;
 }
