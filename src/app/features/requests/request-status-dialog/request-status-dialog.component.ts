@@ -16,6 +16,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 
 import { Request, RequestStatus } from '../../../shared/models/request.model';
+import { locationSummary, mapUrl } from '../request-location';
 import { REJECTION_REASON_MAX_LENGTH, REQUEST_STATUS_VIEW } from '../requests.constants';
 import { RequestsService } from '../requests.service';
 
@@ -92,6 +93,8 @@ export class RequestStatusDialogComponent {
   private readonly formBuilder = inject(NonNullableFormBuilder);
 
   protected readonly data = inject<RequestStatusDialogData>(MAT_DIALOG_DATA);
+  protected readonly locationSummary = locationSummary;
+  protected readonly mapUrl = mapUrl;
   protected readonly statusView = REQUEST_STATUS_VIEW;
   protected readonly maxReasonLength = REJECTION_REASON_MAX_LENGTH;
   protected readonly isRejection = this.data.status === 'RECHAZADO';

@@ -44,7 +44,7 @@ Aplicación web de BarrioDigital, la plataforma municipal de trámites y atenci�
    npm start
    ```
 
-   Abre `http://localhost:4200` e inicia sesión con una cuenta del tenant de BarrioDigital. Esa URL tiene que estar registrada en Entra ID como redirect URI de tipo *Single-page application*.
+   Abre `http://localhost:4200` e inicia sesión con una cuenta del tenant de BarrioDigital. Esa URL tiene que estar registrada en Entra ID como redirect URI de tipo _Single-page application_.
 
 ## Tests
 
@@ -74,7 +74,7 @@ Las rutas privadas van como hijas del layout de rutas autenticadas en `app.route
 ## Despliegue
 
 - **Backend**: BFF y `ms-barriodigital-requests` corren en una instancia EC2 (AWS Academy Learner Lab) vía Docker Compose. Solo el puerto del BFF está expuesto al exterior; `requests` solo es alcanzable dentro de la red interna de Docker, nunca directo desde internet.
-- **API Gateway**: HTTP API (`barriodigital-api`) delante del BFF, con un JWT Authorizer que valida issuer y audience contra Microsoft Entra ID antes de reenviar la petición. Rutas protegidas: `GET/POST /api/requests`, `GET /api/requests/{id}`.
+- **API Gateway**: HTTP API (`barriodigital-api`) delante del BFF, con un JWT Authorizer que valida issuer y audience contra Microsoft Entra ID antes de reenviar la petición. Rutas protegidas: `GET/POST /api/requests`, `GET /api/requests/{id}` y `GET /api/requests/{id}/attachment`.
 - **Frontend**: desplegado en AWS Amplify Hosting (deploy manual, sin repositorio Git conectado), con una regla de rewrite (`404-200` a `/index.html`) para que las rutas de Angular funcionen al recargar o acceder directo por URL. Se descartó CloudFront + S3 porque `cloudfront:CreateDistribution` no está permitido en el rol del Learner Lab de AWS Academy.
 
 ## Estado actual
@@ -91,6 +91,8 @@ Implementado:
 - `/reports` (EP1.5-21), solo para Admin mediante `roleGuard`, con enlace «Reportes» junto a Administración en escritorio y móvil. Pantalla provisional con el título «Reportes» y un mensaje sobre los futuros indicadores comunales al implementar el procesamiento de eventos con Kafka; no realiza consultas HTTP ni depende de un servicio de reportes.
 - `/audit` (EP1.5-22), solo para usuarios con rol Auditor mediante `roleGuard`, con enlace «Auditoría» en escritorio y móvil. Pantalla provisional del futuro historial de eventos de los trámites al implementar la integración con Kafka; no realiza consultas HTTP ni depende de un servicio de auditoría.
 - Vista de trámites en `/tramites` (EP1-08), conectada al BFF (`GET` y `POST /api/requests`): el Vecino ingresa trámites y ve solo los suyos, que el servidor filtra según el token; el Funcionario ve todos, con filtros de estado y fechas. Admin y Auditor no tienen acceso.
+- Ubicación del trámite: el Vecino puede indicar sector, referencia y punto (GPS, mapa o coordenadas) al reportarlo. El Funcionario ve el resumen y el enlace al mapa en la tabla y las tarjetas, además de los diálogos de gestión; los campos adicionales son opcionales.
+- Imagen de respaldo opcional al crear un trámite: una sola imagen JPEG, PNG o WebP de hasta 5 MB. Se revisan dimensiones y lectura en el navegador; WebP se convierte a PNG. La petición multipart y la descarga/preview de la imagen usan el BFF autenticado; requests vuelve a validar los bytes, guarda una copia sin metadatos en Oracle y limita la descarga al titular o al personal municipal. Funcionario puede abrir la preview dentro de la vista de trámites y descargarla desde ese diálogo.
 - Solicitante en Trámites (EP1.5-25): solo Funcionario ve el nombre persistido del creador en tabla y tarjetas. Los valores ausentes o vacíos muestran «Sin nombre»; los respaldos no vacíos entregados por el backend se conservan. El nombre se mantiene al recargar después de cambiar el estado.
 - Catálogo real de tipos de trámite (EP1.5-14), obtenido con `GET /api/catalog/procedures` mediante el BFF para Vecino y Funcionario. El formulario ofrece solo tipos activos; los labels del listado y diálogos usan el catálogo completo, con el código como respaldo. La carga y el reintento son independientes del listado y las transiciones. Los errores conservan los textos del formulario; una recarga fallida conserva los últimos labels, pero bloquea la creación. El BFF vuelve a validar el tipo al crear. No se muestran cupos.
 - Administración de tipos de trámite (EP1.5-15 y EP1.5-19), solo para Admin: catálogo completo con tabla y tarjetas, creación sin límite diario y edición de nombre, actividad y cupo. El código se presenta en un campo de solo lectura al editar y es inmutable; cada PUT envía el cupo explícitamente. Se muestra «Cupo disponible hoy» con el dato del backend: número, «Agotado», «Sin límite» o «No disponible» ante datos ausentes o inconsistentes. «Actualizar» consulta solo el catálogo, sin cálculo local ni actualización periódica, conservando los últimos datos durante la carga y ante errores. Los diálogos conservan los datos ante errores y las recargas fallidas después de guardar permiten reintentar solo el GET; en error, «Reintentar» es la única acción de recuperación.
