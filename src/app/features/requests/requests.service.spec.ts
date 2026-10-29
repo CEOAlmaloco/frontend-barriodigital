@@ -77,6 +77,41 @@ describe('RequestsService', () => {
     expect(await result).toEqual(request);
   });
 
+  it('crea con imagen como partes multipart sin fijar manualmente el Content-Type', async () => {
+    const payload = {
+      procedureType: 'bache',
+      description: 'Hueco frente al 123',
+      address: 'Calle 1',
+    };
+    const attachment = new File(['image'], 'evidencia.png', { type: 'image/png' });
+    const result = firstValueFrom(service.createRequestWithAttachment(payload, attachment));
+
+    const call = backend.expectOne(url);
+    expect(call.request.method).toBe('POST');
+    expect(call.request.headers.has('Content-Type')).toBe(false);
+    expect(call.request.body).toBeInstanceOf(FormData);
+    const formData = call.request.body as FormData;
+    expect(formData.get('attachment')).toBe(attachment);
+    const requestPart = formData.get('request');
+    expect(requestPart).toBeInstanceOf(Blob);
+    expect(await (requestPart as Blob).text()).toBe(JSON.stringify(payload));
+    call.flush({ ...response, hasAttachment: true }, { status: 201, statusText: 'Created' });
+
+    expect(await result).toEqual({ ...request, hasAttachment: true });
+  });
+
+  it('descarga una imagen por el endpoint autenticado del BFF', async () => {
+    const result = firstValueFrom(service.getAttachment(request.id));
+
+    const call = backend.expectOne(`${url}/${request.id}/attachment`);
+    expect(call.request.method).toBe('GET');
+    expect(call.request.responseType).toBe('blob');
+    const image = new Blob(['image'], { type: 'image/png' });
+    call.flush(image);
+
+    expect(await result).toBe(image);
+  });
+
   it('propaga el error del BFF para que la vista muestre su estado de error', async () => {
     const result = firstValueFrom(service.getRequests());
 

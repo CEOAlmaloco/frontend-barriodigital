@@ -66,6 +66,7 @@ describe('RequestsComponent', () => {
   let service: {
     getRequests: ReturnType<typeof vi.fn>;
     createRequest: ReturnType<typeof vi.fn>;
+    getAttachment: ReturnType<typeof vi.fn>;
     getTransitions: ReturnType<typeof vi.fn>;
     changeStatus: ReturnType<typeof vi.fn>;
   };
@@ -84,6 +85,7 @@ describe('RequestsComponent', () => {
     service = {
       getRequests: vi.fn(getRequests),
       createRequest: vi.fn(() => of(mine)),
+      getAttachment: vi.fn(() => of(new Blob(['image'], { type: 'image/png' }))),
       getTransitions: vi.fn(getTransitions),
       changeStatus: vi.fn(),
     };
@@ -179,6 +181,67 @@ describe('RequestsComponent', () => {
         .map((label) => label.textContent?.trim()),
     ).toEqual(['Tipo', 'Descripción', 'Solicitante', 'Estado', 'Fecha']);
     expect(text()).not.toContain('otro-vecino');
+  });
+
+  it('Funcionario: abre la preview desde el navegador y libera la URL al cerrar', async () => {
+    const requestWithImage = { ...mine, hasAttachment: true };
+    const objectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:request-preview');
+    const revokeUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    await render(Role.Funcionario, () => of([requestWithImage]));
+
+    await openDetails(element, requestWithImage.id);
+    menuAction('Vista previa de imagen').click();
+    await fixture.whenStable();
+
+    expect(service.getAttachment).toHaveBeenCalledWith(requestWithImage.id);
+    expect(objectUrl).toHaveBeenCalledOnce();
+    const overlay = TestBed.inject(OverlayContainer).getContainerElement();
+    const image = overlay.querySelector<HTMLImageElement>(
+      'img[alt="Imagen adjunta del trámite propio"]',
+    );
+    expect(image?.src).toBe('blob:request-preview');
+    expect(overlay.textContent).toContain('Imagen adjunta del trámite');
+
+    const closed = firstValueFrom(TestBed.inject(MatDialog).openDialogs[0].afterClosed());
+    const closeButton = [...overlay.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent?.trim() === 'Cerrar',
+    );
+    closeButton?.click();
+    await closed;
+    expect(revokeUrl).toHaveBeenCalledWith('blob:request-preview');
+
+    objectUrl.mockRestore();
+    revokeUrl.mockRestore();
+  });
+
+  it('Funcionario: muestra la ubicación reportada en tabla y tarjetas, con enlace al mapa', async () => {
+    const request: Request = {
+      ...mine,
+      sector: 'ralco',
+      locationReference: 'Frente a la plaza',
+      latitude: -37.933,
+      longitude: -71.317,
+      locationPrecision: 'APROXIMADO',
+    };
+    await render(Role.Funcionario, () => of([request]));
+
+    const summaries = Array.from(
+      element.querySelectorAll<HTMLElement>('.requests__location-summary'),
+      (summary) => summary.textContent?.trim(),
+    );
+    const mapLinks = Array.from(
+      element.querySelectorAll<HTMLAnchorElement>('.requests__location-summary a'),
+    );
+
+    expect(summaries).toHaveLength(2);
+    expect(
+      summaries.every((summary) =>
+        summary?.includes('Ralco. Frente a la plaza. punto aproximado -37.933, -71.317'),
+      ),
+    ).toBe(true);
+    expect(mapLinks).toHaveLength(2);
+    expect(mapLinks[0].href).toContain('mlat=-37.933&mlon=-71.317');
+    expect(mapLinks[0].rel).toBe('noopener noreferrer');
   });
 
   it.each([

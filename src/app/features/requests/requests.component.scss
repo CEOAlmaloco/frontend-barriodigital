@@ -58,6 +58,72 @@ $badge-tint: 0.12;
   gap: $space-2;
 }
 
+.requests__location {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  margin: $space-2 0 0;
+  padding: $space-4 0 0;
+  border: 0;
+  border-top: $border-width solid var(--bd-border);
+  min-inline-size: 0;
+}
+
+.requests__attachment {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  margin: $space-2 0 0;
+  padding: $space-4 0 0;
+  border: 0;
+  border-top: $border-width solid var(--bd-border);
+  min-inline-size: 0;
+}
+
+.requests__attachment-selected {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-2;
+  overflow-wrap: anywhere;
+}
+
+.requests__attachment-preview {
+  display: grid;
+  min-height: 12rem;
+  max-height: 75vh;
+  place-items: center;
+  overflow: auto;
+  background: var(--bd-surface);
+
+  img {
+    display: block;
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+  }
+}
+
+.requests__location-title {
+  padding: 0;
+  font-size: $font-h3;
+}
+
+.requests__location-help {
+  margin: 0;
+  color: var(--bd-text-muted);
+}
+
+.requests__coordinates {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: $space-2;
+
+  @media (min-width: $breakpoint-sm) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .requests__submit {
   position: relative;
   width: 100%;
@@ -257,6 +323,20 @@ $badge-tint: 0.12;
   line-height: $line-height-body;
   overflow-wrap: normal;
   word-break: normal;
+}
+
+.requests__location-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-1 $space-2;
+  margin: $space-2 0 0;
+  font-size: $font-body-sm;
+  color: var(--bd-text-muted);
+  overflow-wrap: anywhere;
+
+  a {
+    color: var(--bd-primary);
+  }
 }
 
 .requests__description-fade {
