@@ -8,8 +8,19 @@
     </div>
     <div>
       <dt>Dirección o ubicación</dt>
-      <dd>{{ data.request.address }}</dd>
-    </div>
+        <dd>{{ data.request.address }}</dd>
+      </div>
+      @if (locationSummary(data.request); as place) {
+        <div>
+          <dt>Lugar</dt>
+          <dd>
+            {{ place }}
+            @if (mapUrl(data.request); as url) {
+              <a [href]="url" target="_blank" rel="noopener noreferrer">Ver en el mapa</a>
+            }
+          </dd>
+        </div>
+      }
     <div>
       <dt>Motivo</dt>
       <dd class="rejection-reason-dialog__reason">{{ data.request.rejectionReason }}</dd>

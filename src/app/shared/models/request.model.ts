@@ -14,6 +14,14 @@ export interface Request {
   solicitanteId: string;
   /** Nombre persistido al crear. Puede faltar en trámites antiguos. */
   solicitanteNombre?: string | null;
+  /** Código de sector de la comuna. Puede faltar. */
+  sector?: string | null;
+  /** Referencia para encontrar el lugar. Puede faltar. */
+  locationReference?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  locationPrecision?: 'EXACTO' | 'APROXIMADO' | null;
+  hasAttachment?: boolean;
 }
 
 /** Body del POST. title y solicitanteId no van: el backend los arma solo. */
@@ -21,6 +29,11 @@ export interface CreateRequestPayload {
   procedureType: string;
   description: string;
   address: string;
+  sector?: string;
+  locationReference?: string;
+  latitude?: number;
+  longitude?: number;
+  locationPrecision?: 'EXACTO' | 'APROXIMADO';
 }
 
 export type RequestTransitions = Record<RequestStatus, readonly RequestStatus[]>;

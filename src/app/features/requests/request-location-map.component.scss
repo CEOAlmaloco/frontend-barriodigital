@@ -1,0 +1,8 @@
+@use 'tokens' as *;
+
+.request-map {
+  width: 100%;
+  height: $space-12 * 5;
+  overflow: hidden;
+  border-radius: $radius-base;
+}

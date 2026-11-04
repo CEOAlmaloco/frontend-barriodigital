@@ -9,6 +9,7 @@ import {
 } from '@angular/material/dialog';
 
 import { Request } from '../../../shared/models/request.model';
+import { locationSummary, mapUrl } from '../request-location';
 
 export interface RequestRejectionReasonDialogData {
   request: Request;
@@ -24,4 +25,6 @@ export interface RequestRejectionReasonDialogData {
 })
 export class RequestRejectionReasonDialogComponent {
   protected readonly data = inject<RequestRejectionReasonDialogData>(MAT_DIALOG_DATA);
+  protected readonly locationSummary = locationSummary;
+  protected readonly mapUrl = mapUrl;
 }

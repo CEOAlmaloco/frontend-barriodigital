@@ -43,6 +43,20 @@ export class RequestsService {
     return this.http.post<RequestResponse>(this.url, payload).pipe(map(toRequest));
   }
 
+  createRequestWithAttachment(
+    payload: CreateRequestPayload,
+    attachment: File,
+  ): Observable<Request> {
+    const formData = new FormData();
+    formData.append('request', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+    formData.append('attachment', attachment, 'evidencia');
+    return this.http.post<RequestResponse>(this.url, formData).pipe(map(toRequest));
+  }
+
+  getAttachment(id: string): Observable<Blob> {
+    return this.http.get(`${this.url}/${id}/attachment`, { responseType: 'blob' });
+  }
+
   getTransitions(): Observable<RequestTransitions> {
     return this.http.get<RequestTransitions>(`${this.url}/meta/transitions`);
   }
@@ -118,6 +132,12 @@ function toRequest({
   createdAt,
   solicitanteId,
   solicitanteNombre,
+  sector,
+  locationReference,
+  latitude,
+  longitude,
+  locationPrecision,
+  hasAttachment,
 }: RequestResponse): Request {
   return {
     id,
@@ -129,5 +149,11 @@ function toRequest({
     createdAt,
     solicitanteId,
     solicitanteNombre,
+    sector,
+    locationReference,
+    latitude,
+    longitude,
+    locationPrecision,
+    ...(hasAttachment === true ? { hasAttachment: true } : {}),
   };
 }
