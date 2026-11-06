@@ -91,7 +91,14 @@ describe('RequestsService', () => {
     expect(call.request.headers.has('Content-Type')).toBe(false);
     expect(call.request.body).toBeInstanceOf(FormData);
     const formData = call.request.body as FormData;
-    expect(formData.get('attachment')).toBe(attachment);
+    // FormData.append con nombre crea un File nuevo, así que se compara su contenido y no la identidad
+    const attachmentPart = formData.get('attachment');
+    expect(attachmentPart).toBeInstanceOf(File);
+    const sentFile = attachmentPart as File;
+    expect(sentFile.name).toBe('evidencia');
+    expect(sentFile.type).toBe(attachment.type);
+    expect(sentFile.size).toBe(attachment.size);
+    expect(await sentFile.text()).toBe(await attachment.text());
     const requestPart = formData.get('request');
     expect(requestPart).toBeInstanceOf(Blob);
     expect(await (requestPart as Blob).text()).toBe(JSON.stringify(payload));
