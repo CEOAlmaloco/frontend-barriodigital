@@ -1,5 +1,5 @@
 export type RequestStatus =
-  'INGRESADO' | 'ADMITIDO' | 'EN_GESTION' | 'EN_TERRENO' | 'RESUELTO' | 'RECHAZADO';
+  'INGRESADO' | 'ADMITIDO' | 'EN_GESTION' | 'EN_TERRENO' | 'RESUELTO' | 'RECHAZADO' | 'CANCELADO';
 
 /** Trámite con los mismos nombres de campo que expone ms-barriodigital-requests vía el BFF. */
 export interface Request {
@@ -22,6 +22,15 @@ export interface Request {
   longitude?: number | null;
   locationPrecision?: 'EXACTO' | 'APROXIMADO' | null;
   hasAttachment?: boolean;
+  folio?: string | null;
+  procedureLabel?: string | null;
+  /** null para el Auditor (EP3-04, sección 6.1). */
+  solicitanteEmail?: string | null;
+  hasAssignee?: boolean;
+  /** Solo llegan al staff; el Vecino recibe null. */
+  assigneeId?: string | null;
+  assigneeName?: string | null;
+  slaBusinessDays?: number | null;
 }
 
 /** Body del POST. title y solicitanteId no van: el backend los arma solo. */
@@ -36,10 +45,11 @@ export interface CreateRequestPayload {
   locationPrecision?: 'EXACTO' | 'APROXIMADO';
 }
 
-export type RequestTransitions = Record<RequestStatus, readonly RequestStatus[]>;
+export type RequestTransitions = Partial<Record<RequestStatus, readonly RequestStatus[]>>;
 
-/** Body del PUT de estado. El motivo solo se envía al rechazar. */
+/** Body del PUT de estado. El motivo solo se envía al rechazar y el de intervención solo lo envía el Admin. */
 export interface ChangeRequestStatusPayload {
   status: RequestStatus;
   rejectionReason?: string;
+  interventionReason?: string;
 }

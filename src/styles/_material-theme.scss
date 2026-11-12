@@ -71,15 +71,21 @@ html {
   ));
 }
 
-// Hover del botón primario: morado profundo en vez de la capa clara por defecto de M3
+// Hover del botón primario: el tono de --bd-primary-dark del modo activo (más profundo en claro,
+// más luminoso en oscuro) en vez de la capa por defecto de M3
 .mat-mdc-unelevated-button:not(:disabled):hover {
   @include mat.button-overrides((
-    filled-container-color: $color-primary-dark,
+    filled-container-color: var(--bd-primary-dark),
   ));
 }
 
+.mat-mdc-outlined-button:not(:disabled):hover {
+  background-color: var(--bd-primary-container);
+}
+
 @media (prefers-reduced-motion: no-preference) {
-  .mat-mdc-unelevated-button {
+  .mat-mdc-unelevated-button,
+  .mat-mdc-outlined-button {
     transition: background-color $transition-base;
   }
 }

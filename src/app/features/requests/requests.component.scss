@@ -1,9 +1,7 @@
-@use 'sass:color';
 @use 'tokens' as *;
 
 $content-max-width: 1200px;
 $filter-min-width: 200px;
-$badge-tint: 0.12;
 
 .requests {
   display: flex;
@@ -170,6 +168,25 @@ $badge-tint: 0.12;
   align-items: center;
   gap: $space-2;
   margin-bottom: $space-4;
+}
+
+.requests__detail-link {
+  display: inline-flex;
+  min-height: $size-touch-target;
+  align-items: center;
+  color: var(--bd-primary);
+  font-weight: $font-weight-medium;
+  text-underline-offset: 0.15em;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: $border-width-strong;
+    border-radius: $space-1;
+  }
 }
 
 .requests__state {
@@ -393,33 +410,4 @@ $badge-tint: 0.12;
     margin: 0;
     overflow-wrap: anywhere;
   }
-}
-
-.badge {
-  display: inline-block;
-  padding: $space-1 $space-2;
-  font-size: $font-label;
-  font-weight: $font-weight-medium;
-  white-space: nowrap;
-  border-radius: $radius-base;
-}
-
-.badge--neutral {
-  color: $color-primary-dark;
-  background-color: color.change($color-primary-light, $alpha: $badge-tint * 2);
-}
-
-.badge--secondary {
-  color: $color-secondary;
-  background-color: color.change($color-secondary, $alpha: $badge-tint);
-}
-
-.badge--success {
-  color: $color-success;
-  background-color: color.change($color-success, $alpha: $badge-tint);
-}
-
-.badge--error {
-  color: $color-error;
-  background-color: color.change($color-error, $alpha: $badge-tint);
 }

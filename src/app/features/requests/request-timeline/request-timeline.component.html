@@ -1,0 +1,80 @@
+<div class="timeline__head">
+  <ng-content select="[timelineTitle]" />
+  @if (filters().length) {
+    <div class="timeline__filters" role="group" aria-label="Filtrar historial">
+      @for (option of filters(); track option.id) {
+        <button
+          type="button"
+          class="timeline__filter"
+          [attr.aria-pressed]="filter() === option.id"
+          (click)="filter.set(option.id)"
+        >
+          {{ option.label }}
+        </button>
+      }
+    </div>
+  }
+</div>
+
+@if (visible().length === 0) {
+  <p class="timeline__empty">
+    @if (events().length) {
+      No hay eventos de este tipo.
+    } @else {
+      Este trámite no tiene historial guardado.
+    }
+  </p>
+} @else {
+  <ol class="timeline" aria-label="Eventos del trámite, del más reciente al más antiguo">
+    @for (item of visible(); track item.event.id) {
+      <li class="timeline__event timeline__event--{{ tone(item.event) }}">
+        <span class="timeline__icon" aria-hidden="true">
+          <mat-icon>{{ icon(item.event) }}</mat-icon>
+        </span>
+        <div class="timeline__body">
+          <p class="timeline__summary">
+            <span>{{ item.text.title }}</span>
+            @if (staff() && item.event.visibility === 'INTERNO') {
+              <span class="timeline__internal">Interno</span>
+            }
+          </p>
+          <p class="timeline__meta">
+            <time [attr.datetime]="item.event.occurredAt">{{
+              item.event.occurredAt | date: 'dd/MM/yyyy HH:mm'
+            }}</time>
+            <span aria-hidden="true">·</span>
+            <span class="timeline__actor">{{ actor(item.event) }}</span>
+            @if (staff() && item.event.actorRole) {
+              <span aria-hidden="true">·</span>
+              <span>{{ item.event.actorRole }}</span>
+            }
+            @if (item.event.nextAttemptAt) {
+              <span class="timeline__next">
+                <mat-icon aria-hidden="true">event_repeat</mat-icon>
+                Próximo intento
+                <time [attr.datetime]="item.event.nextAttemptAt">{{
+                  item.event.nextAttemptAt | date: 'dd/MM/yyyy HH:mm'
+                }}</time>
+              </span>
+            }
+          </p>
+          @if (item.text.reason) {
+            <p class="timeline__note"><strong>Motivo:</strong> {{ item.text.reason }}</p>
+          }
+          @if (item.event.note) {
+            <p class="timeline__note">{{ item.event.note }}</p>
+          }
+          @if (showIntervention(item.event)) {
+            <p class="timeline__intervention">
+              <mat-icon aria-hidden="true">shield</mat-icon>
+              <span
+                ><strong>Intervención del Administrador:</strong>
+                {{ item.event.interventionReason }}</span
+              >
+            </p>
+          }
+        </div>
+      </li>
+    }
+  </ol>
+}

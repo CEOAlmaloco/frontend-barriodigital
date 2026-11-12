@@ -77,7 +77,7 @@
         @for (event of visibleEvents(); track event.id) {
           <li>
             <p class="activity-dialog__when">{{ event.occurredAt | date: 'dd/MM/yyyy HH:mm:ss' }}</p>
-            <p>{{ event.summary }}</p>
+            <p>{{ titleOf(event) }}</p>
             <p class="activity-dialog__actor">{{ event.actorName || event.actorId }}</p>
             @if (event.note) {
               <p>{{ event.note }}</p>
@@ -88,56 +88,11 @@
     }
 
     @if (data.canRegister) {
-      <form class="activity-dialog__form" [formGroup]="gestionForm" (ngSubmit)="register()">
-        <h3>Registrar gestión</h3>
-        <p class="activity-dialog__hint">Anota el intento. No confirma que el vecino haya atendido.</p>
-        <mat-form-field>
-          <mat-label>Canal</mat-label>
-          <mat-select formControlName="channel">
-            @for (channel of channels; track channel.value) {
-              <mat-option [value]="channel.value">{{ channel.label }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>Resultado</mat-label>
-          <mat-select formControlName="result">
-            @for (result of results; track result.value) {
-              <mat-option [value]="result.value">{{ result.label }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-        <mat-form-field>
-          <mat-label>Nota</mat-label>
-          <textarea matInput formControlName="note" rows="2" maxlength="500"></textarea>
-        </mat-form-field>
-        <div class="activity-dialog__when-fields">
-          <mat-form-field>
-            <mat-label>Próximo intento</mat-label>
-            <input matInput [matDatepicker]="attemptPicker" formControlName="nextAttemptDate" [min]="today" />
-            <mat-datepicker-toggle matIconSuffix [for]="attemptPicker" />
-            <mat-datepicker #attemptPicker />
-          </mat-form-field>
-          <mat-form-field>
-            <mat-label>Hora</mat-label>
-            <input matInput [matTimepicker]="attemptTime" formControlName="nextAttemptTime" />
-            <mat-timepicker-toggle matIconSuffix [for]="attemptTime" />
-            <mat-timepicker #attemptTime interval="15m" />
-          </mat-form-field>
-        </div>
-        @if (
-          gestionForm.hasError('nextAttemptIncomplete') &&
-          (gestionForm.controls.nextAttemptDate.touched || gestionForm.controls.nextAttemptTime.touched)
-        ) {
-          <p class="activity-dialog__error" role="alert">Indica la fecha y la hora del próximo intento.</p>
-        }
-        @if (saveError()) {
-          <p class="activity-dialog__error" role="alert">{{ saveError() }}</p>
-        }
-        <button matButton="filled" type="submit" [disabled]="saving()">
-          {{ saving() ? 'Guardando' : 'Registrar' }}
-        </button>
-      </form>
+      <app-request-gestion-form
+        class="activity-dialog__form"
+        [requestId]="data.requestId"
+        (registered)="replaceActivity($event)"
+      />
     }
   }
 </mat-dialog-content>

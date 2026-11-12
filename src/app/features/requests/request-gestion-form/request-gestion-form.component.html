@@ -1,0 +1,92 @@
+<form class="gestion-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  @if (showTitle()) {
+    <h3 class="gestion-form__title">Registrar gestión</h3>
+  }
+  <p class="gestion-form__hint">Anota el intento. No confirma que el vecino haya atendido.</p>
+  <div class="gestion-form__pair">
+    <mat-form-field>
+      <mat-label>Canal</mat-label>
+      <mat-select formControlName="channel">
+        @for (channel of channels; track channel.value) {
+          <mat-option [value]="channel.value">{{ channel.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Resultado</mat-label>
+      <mat-select formControlName="result">
+        @for (result of results; track result.value) {
+          <mat-option [value]="result.value">{{ result.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+  <mat-form-field>
+    <mat-label>Nota</mat-label>
+    <textarea matInput formControlName="note" rows="2" maxlength="500"></textarea>
+  </mat-form-field>
+  <div class="gestion-form__when">
+    <mat-form-field>
+      <mat-label>Próximo intento</mat-label>
+      <input
+        matInput
+        [matDatepicker]="attemptPicker"
+        formControlName="nextAttemptDate"
+        [min]="today"
+      />
+      <mat-datepicker-toggle matIconSuffix [for]="attemptPicker" />
+      <mat-datepicker #attemptPicker />
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Hora</mat-label>
+      <input matInput [matTimepicker]="attemptTime" formControlName="nextAttemptTime" />
+      <mat-timepicker-toggle matIconSuffix [for]="attemptTime" />
+      <mat-timepicker #attemptTime interval="15m" />
+    </mat-form-field>
+  </div>
+  @if (
+    form.hasError('nextAttemptIncomplete') &&
+    (form.controls.nextAttemptDate.touched || form.controls.nextAttemptTime.touched)
+  ) {
+    <p class="gestion-form__error" role="alert">Indica la fecha y la hora del próximo intento.</p>
+  }
+
+  @if (requireInterventionReason()) {
+    <div class="gestion-form__intervention">
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>Motivo de intervención (obligatorio)</mat-label>
+        <textarea
+          matInput
+          formControlName="interventionReason"
+          rows="2"
+          [maxlength]="interventionMaxLength"
+          aria-describedby="gestion-intervention-hint"
+          required
+        ></textarea>
+      </mat-form-field>
+      <p id="gestion-intervention-hint" class="gestion-form__counter">
+        <span>Uso interno. El vecino no lo ve.</span>
+        <span
+          >{{ form.controls.interventionReason.value.length }} / {{ interventionMaxLength }}</span
+        >
+      </p>
+      @if (form.controls.interventionReason.touched && interventionMissing()) {
+        <p class="gestion-form__error" role="alert">Indica el motivo de intervención.</p>
+      }
+    </div>
+  }
+
+  @if (saveError(); as error) {
+    <p class="gestion-form__error" role="alert">{{ error }}</p>
+  }
+  <div class="gestion-form__actions">
+    @if (showCancel()) {
+      <button matButton type="button" [disabled]="saving()" (click)="cancelled.emit()">
+        Cancelar
+      </button>
+    }
+    <button matButton="filled" type="submit" [disabled]="saving()" [attr.aria-busy]="saving()">
+      {{ saving() ? 'Guardando' : 'Registrar' }}
+    </button>
+  </div>
+</form>

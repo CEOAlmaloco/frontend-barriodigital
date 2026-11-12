@@ -1,0 +1,348 @@
+<main class="request-detail">
+  <nav class="request-detail__crumbs" aria-label="Ruta de navegación">
+    <a class="request-detail__back" [routerLink]="backLink().path">
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      {{ backLink().label }}
+    </a>
+    @if (state() === 'ready') {
+      <span aria-hidden="true">/</span>
+      <span aria-current="page">{{ folio() ?? 'Trámite' }}</span>
+    }
+  </nav>
+
+  @switch (state()) {
+    @case ('loading') {
+      <app-request-detail-skeleton />
+    }
+    @case ('error') {
+      <section class="request-detail__card request-detail__state" role="alert">
+        <span
+          class="request-detail__state-icon request-detail__state-icon--error"
+          aria-hidden="true"
+        >
+          <mat-icon>cloud_off</mat-icon>
+        </span>
+        <h1>No pudimos cargar el trámite</h1>
+        <p>Revisa tu conexión e inténtalo de nuevo.</p>
+        <div class="request-detail__state-actions">
+          <button matButton="filled" type="button" (click)="retry()">
+            <mat-icon aria-hidden="true">refresh</mat-icon>
+            Reintentar
+          </button>
+          <a matButton [routerLink]="backLink().path">Volver a {{ backLink().label }}</a>
+        </div>
+      </section>
+    }
+    @case ('not-found') {
+      <section class="request-detail__card request-detail__state">
+        <span class="request-detail__state-icon" aria-hidden="true">
+          <mat-icon>search_off</mat-icon>
+        </span>
+        <h1>Trámite no encontrado</h1>
+        <p>El enlace no corresponde a un trámite disponible para tu cuenta.</p>
+        <div class="request-detail__state-actions">
+          <a matButton="filled" [routerLink]="backLink().path">Ir a {{ backLink().label }}</a>
+        </div>
+      </section>
+    }
+    @case ('ready') {
+      @if (request(); as request) {
+        <header class="request-detail__head">
+          @if (folio(); as folio) {
+            <p class="request-detail__folio">
+              <span>Folio {{ folio }}</span>
+              <button
+                mat-icon-button
+                type="button"
+                class="request-detail__copy"
+                [attr.aria-label]="'Copiar folio ' + folio"
+                (click)="copyFolio()"
+              >
+                <mat-icon aria-hidden="true">content_copy</mat-icon>
+              </button>
+            </p>
+          }
+          <h1 #heading class="request-detail__title" tabindex="-1">{{ typeLabel() }}</h1>
+          <div class="request-detail__meta">
+            <app-request-status-badge [status]="request.status" />
+            @if (!isClosed()) {
+              @if (!isStaff() && request.hasAssignee) {
+                <span class="request-detail__chip request-detail__chip--secondary">
+                  <mat-icon aria-hidden="true">support_agent</mat-icon>
+                  En atención
+                </span>
+              }
+              @if (isStaff() && !request.hasAssignee) {
+                <span class="request-detail__chip request-detail__chip--accent">
+                  <mat-icon aria-hidden="true">person_outline</mat-icon>
+                  Sin responsable
+                </span>
+              }
+            }
+            <span class="request-detail__meta-item">
+              <mat-icon aria-hidden="true">event</mat-icon>
+              Ingresado el
+              <time [attr.datetime]="request.createdAt">{{ request.createdAt | requestDate }}</time>
+            </span>
+            @if (deadline(); as days) {
+              <span class="request-detail__meta-item">
+                <mat-icon aria-hidden="true">schedule</mat-icon>
+                Plazo de {{ days }}
+              </span>
+            }
+          </div>
+        </header>
+
+        <section
+          class="request-detail__card request-detail__progress"
+          aria-labelledby="progress-title"
+        >
+          <h2 id="progress-title" class="cdk-visually-hidden">Avance del trámite</h2>
+          <app-request-progress [status]="request.status" [stages]="stages()" />
+        </section>
+
+        @if (request.status === 'RECHAZADO' && request.rejectionReason?.trim()) {
+          <div class="request-detail__notice request-detail__notice--error" role="note">
+            <mat-icon aria-hidden="true">info</mat-icon>
+            <div>
+              <p class="request-detail__notice-title">Motivo del rechazo</p>
+              <p class="request-detail__notice-text">{{ request.rejectionReason }}</p>
+            </div>
+          </div>
+        }
+        @if (request.status === 'CANCELADO') {
+          <div class="request-detail__notice" role="note">
+            <mat-icon aria-hidden="true">info</mat-icon>
+            <p>{{ isStaff() ? 'El vecino canceló este trámite.' : 'Cancelaste este trámite.' }}</p>
+          </div>
+        }
+
+        <div class="request-detail__grid">
+          <aside class="request-detail__aside" aria-label="Atención del trámite">
+            <app-request-attention-panel
+              [request]="request"
+              [viewer]="viewer()"
+              [isResponsible]="isResponsible()"
+              [allowedStatuses]="allowedStatuses()"
+              [transitionsState]="transitionsState()"
+              [taking]="taking()"
+              (take)="take()"
+              (changeStatus)="openStatusDialog($event)"
+              (registerGestion)="openGestionDialog($event)"
+              (retryTransitions)="loadTransitions()"
+            />
+
+            @if (isStaff()) {
+              <section class="request-detail__card" aria-labelledby="requester-title">
+                <h2 id="requester-title" class="request-detail__card-title">Solicitante</h2>
+                <dl class="request-detail__facts">
+                  <div>
+                    <dt>Nombre</dt>
+                    <dd>{{ request.solicitanteNombre?.trim() || 'Sin nombre' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Correo</dt>
+                    <dd class="request-detail__email">
+                      @if (isAuditor()) {
+                        <span class="request-detail__muted">No visible para auditoría</span>
+                      } @else if (request.solicitanteEmail) {
+                        {{ request.solicitanteEmail }}
+                      } @else {
+                        <span class="request-detail__muted">Sin correo registrado</span>
+                      }
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+
+              @if (times().length || nextContact()) {
+                <section class="request-detail__card" aria-labelledby="times-title">
+                  <h2 id="times-title" class="request-detail__card-title">Tiempos</h2>
+                  <dl class="request-detail__times">
+                    @for (item of times(); track item.label) {
+                      <div>
+                        <dt>{{ item.label }}</dt>
+                        <dd>{{ item.value }}</dd>
+                      </div>
+                    }
+                  </dl>
+                  @if (nextContact(); as contact) {
+                    <p class="request-detail__next">
+                      <span class="request-detail__muted">Siguiente acción</span>
+                      <span>
+                        {{ contact.siguienteAccion }}
+                        @if (contact.siguienteIntento) {
+                          ·
+                          <time [attr.datetime]="contact.siguienteIntento">{{
+                            contact.siguienteIntento | requestDate
+                          }}</time>
+                        }
+                      </span>
+                    </p>
+                  }
+                </section>
+              }
+            }
+          </aside>
+
+          <div class="request-detail__main">
+            <section class="request-detail__card" aria-labelledby="request-title">
+              <h2 id="request-title" class="request-detail__card-title">Solicitud</h2>
+              <p class="request-detail__description">{{ request.description }}</p>
+              <dl class="request-detail__fields">
+                <div>
+                  <dt>Dirección</dt>
+                  <dd>{{ request.address }}</dd>
+                </div>
+                @if (sector(); as sector) {
+                  <div>
+                    <dt>Sector</dt>
+                    <dd>{{ sector }}</dd>
+                  </div>
+                }
+                @if (request.locationReference?.trim()) {
+                  <div>
+                    <dt>Referencia</dt>
+                    <dd>{{ request.locationReference }}</dd>
+                  </div>
+                }
+              </dl>
+            </section>
+
+            @if (hasPoint() || request.hasAttachment) {
+              <section class="request-detail__card" aria-labelledby="media-title">
+                <h2 id="media-title" class="request-detail__card-title">
+                  {{
+                    hasPoint() && request.hasAttachment
+                      ? 'Ubicación y evidencia'
+                      : hasPoint()
+                        ? 'Ubicación'
+                        : 'Evidencia'
+                  }}
+                </h2>
+                <div
+                  class="request-detail__media"
+                  [class.request-detail__media--pair]="hasPoint() && request.hasAttachment"
+                >
+                  @if (hasPoint()) {
+                    <div class="request-detail__media-item">
+                      <app-request-location-map
+                        class="request-detail__map"
+                        [selectable]="false"
+                        [latitude]="request.latitude ?? null"
+                        [longitude]="request.longitude ?? null"
+                        [label]="'Mapa con el punto del trámite en ' + request.address"
+                      />
+                      <p class="request-detail__location">
+                        <span class="request-detail__chip">
+                          <mat-icon aria-hidden="true">{{
+                            request.locationPrecision === 'APROXIMADO' ? 'near_me' : 'my_location'
+                          }}</mat-icon>
+                          {{
+                            request.locationPrecision === 'APROXIMADO'
+                              ? 'Punto aproximado'
+                              : 'Punto exacto'
+                          }}
+                        </span>
+                        <span class="request-detail__coords"
+                          >{{ request.latitude }}, {{ request.longitude }}</span
+                        >
+                        @if (mapLink(); as link) {
+                          <a
+                            class="request-detail__link"
+                            [href]="link"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Abrir en el mapa
+                            <mat-icon aria-hidden="true">open_in_new</mat-icon>
+                            <span class="cdk-visually-hidden">(se abre en una pestaña nueva)</span>
+                          </a>
+                        }
+                      </p>
+                    </div>
+                  }
+                  @if (request.hasAttachment) {
+                    <div class="request-detail__media-item">
+                      @switch (attachmentState()) {
+                        @case ('loading') {
+                          <span class="skeleton skeleton--photo" role="status">
+                            <span class="cdk-visually-hidden">Cargando la imagen adjunta.</span>
+                          </span>
+                        }
+                        @case ('error') {
+                          <div class="request-detail__photo-error" role="alert">
+                            <mat-icon aria-hidden="true">broken_image</mat-icon>
+                            <p>No se pudo cargar la imagen adjunta.</p>
+                            <button matButton type="button" (click)="loadAttachment()">
+                              Reintentar
+                            </button>
+                          </div>
+                        }
+                        @default {
+                          <button
+                            type="button"
+                            class="request-detail__photo"
+                            aria-label="Ampliar la imagen adjunta"
+                            (click)="openPreview()"
+                          >
+                            <img [src]="attachmentUrl()" alt="" />
+                            <span class="request-detail__photo-tag" aria-hidden="true">
+                              <mat-icon>zoom_in</mat-icon>
+                              Ampliar
+                            </span>
+                          </button>
+                        }
+                      }
+                      <p class="request-detail__muted request-detail__small">
+                        Imagen adjunta por el vecino al ingresar.
+                      </p>
+                    </div>
+                  }
+                </div>
+              </section>
+            }
+
+            <section class="request-detail__card" aria-labelledby="history-title">
+              @if (activityState() !== 'ready') {
+                <h2 id="history-title" class="request-detail__card-title">Historial</h2>
+              }
+              @switch (activityState()) {
+                @case ('loading') {
+                  <p class="request-detail__muted" role="status">Cargando el historial.</p>
+                }
+                @case ('error') {
+                  <div class="request-detail__inline-error" role="alert">
+                    <p>No se pudo cargar el historial.</p>
+                    <button matButton type="button" (click)="loadActivity()">Reintentar</button>
+                  </div>
+                }
+                @default {
+                  <app-request-timeline [events]="activity()?.eventos ?? []" [staff]="isStaff()">
+                    <h2 id="history-title" class="request-detail__card-title" timelineTitle>
+                      Historial
+                    </h2>
+                  </app-request-timeline>
+                }
+              }
+            </section>
+          </div>
+        </div>
+      }
+    }
+  }
+</main>
+
+<ng-template #attachmentPreview let-preview>
+  <h2 mat-dialog-title>Imagen adjunta</h2>
+  <mat-dialog-content class="request-detail__preview">
+    <img [src]="preview.url" alt="Imagen adjunta al trámite" />
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <a matButton [href]="preview.url" [download]="'evidencia.' + preview.extension">
+      <mat-icon aria-hidden="true">download</mat-icon>
+      Descargar
+    </a>
+    <button matButton="filled" type="button" mat-dialog-close>Cerrar</button>
+  </mat-dialog-actions>
+</ng-template>

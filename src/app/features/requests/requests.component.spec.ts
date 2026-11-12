@@ -6,6 +6,7 @@ import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSelect } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
+import { provideRouter } from '@angular/router';
 import { Observable, Subject, Subscriber, firstValueFrom, of, throwError } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
@@ -97,6 +98,7 @@ describe('RequestsComponent', () => {
         { provide: RequestsService, useValue: service },
         { provide: AuthService, useValue: auth },
         { provide: CatalogService, useValue: catalogService },
+        provideRouter([]),
       ],
     }).compileComponents();
 

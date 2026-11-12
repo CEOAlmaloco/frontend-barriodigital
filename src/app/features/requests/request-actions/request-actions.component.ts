@@ -12,7 +12,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
 
 import { RequestStatus } from '../../../shared/models/request.model';
-import { REQUEST_ACTION_LABELS } from '../requests.constants';
+import { actionLabel, isClosedStatus } from '../requests.constants';
 
 export interface RequestStatusAction {
   status: RequestStatus;
@@ -39,13 +39,13 @@ export class RequestActionsComponent {
   readonly allowedStatuses = input.required<readonly RequestStatus[]>();
   readonly changeStatus = output<RequestStatusAction>();
 
-  protected readonly actionLabels = REQUEST_ACTION_LABELS;
-  protected readonly isTerminal = computed(
-    () => this.status() === 'RESUELTO' || this.status() === 'RECHAZADO',
-  );
+  protected readonly actionLabel = actionLabel;
+  protected readonly isTerminal = computed(() => isClosedStatus(this.status()));
   protected readonly canReject = computed(() => this.allowedStatuses().includes('RECHAZADO'));
   protected readonly primaryAction = computed(() =>
-    this.allowedStatuses().find((status) => status !== 'RECHAZADO' && status !== 'INGRESADO'),
+    this.allowedStatuses().find(
+      (status) => status !== 'RECHAZADO' && status !== 'INGRESADO' && status !== 'CANCELADO',
+    ),
   );
 
   protected selectAction(status: RequestStatus, event: Event, menu?: MatMenuTrigger): void {

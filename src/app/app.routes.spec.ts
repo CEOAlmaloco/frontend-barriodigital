@@ -3,13 +3,14 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { MsalGuard } from '@azure/msal-angular';
-import { of } from 'rxjs';
+import { NEVER, of } from 'rxjs';
 
 import { routes } from './app.routes';
 import { authGuard, roleGuard } from './core/auth/auth.guard';
 import { AuthService } from './core/auth/auth.service';
 import { CatalogService } from './core/catalog/catalog.service';
 import { AuthenticatedLayoutComponent } from './core/layout/authenticated-layout.component';
+import { RequestsService } from './features/requests/requests.service';
 import { Role } from './shared/models/role';
 
 describe.each([
@@ -99,5 +100,65 @@ describe.each([
 
     expect(TestBed.inject(Router).url).toBe('/');
     expect(msalGuard.canActivate).not.toHaveBeenCalled();
+  });
+});
+
+describe('Ruta /tramites/:id', () => {
+  const roles = signal<Role[]>([]);
+  const auth = {
+    account: signal({
+      name: 'Usuario de prueba',
+      username: 'usuario@cloudproyecto.onmicrosoft.com',
+    }),
+    userId: signal('oid'),
+    isAuthenticated: signal(true),
+    isInteractionInProgress: signal(false),
+    loginFailed: signal(false),
+    hasSession: () => of(true),
+    whenRolesLoaded: () => of(roles()),
+    hasRole: (role: Role) => roles().includes(role),
+  };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter(routes),
+        { provide: AuthService, useValue: auth },
+        { provide: MsalGuard, useValue: { canActivate: () => of(true) } },
+        {
+          provide: RequestsService,
+          useValue: { getRequest: () => NEVER, getActividad: () => NEVER },
+        },
+      ],
+    });
+  });
+
+  it('admite a los cuatro roles, sin ampliar el listado', () => {
+    const layout = routes.find((route) => route.component === AuthenticatedLayoutComponent);
+    const detail = layout?.children?.find((child) => child.path === 'tramites/:id');
+    const list = layout?.children?.find((child) => child.path === 'tramites');
+
+    expect(detail?.canActivate).toEqual([roleGuard]);
+    expect([...(detail?.data?.['roles'] ?? [])].sort()).toEqual(Object.values(Role).sort());
+    expect(list?.data?.['roles']).toEqual([Role.Vecino, Role.Funcionario]);
+  });
+
+  it.each(Object.values(Role))('%s entra por enlace directo al detalle', async (role) => {
+    roles.set([role]);
+    const harness = await RouterTestingHarness.create();
+
+    await harness.navigateByUrl('/tramites/req-1');
+
+    expect(TestBed.inject(Router).url).toBe('/tramites/req-1');
+    expect(harness.routeNativeElement?.querySelector('app-request-detail')).not.toBeNull();
+  });
+
+  it('sin rol vuelve al inicio', async () => {
+    roles.set([]);
+    const harness = await RouterTestingHarness.create();
+
+    await harness.navigateByUrl('/tramites/req-1');
+
+    expect(TestBed.inject(Router).url).toBe('/inicio');
   });
 });

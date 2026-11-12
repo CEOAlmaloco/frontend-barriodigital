@@ -2,54 +2,39 @@
   <h2 mat-dialog-title class="status-dialog__title">{{ title }}</h2>
 
   <mat-dialog-content class="status-dialog__content">
-    <p id="request-status-description">
-      @if (isRejection) {
-        El trámite quedará rechazado y no podrá avanzar a otro estado. Indica el motivo para que el
-        vecino pueda conocerlo.
-      } @else if (isAdmission) {
-        ¿Confirmas la admisión de este trámite? Una vez admitido, no podrá volver al estado
-        Ingresado.
-      } @else {
-        ¿Confirmas el cambio de este trámite al estado “{{ statusView[data.status].label }}”? No
-        podrá volver al estado anterior.
-      }
-    </p>
+    <p id="request-status-description" class="status-dialog__lead">{{ lead }}</p>
 
-    <dl class="status-dialog__summary">
-      <div>
-        <dt>Tipo de trámite</dt>
-        <dd>{{ data.procedureTypeLabel }}</dd>
-      </div>
-      <div>
-        <dt>Dirección o ubicación</dt>
-        <dd>{{ data.request.address }}</dd>
-      </div>
-      @if (locationSummary(data.request); as place) {
+    <div class="status-dialog__summary">
+      <p class="status-dialog__transition">
+        <span class="cdk-visually-hidden">Cambio de estado: de</span>
+        <app-request-status-badge [status]="data.request.status" />
+        <mat-icon aria-hidden="true">arrow_forward</mat-icon>
+        <span class="cdk-visually-hidden">a</span>
+        <app-request-status-badge [status]="data.status" />
+      </p>
+      <dl class="status-dialog__facts">
         <div>
-          <dt>Lugar</dt>
+          <dt>Trámite</dt>
           <dd>
-            {{ place }}
-            @if (mapUrl(data.request); as url) {
-              <a [href]="url" target="_blank" rel="noopener noreferrer">Ver en el mapa</a>
+            @if (data.request.folio) {
+              <span class="status-dialog__folio">{{ data.request.folio }}</span>
             }
+            {{ data.procedureTypeLabel }}
           </dd>
         </div>
-      }
-      <div>
-        <dt>Cambio de estado</dt>
-        <dd class="status-dialog__transition">
-          <span>{{ statusView[data.request.status].label }}</span>
-          <mat-icon aria-hidden="true">arrow_forward</mat-icon>
-          <span class="cdk-visually-hidden">a</span>
-          <span>{{ statusView[data.status].label }}</span>
-        </dd>
-      </div>
-    </dl>
+        <div>
+          <dt>Dirección</dt>
+          <dd class="status-dialog__address" [attr.title]="data.request.address">
+            {{ data.request.address }}
+          </dd>
+        </div>
+      </dl>
+    </div>
 
     @if (isRejection) {
       <div class="status-dialog__reason">
         <mat-form-field subscriptSizing="dynamic">
-          <mat-label>Motivo del rechazo (obligatorio)</mat-label>
+          <mat-label>Motivo del rechazo (lo verá el vecino)</mat-label>
           <textarea
             matInput
             formControlName="rejectionReason"
@@ -73,6 +58,40 @@
       </div>
     }
 
+    @if (requiresIntervention) {
+      <div class="status-dialog__reason status-dialog__reason--internal">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-label>Motivo de intervención (obligatorio)</mat-label>
+          <textarea
+            matInput
+            formControlName="interventionReason"
+            placeholder="Por qué operas este trámite en lugar del responsable"
+            rows="3"
+            [maxlength]="maxInterventionLength"
+            aria-describedby="request-intervention-reason-counter"
+            required
+          ></textarea>
+          <mat-error>
+            @if (rejectionForm.controls.interventionReason.hasError('maxlength')) {
+              El motivo de intervención no puede superar {{ maxInterventionLength }} caracteres.
+            } @else {
+              Indica el motivo de intervención.
+            }
+          </mat-error>
+        </mat-form-field>
+        <p
+          id="request-intervention-reason-counter"
+          class="status-dialog__counter status-dialog__counter--split"
+        >
+          <span>Uso interno. El vecino no lo ve.</span>
+          <span
+            >{{ rejectionForm.controls.interventionReason.value.length }} /
+            {{ maxInterventionLength }}</span
+          >
+        </p>
+      </div>
+    }
+
     <div class="status-dialog__feedback" aria-live="polite" aria-atomic="true">
       @if (isSubmitting()) {
         <p>Confirmando cambio de estado.</p>
@@ -86,7 +105,7 @@
     <button matButton type="button" [disabled]="isSubmitting()" (click)="cancel()">Cancelar</button>
     @if (requiresReload()) {
       <button matButton="filled" type="button" (click)="closeAndReload()">
-        Cerrar y actualizar lista
+        {{ reloadLabel }}
       </button>
     } @else {
       <button

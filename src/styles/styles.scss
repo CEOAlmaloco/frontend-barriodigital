@@ -1,6 +1,11 @@
+@use '@angular/cdk' as cdk;
 @use 'tokens' as *;
 @use 'accessibility';
 @use 'material-theme';
+
+// El CDK inyecta .cdk-visually-hidden solo al montar ciertos componentes; sin esto el texto para
+// lectores de pantalla se ve en las páginas que no abrieron antes un diálogo
+@include cdk.a11y-visually-hidden();
 
 *,
 *::before,

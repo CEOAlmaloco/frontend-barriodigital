@@ -10,6 +10,16 @@
   --bd-primary-dark: #{$color-primary-dark};
   --bd-on-primary: #{$color-surface};
   --bd-error: #{$color-error};
+  --bd-secondary: #{$color-secondary};
+  --bd-success: #{$color-success};
+  --bd-accent-text: #{$color-accent-dark};
+  --bd-primary-container: #{rgba($color-primary-light, 0.24)};
+  --bd-secondary-container: #{rgba($color-secondary, 0.1)};
+  --bd-success-container: #{rgba($color-success, 0.12)};
+  --bd-error-container: #{rgba($color-error, 0.1)};
+  --bd-accent-container: #{rgba($color-accent, 0.18)};
+  --bd-container-border: transparent;
+  --bd-border-interactive: #{$color-border-interactive};
   --bd-field: #{$color-surface};
   --bd-font: #{$font-family-base};
 }
@@ -83,6 +93,17 @@ html[data-bd-contrast='high'] {
   --bd-primary: #000000;
   --bd-primary-dark: #000000;
   --bd-on-primary: #ffffff;
+  --bd-error: #000000;
+  --bd-secondary: #000000;
+  --bd-success: #000000;
+  --bd-accent-text: #000000;
+  --bd-primary-container: #ffffff;
+  --bd-secondary-container: #ffffff;
+  --bd-success-container: #ffffff;
+  --bd-error-container: #ffffff;
+  --bd-accent-container: #ffffff;
+  --bd-container-border: #000000;
+  --bd-border-interactive: #000000;
   --mat-sys-background: #ffffff;
   --mat-sys-on-background: #000000;
   --mat-sys-surface: #ffffff;
@@ -103,6 +124,16 @@ html[data-bd-contrast='dark'] {
   --bd-primary: #e4bce9;
   --bd-primary-dark: #f3d7f6;
   --bd-on-primary: #241228;
+  --bd-error: #f0b4b3;
+  --bd-secondary: #9fd4d8;
+  --bd-success: #8fd4ae;
+  --bd-accent-text: #f1d49b;
+  --bd-primary-container: rgba(228, 188, 233, 0.16);
+  --bd-secondary-container: rgba(159, 212, 216, 0.14);
+  --bd-success-container: rgba(143, 212, 174, 0.14);
+  --bd-error-container: rgba(240, 180, 179, 0.14);
+  --bd-accent-container: rgba(241, 212, 155, 0.14);
+  --bd-border-interactive: #b7a4c2;
   --mat-sys-background: #17141c;
   --mat-sys-on-background: #f6f1f8;
   --mat-sys-surface: #241f2b;
@@ -122,6 +153,7 @@ html[data-bd-contrast='dark'] .dashboard__role-demo,
 html[data-bd-contrast='dark'] .admin__table-wrapper,
 html[data-bd-contrast='dark'] .admin__item,
 html[data-bd-contrast='dark'] .login__panel,
+html[data-bd-contrast='dark'] .request-detail__card,
 html[data-bd-contrast='high'] .requests__card,
 html[data-bd-contrast='high'] .requests__item,
 html[data-bd-contrast='high'] .requests__table-wrapper,
@@ -129,13 +161,15 @@ html[data-bd-contrast='high'] .dashboard__role-demo,
 html[data-bd-contrast='high'] .admin__table-wrapper,
 html[data-bd-contrast='high'] .admin__item,
 html[data-bd-contrast='high'] .login__panel,
+html[data-bd-contrast='high'] .request-detail__card,
 html[data-bd-contrast='negative'] .requests__card,
 html[data-bd-contrast='negative'] .requests__item,
 html[data-bd-contrast='negative'] .requests__table-wrapper,
 html[data-bd-contrast='negative'] .dashboard__role-demo,
 html[data-bd-contrast='negative'] .admin__table-wrapper,
 html[data-bd-contrast='negative'] .admin__item,
-html[data-bd-contrast='negative'] .login__panel {
+html[data-bd-contrast='negative'] .login__panel,
+html[data-bd-contrast='negative'] .request-detail__card {
   background-color: var(--bd-surface);
   color: var(--bd-text);
 }
@@ -180,6 +214,17 @@ html[data-bd-contrast='negative'] {
   --bd-primary: #ffffff;
   --bd-primary-dark: #ffffff;
   --bd-on-primary: #000000;
+  --bd-error: #ffffff;
+  --bd-secondary: #ffffff;
+  --bd-success: #ffffff;
+  --bd-accent-text: #ffffff;
+  --bd-primary-container: #000000;
+  --bd-secondary-container: #000000;
+  --bd-success-container: #000000;
+  --bd-error-container: #000000;
+  --bd-accent-container: #000000;
+  --bd-container-border: #ffffff;
+  --bd-border-interactive: #ffffff;
   --mat-sys-background: #000000;
   --mat-sys-on-background: #ffffff;
   --mat-sys-surface: #111111;

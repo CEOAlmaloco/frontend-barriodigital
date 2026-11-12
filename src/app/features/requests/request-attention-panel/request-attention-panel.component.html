@@ -1,0 +1,160 @@
+<section class="request-detail__card panel" aria-labelledby="attention-title">
+  <div class="panel__head">
+    <h2 id="attention-title" class="panel__title">
+      {{ isVecino() ? 'Estado de tu solicitud' : 'Atención' }}
+    </h2>
+    @if (isAuditor()) {
+      <span class="panel__readonly">
+        <mat-icon aria-hidden="true">visibility</mat-icon>
+        Solo lectura
+      </span>
+    }
+  </div>
+
+  @if (isVecino()) {
+    @if (isClosed()) {
+      <app-request-status-badge [status]="request().status" />
+    } @else {
+      <div class="panel__who">
+        <span class="panel__avatar" aria-hidden="true">
+          <mat-icon>support_agent</mat-icon>
+        </span>
+        <p class="panel__who-text">
+          <strong>{{ hasAssignee() ? 'En atención' : 'En revisión' }}</strong>
+          <span>
+            {{ hasAssignee() ? 'Un equipo municipal está a cargo' : 'Pendiente de asignación' }}
+          </span>
+        </p>
+      </div>
+    }
+  } @else {
+    <div class="panel__who">
+      @if (hasAssignee()) {
+        <span class="panel__avatar" aria-hidden="true">{{ initials() }}</span>
+        <p class="panel__who-text">
+          <strong class="panel__assignee">{{ assigneeName() }}</strong>
+          <span>Responsable{{ isResponsible() ? ' · tú' : '' }}</span>
+        </p>
+      } @else {
+        <span class="panel__avatar panel__avatar--empty" aria-hidden="true">
+          <mat-icon>person_outline</mat-icon>
+        </span>
+        <p class="panel__who-text">
+          <strong>Sin responsable</strong>
+          <span>Ingresado {{ elapsed() }}</span>
+        </p>
+      }
+    </div>
+  }
+
+  @if (deadline() || !isVecino()) {
+    <dl class="panel__facts">
+      <div>
+        <dt>Plazo de respuesta</dt>
+        <dd>
+          @if (deadline(); as days) {
+            {{ days }}{{ isVecino() ? ' desde el ingreso' : '' }}
+          } @else {
+            <span class="panel__muted">Sin plazo definido</span>
+          }
+        </dd>
+      </div>
+    </dl>
+  }
+
+  @if (!isVecino() && !isAuditor()) {
+    <div class="panel__actions">
+      @if (isClosed()) {
+        <p class="panel__hint">
+          El trámite está cerrado y no admite cambios de estado ni gestiones.
+        </p>
+      } @else if (canTake()) {
+        <button
+          matButton="filled"
+          type="button"
+          class="panel__button"
+          [disabled]="taking()"
+          [attr.aria-busy]="taking()"
+          (click)="take.emit()"
+        >
+          @if (taking()) {
+            <mat-progress-spinner
+              class="panel__spinner"
+              mode="indeterminate"
+              diameter="20"
+              aria-hidden="true"
+            />
+          } @else {
+            <mat-icon aria-hidden="true">assignment_ind</mat-icon>
+          }
+          {{ taking() ? 'Tomando trámite' : 'Tomar trámite' }}
+        </button>
+        <p class="panel__hint">
+          Quedarás como responsable y podrás admitirlo, gestionarlo o rechazarlo.
+        </p>
+      } @else if (readsOnly()) {
+        <p class="panel__notice panel__notice--info">
+          <mat-icon aria-hidden="true">lock</mat-icon>
+          <span>Solo {{ assigneeName() }} puede operar este trámite.</span>
+        </p>
+      } @else if (canOperate()) {
+        @if (isAdmin()) {
+          <p class="panel__notice panel__notice--accent">
+            <mat-icon aria-hidden="true">shield</mat-icon>
+            <span>Operas como administrador. Cada acción pide un motivo de intervención.</span>
+          </p>
+        }
+        @switch (transitionsState()) {
+          @case ('loading') {
+            <p class="panel__hint" role="status">Cargando las acciones disponibles.</p>
+          }
+          @case ('error') {
+            <p class="panel__hint" role="alert">No se pudieron cargar los cambios de estado.</p>
+            <button
+              matButton="outlined"
+              type="button"
+              class="panel__button"
+              (click)="retryTransitions.emit()"
+            >
+              <mat-icon aria-hidden="true">refresh</mat-icon>
+              Reintentar
+            </button>
+          }
+          @default {
+            @if (nextStatus(); as status) {
+              <button
+                matButton="filled"
+                type="button"
+                class="panel__button"
+                (click)="emitStatus(status, $event)"
+              >
+                <mat-icon aria-hidden="true">arrow_forward</mat-icon>
+                {{ actionLabel(status) }}
+              </button>
+            }
+          }
+        }
+        <button
+          matButton="outlined"
+          type="button"
+          class="panel__button"
+          (click)="emitGestion($event)"
+        >
+          <mat-icon aria-hidden="true">call</mat-icon>
+          Registrar gestión
+        </button>
+        @if (transitionsState() === 'ready' && canReject()) {
+          <button
+            matButton
+            type="button"
+            class="panel__button panel__button--danger"
+            (click)="emitStatus('RECHAZADO', $event)"
+          >
+            <mat-icon aria-hidden="true">block</mat-icon>
+            Rechazar
+          </button>
+        }
+      }
+    </div>
+  }
+</section>

@@ -7,10 +7,10 @@
       type="button"
       class="request-actions__primary"
       [class.request-actions__primary--split]="canReject()"
-      [attr.aria-label]="actionLabels[action] + '. Trámite ' + requestId()"
+      [attr.aria-label]="actionLabel(action) + '. Trámite ' + requestId()"
       (click)="selectAction(action, $event)"
     >
-      {{ actionLabels[action] }}
+      {{ actionLabel(action) }}
     </button>
 
     @if (canReject()) {
