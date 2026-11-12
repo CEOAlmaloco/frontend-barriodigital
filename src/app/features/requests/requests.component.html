@@ -345,11 +345,20 @@
             </div>
           </ng-template>
 
+          <ng-template #requestLink let-request>
+            <a
+              class="requests__detail-link"
+              [routerLink]="['/tramites', request.id]"
+              [attr.aria-label]="
+                'Ver detalle del trámite ' + (request.folio || getTipoLabel(request.procedureType))
+              "
+              >{{ getTipoLabel(request.procedureType) }}</a
+            >
+          </ng-template>
+
           <ng-template #requestState let-request>
             <div class="requests__state">
-              <span class="badge badge--{{ statusOf(request).tone }}">{{
-                statusOf(request).label
-              }}</span>
+              <app-request-status-badge [status]="request.status" />
               <button
                 mat-icon-button
                 type="button"
@@ -363,6 +372,7 @@
                 <mat-icon aria-hidden="true">more_vert</mat-icon>
               </button>
               <mat-menu #detailsMenu="matMenu">
+                <a mat-menu-item [routerLink]="['/tramites', request.id]">Ver detalle</a>
                 <button
                   mat-menu-item
                   type="button"
@@ -419,7 +429,7 @@
               <ng-container matColumnDef="tipo">
                 <th mat-header-cell *matHeaderCellDef>Tipo</th>
                 <td mat-cell *matCellDef="let request">
-                  {{ getTipoLabel(request.procedureType) }}
+                  <ng-container *ngTemplateOutlet="requestLink; context: { $implicit: request }" />
                 </td>
               </ng-container>
 
@@ -478,7 +488,11 @@
                 <dl class="requests__fields">
                   <div>
                     <dt>Tipo</dt>
-                    <dd>{{ getTipoLabel(request.procedureType) }}</dd>
+                    <dd>
+                      <ng-container
+                        *ngTemplateOutlet="requestLink; context: { $implicit: request }"
+                      />
+                    </dd>
                   </div>
                   <div>
                     <dt>Descripción</dt>
@@ -507,12 +521,7 @@
                     <dd>{{ request.createdAt | date: 'dd-MM-yyyy' }}</dd>
                   </div>
                 </dl>
-                @if (
-                  isFuncionario() &&
-                  (transitionsFor(request).length ||
-                    request.status === 'RESUELTO' ||
-                    request.status === 'RECHAZADO')
-                ) {
+                @if (isFuncionario() && (transitionsFor(request).length || isClosed(request))) {
                   <div class="requests__item-actions">
                     <app-request-actions
                       [requestId]="request.id"

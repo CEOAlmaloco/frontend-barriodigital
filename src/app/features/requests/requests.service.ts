@@ -7,6 +7,7 @@ import {
   ChangeRequestStatusPayload,
   CreateRequestPayload,
   Request,
+  RequestStatus,
   RequestTransitions,
 } from '../../shared/models/request.model';
 
@@ -39,6 +40,13 @@ export class RequestsService {
       .pipe(map((requests) => requests.map(toRequest)));
   }
 
+  /** Un trámite ajeno para el Vecino responde 404, igual que uno inexistente. */
+  getRequest(id: string): Observable<Request> {
+    return this.http
+      .get<RequestResponse>(`${this.url}/${encodeURIComponent(id)}`)
+      .pipe(map(toRequest));
+  }
+
   createRequest(payload: CreateRequestPayload): Observable<Request> {
     return this.http.post<RequestResponse>(this.url, payload).pipe(map(toRequest));
   }
@@ -65,6 +73,11 @@ export class RequestsService {
     return this.http.put<RequestResponse>(`${this.url}/${id}/status`, payload).pipe(map(toRequest));
   }
 
+  /** El Funcionario se asigna un trámite sin responsable. */
+  take(id: string): Observable<Request> {
+    return this.http.post<RequestResponse>(`${this.url}/${id}/take`, null).pipe(map(toRequest));
+  }
+
   getActividad(id: string): Observable<RequestActivity> {
     return this.http.get<RequestActivity>(`${this.url}/${id}/actividad`);
   }
@@ -82,29 +95,39 @@ export interface RequestActivity {
   limites: string[];
 }
 
+export type RequestActivityKind = 'CREADO' | 'ESTADO' | 'GESTION' | 'ASIGNACION';
+
+/** Al Vecino, requests le entrega el actor de staff como "Municipalidad" y nunca el motivo de intervención. */
 export interface RequestActivityEvent {
   id: string;
   occurredAt: string;
-  kind: 'CREADO' | 'ESTADO' | 'GESTION';
+  kind: RequestActivityKind;
   visibility: 'PUBLICO' | 'INTERNO';
-  actorId: string;
+  actorId: string | null;
   actorName: string | null;
+  actorRole?: string | null;
   summary: string;
-  fromStatus: string | null;
-  toStatus: string | null;
+  fromStatus: RequestStatus | null;
+  toStatus: RequestStatus | null;
   reason: string | null;
   channel: string | null;
   result: string | null;
   note: string | null;
   nextAttemptAt: string | null;
+  interventionReason?: string | null;
+  assigneeId?: string | null;
+  assigneeName?: string | null;
+  previousAssigneeId?: string | null;
+  previousAssigneeName?: string | null;
 }
 
 export interface RequestActivityTimes {
   primeraAtencionSegundos: number | null;
+  primeraAsignacionSegundos?: number | null;
   gestionMunicipalSegundos: number | null;
   desdeElIngresoSegundos: number | null;
   totalResolucionSegundos: number | null;
-  etapas: { estado: string; desde: string; hasta: string; segundos: number }[];
+  etapas: { estado: RequestStatus; desde: string; hasta: string | null; segundos: number }[];
   noCalculado: string[];
 }
 
@@ -120,6 +143,7 @@ export interface RegisterGestionPayload {
   result: string;
   note?: string;
   nextAttemptAt?: string;
+  interventionReason?: string;
 }
 
 function toRequest({
@@ -138,6 +162,13 @@ function toRequest({
   longitude,
   locationPrecision,
   hasAttachment,
+  folio,
+  procedureLabel,
+  solicitanteEmail,
+  hasAssignee,
+  assigneeId,
+  assigneeName,
+  slaBusinessDays,
 }: RequestResponse): Request {
   return {
     id,
@@ -155,5 +186,12 @@ function toRequest({
     longitude,
     locationPrecision,
     ...(hasAttachment === true ? { hasAttachment: true } : {}),
+    ...(folio !== undefined ? { folio } : {}),
+    ...(procedureLabel !== undefined ? { procedureLabel } : {}),
+    ...(solicitanteEmail !== undefined ? { solicitanteEmail } : {}),
+    ...(hasAssignee !== undefined ? { hasAssignee } : {}),
+    ...(assigneeId !== undefined ? { assigneeId } : {}),
+    ...(assigneeName !== undefined ? { assigneeName } : {}),
+    ...(slaBusinessDays !== undefined ? { slaBusinessDays } : {}),
   };
 }

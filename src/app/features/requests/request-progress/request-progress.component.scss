@@ -1,0 +1,154 @@
+@use 'tokens' as *;
+
+$dot-size: 24px;
+$line-width: 2px;
+
+:host {
+  display: block;
+  container-type: inline-size;
+}
+
+.progress {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.progress__step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-2;
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+  text-align: center;
+
+  &::before {
+    position: absolute;
+    top: ($dot-size - $line-width) * 0.5;
+    right: 50%;
+    width: 100%;
+    height: $line-width;
+    background-color: var(--bd-border);
+    content: '';
+  }
+
+  &:first-child::before {
+    display: none;
+  }
+}
+
+.progress__dot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: $dot-size;
+  height: $dot-size;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  background-color: var(--bd-surface);
+  box-shadow: inset 0 0 0 $line-width var(--bd-text-muted);
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.progress__label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.progress__since {
+  color: var(--bd-text-muted);
+  font-size: $font-label;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress__step--done {
+  color: var(--bd-text);
+
+  &::before {
+    background-color: var(--bd-primary);
+  }
+
+  .progress__dot {
+    background-color: var(--bd-primary);
+    box-shadow: none;
+    color: var(--bd-on-primary);
+  }
+}
+
+.progress__step--current {
+  color: var(--bd-primary);
+  font-weight: $font-weight-semibold;
+
+  &::before {
+    background-color: var(--bd-primary);
+  }
+
+  .progress__dot {
+    box-shadow:
+      inset 0 0 0 $line-width var(--bd-primary),
+      0 0 0 $space-1 var(--bd-primary-container);
+
+    &::after {
+      width: $space-2;
+      height: $space-2;
+      border-radius: 50%;
+      background-color: var(--bd-primary);
+      content: '';
+    }
+  }
+}
+
+.progress__step--stopped {
+  color: var(--bd-error);
+  font-weight: $font-weight-semibold;
+
+  &::before {
+    background-color: var(--bd-primary);
+  }
+
+  .progress__dot {
+    background-color: var(--bd-error);
+    box-shadow: none;
+    color: var(--bd-surface);
+  }
+}
+
+@container (max-width: 34rem) {
+  .progress {
+    grid-auto-flow: row;
+  }
+
+  .progress__step {
+    flex-direction: row;
+    gap: $space-3;
+    padding-block: $space-1;
+    text-align: start;
+
+    &::before {
+      top: auto;
+      right: auto;
+      bottom: 50%;
+      left: ($dot-size - $line-width) * 0.5;
+      width: $line-width;
+      height: 100%;
+    }
+  }
+
+  .progress__label {
+    flex-direction: row;
+    align-items: baseline;
+    gap: $space-2;
+  }
+}

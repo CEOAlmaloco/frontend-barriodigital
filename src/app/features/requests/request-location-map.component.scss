@@ -1,8 +1,101 @@
 @use 'tokens' as *;
 
+$pin-size: 18px;
+$control-size: 32px;
+
+// isolation contiene los z-index de Leaflet (400 a 1000) para que no pasen sobre el header
 .request-map {
   width: 100%;
   height: $space-12 * 5;
   overflow: hidden;
   border-radius: $radius-base;
+  background-color: var(--bd-background);
+  isolation: isolate;
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: $border-width-strong;
+  }
+
+  &.leaflet-container .leaflet-control-zoom {
+    overflow: hidden;
+    border: $border-width solid var(--bd-border);
+    border-radius: $radius-base;
+    box-shadow: $shadow-elevated;
+
+    a {
+      width: $control-size;
+      height: $control-size;
+      background-color: var(--bd-surface);
+      color: var(--bd-text);
+      font: $font-weight-medium 18px / #{$control-size} var(--bd-font);
+
+      &:hover {
+        background-color: var(--bd-primary-container);
+      }
+
+      &:focus-visible {
+        outline: $border-width-strong solid var(--bd-primary-dark);
+        outline-offset: -$border-width-strong;
+      }
+    }
+
+    a + a {
+      border-top: $border-width solid var(--bd-border);
+    }
+
+    .leaflet-disabled {
+      color: var(--bd-text-muted);
+      opacity: 0.6;
+    }
+  }
+
+  &.leaflet-container .leaflet-control-attribution {
+    background-color: var(--bd-surface);
+    color: var(--bd-text-muted);
+
+    a {
+      color: var(--bd-primary);
+    }
+  }
+}
+
+.request-map__pin {
+  border: $border-width-strong solid var(--bd-surface);
+  border-radius: 50%;
+  background-color: var(--bd-primary);
+  box-shadow: 0 1px 4px rgba($color-text-primary, 0.35);
+
+  &::after {
+    position: absolute;
+    inset: -$space-2 - $border-width-strong;
+    border: $border-width-strong solid var(--bd-primary);
+    border-radius: 50%;
+    opacity: 0;
+    content: '';
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    &::after {
+      animation: request-map-ping 2.4s ease-out infinite;
+    }
+  }
+}
+
+@keyframes request-map-ping {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.45);
+  }
+
+  80%,
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+
+// Los mosaicos de OpenStreetMap son claros; en modo oscuro se oscurecen sin tocar pin ni controles
+html[data-bd-contrast='dark'] .request-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9);
 }

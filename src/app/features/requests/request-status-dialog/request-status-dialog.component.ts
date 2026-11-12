@@ -16,56 +16,65 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 
 import { Request, RequestStatus } from '../../../shared/models/request.model';
-import { locationSummary, mapUrl } from '../request-location';
-import { REJECTION_REASON_MAX_LENGTH, REQUEST_STATUS_VIEW } from '../requests.constants';
+import { RequestStatusBadgeComponent } from '../request-status-badge/request-status-badge.component';
+import {
+  INTERVENTION_REASON_MAX_LENGTH,
+  REJECTION_REASON_MAX_LENGTH,
+  REQUEST_STATUS_VIEW,
+} from '../requests.constants';
 import { RequestsService } from '../requests.service';
 
 export interface RequestStatusDialogData {
   request: Request;
   status: RequestStatus;
   procedureTypeLabel: string;
+  /** El Admin opera como intervención y debe explicar por qué (EP3-04, sección 3). */
+  requireInterventionReason?: boolean;
+  /** Desde el detalle se recarga el trámite, no el listado. */
+  context?: 'list' | 'detail';
 }
 
 export type RequestStatusDialogResult = { kind: 'saved'; request: Request } | { kind: 'reload' };
 
-const ADMISSION_ERRORS: Record<string, { message: string; requiresReload: boolean }> = {
-  QUOTA_EXHAUSTED: {
-    message: 'No queda cupo disponible para este tipo de trámite.',
-    requiresReload: true,
-  },
-  PROCEDURE_TYPE_UNAVAILABLE: {
-    message: 'El tipo de trámite asociado ya no está disponible en el catálogo.',
-    requiresReload: true,
-  },
-  ADMISSION_DEPENDENCY_INVALID_RESPONSE: {
-    message: 'No pudimos obtener información válida del trámite.',
-    requiresReload: false,
-  },
-  ADMISSION_DEPENDENCY_UNAVAILABLE: {
-    message: 'No pudimos consultar el trámite. Intenta consultar el listado más tarde.',
-    requiresReload: false,
-  },
-  QUOTA_RESERVATION_UNCONFIRMED: {
-    message:
-      'No pudimos confirmar la reserva de cupo. Cierra y consulta el listado; la operación requiere revisión.',
-    requiresReload: true,
-  },
-  ADMISSION_RESULT_UNCONFIRMED: {
-    message:
-      'No pudimos confirmar si el cambio se guardó. Cierra y consulta el listado antes de realizar otra operación.',
-    requiresReload: true,
-  },
-  ADMISSION_RESPONSE_UNAVAILABLE: {
-    message:
-      'El cambio se guardó, pero no pudimos obtener su respuesta completa. Cierra y actualiza el listado.',
-    requiresReload: true,
-  },
-  QUOTA_COMPENSATION_UNCONFIRMED: {
-    message:
-      'El cambio fue rechazado y no pudimos confirmar la devolución del cupo. La operación requiere revisión.',
-    requiresReload: true,
-  },
-};
+function admissionErrors(
+  target: string,
+): Record<string, { message: string; requiresReload: boolean }> {
+  return {
+    QUOTA_EXHAUSTED: {
+      message: 'No queda cupo disponible para este tipo de trámite.',
+      requiresReload: true,
+    },
+    PROCEDURE_TYPE_UNAVAILABLE: {
+      message: 'El tipo de trámite asociado ya no está disponible en el catálogo.',
+      requiresReload: true,
+    },
+    ADMISSION_DEPENDENCY_INVALID_RESPONSE: {
+      message: 'No pudimos obtener información válida del trámite.',
+      requiresReload: false,
+    },
+    ADMISSION_DEPENDENCY_UNAVAILABLE: {
+      message: `No pudimos consultar el trámite. Intenta consultar ${target} más tarde.`,
+      requiresReload: false,
+    },
+    QUOTA_RESERVATION_UNCONFIRMED: {
+      message: `No pudimos confirmar la reserva de cupo. Cierra y consulta ${target}; la operación requiere revisión.`,
+      requiresReload: true,
+    },
+    ADMISSION_RESULT_UNCONFIRMED: {
+      message: `No pudimos confirmar si el cambio se guardó. Cierra y consulta ${target} antes de realizar otra operación.`,
+      requiresReload: true,
+    },
+    ADMISSION_RESPONSE_UNAVAILABLE: {
+      message: `El cambio se guardó, pero no pudimos obtener su respuesta completa. Cierra y actualiza ${target}.`,
+      requiresReload: true,
+    },
+    QUOTA_COMPENSATION_UNCONFIRMED: {
+      message:
+        'El cambio fue rechazado y no pudimos confirmar la devolución del cupo. La operación requiere revisión.',
+      requiresReload: true,
+    },
+  };
+}
 
 @Component({
   selector: 'app-request-status-dialog',
@@ -79,6 +88,7 @@ const ADMISSION_ERRORS: Record<string, { message: string; requiresReload: boolea
     MatInputModule,
     MatProgressSpinner,
     ReactiveFormsModule,
+    RequestStatusBadgeComponent,
   ],
   templateUrl: './request-status-dialog.component.html',
   styleUrl: './request-status-dialog.component.scss',
@@ -93,10 +103,16 @@ export class RequestStatusDialogComponent {
   private readonly formBuilder = inject(NonNullableFormBuilder);
 
   protected readonly data = inject<RequestStatusDialogData>(MAT_DIALOG_DATA);
-  protected readonly locationSummary = locationSummary;
-  protected readonly mapUrl = mapUrl;
   protected readonly statusView = REQUEST_STATUS_VIEW;
   protected readonly maxReasonLength = REJECTION_REASON_MAX_LENGTH;
+  protected readonly maxInterventionLength = INTERVENTION_REASON_MAX_LENGTH;
+  protected readonly requiresIntervention = this.data.requireInterventionReason === true;
+  private readonly inDetail = this.data.context === 'detail';
+  private readonly admissionMessages = admissionErrors(this.inDetail ? 'el trámite' : 'el listado');
+  private readonly refreshHint = this.inDetail ? 'Actualiza el trámite.' : 'Actualiza la lista.';
+  protected readonly reloadLabel = this.inDetail
+    ? 'Cerrar y actualizar'
+    : 'Cerrar y actualizar lista';
   protected readonly isRejection = this.data.status === 'RECHAZADO';
   protected readonly isAdmission = this.data.status === 'ADMITIDO';
   protected readonly title = this.isRejection
@@ -104,6 +120,11 @@ export class RequestStatusDialogComponent {
     : this.isAdmission
       ? 'Admitir trámite'
       : 'Confirmar cambio de estado';
+  protected readonly lead = this.isRejection
+    ? 'El trámite quedará cerrado y el vecino recibirá el motivo por correo.'
+    : this.isAdmission
+      ? 'Una vez admitido, no podrá volver a Ingresado.'
+      : 'Este cambio no se puede deshacer.';
   protected readonly confirmLabel = this.isRejection
     ? 'Confirmar rechazo'
     : this.isAdmission
@@ -122,7 +143,24 @@ export class RequestStatusDialogComponent {
         Validators.maxLength(REJECTION_REASON_MAX_LENGTH),
       ],
     ],
+    interventionReason: [
+      '',
+      [
+        Validators.required,
+        Validators.pattern(/\S/),
+        Validators.maxLength(INTERVENTION_REASON_MAX_LENGTH),
+      ],
+    ],
   });
+
+  constructor() {
+    if (!this.isRejection) {
+      this.rejectionForm.controls.rejectionReason.disable({ emitEvent: false });
+    }
+    if (!this.requiresIntervention) {
+      this.rejectionForm.controls.interventionReason.disable({ emitEvent: false });
+    }
+  }
 
   protected cancel(): void {
     if (!this.isSubmitting()) {
@@ -140,12 +178,13 @@ export class RequestStatusDialogComponent {
     if (this.isSubmitting() || this.requiresReload()) {
       return;
     }
-    if (this.isRejection && this.rejectionForm.invalid) {
+    if (this.rejectionForm.invalid) {
       this.rejectionForm.markAllAsTouched();
       return;
     }
 
     const rejectionReason = this.rejectionForm.controls.rejectionReason.value.trim();
+    const interventionReason = this.rejectionForm.controls.interventionReason.value.trim();
     this.isSubmitting.set(true);
     this.submitError.set(null);
     this.dialogRef.disableClose = true;
@@ -155,6 +194,7 @@ export class RequestStatusDialogComponent {
       .changeStatus(this.data.request.id, {
         status: this.data.status,
         ...(this.isRejection ? { rejectionReason } : {}),
+        ...(this.requiresIntervention ? { interventionReason } : {}),
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -166,13 +206,23 @@ export class RequestStatusDialogComponent {
               (error instanceof HttpErrorResponse &&
                 (error.status === 404 ||
                   error.status === 409 ||
+                  isResponsibleRejection(error) ||
                   (this.isAdmission && error.status === 0))),
           );
           this.dialogRef.disableClose = false;
-          this.rejectionForm.enable({ emitEvent: false });
+          this.enableReasons();
           this.submitError.set(this.errorMessage(error));
         },
       });
+  }
+
+  private enableReasons(): void {
+    if (this.isRejection) {
+      this.rejectionForm.controls.rejectionReason.enable({ emitEvent: false });
+    }
+    if (this.requiresIntervention) {
+      this.rejectionForm.controls.interventionReason.enable({ emitEvent: false });
+    }
   }
 
   private errorMessage(error: unknown): string {
@@ -188,7 +238,7 @@ export class RequestStatusDialogComponent {
     switch (error.status) {
       case 0:
         if (this.isAdmission) {
-          return ADMISSION_ERRORS['ADMISSION_RESULT_UNCONFIRMED'].message;
+          return this.admissionMessages['ADMISSION_RESULT_UNCONFIRMED'].message;
         }
         return 'No pudimos confirmar el cambio. Revisa tu conexión e inténtalo nuevamente.';
       case 400:
@@ -198,16 +248,27 @@ export class RequestStatusDialogComponent {
         if (message === 'rejectionReason no puede superar 500 caracteres') {
           return 'El motivo de rechazo no puede superar 500 caracteres.';
         }
+        if (message === 'interventionReason es obligatorio para el Admin') {
+          return 'Indica el motivo de intervención.';
+        }
+        if (message === 'interventionReason no puede superar 500 caracteres') {
+          return 'El motivo de intervención no puede superar 500 caracteres.';
+        }
         return 'No se pudo validar el cambio de estado. Revisa los datos e inténtalo nuevamente.';
       case 401:
         return 'Tu sesión ya no permite confirmar el cambio. Inicia sesión nuevamente.';
       case 403:
+        if (message === 'Solo el responsable del tramite puede operarlo') {
+          return `Solo el responsable del trámite puede operarlo. ${this.refreshHint}`;
+        }
         return message === 'No tienes el rol necesario para este recurso' ||
           message === 'Solo un Funcionario puede cambiar el estado'
           ? message
           : 'No tienes permiso para cambiar el estado de este trámite.';
       case 404:
-        return 'El trámite ya no está disponible. Actualiza la lista.';
+        return this.inDetail
+          ? 'El trámite ya no está disponible.'
+          : 'El trámite ya no está disponible. Actualiza la lista.';
       case 409:
         const transition = /^No se puede pasar de (\w+) a (\w+)$/.exec(message);
         if (
@@ -217,9 +278,9 @@ export class RequestStatusDialogComponent {
         ) {
           const current = REQUEST_STATUS_VIEW[transition[1] as RequestStatus].label;
           const next = REQUEST_STATUS_VIEW[transition[2] as RequestStatus].label;
-          return `No se puede pasar de ${current} a ${next}. Actualiza la lista.`;
+          return `No se puede pasar de ${current} a ${next}. ${this.refreshHint}`;
         }
-        return 'El estado del trámite cambió o esta transición ya no está permitida. Actualiza la lista.';
+        return `El estado del trámite cambió o esta transición ya no está permitida. ${this.refreshHint}`;
       default:
         return 'No pudimos confirmar el cambio. Inténtalo nuevamente.';
     }
@@ -228,8 +289,15 @@ export class RequestStatusDialogComponent {
   private admissionError(error: unknown): { message: string; requiresReload: boolean } | null {
     if (!(error instanceof HttpErrorResponse)) return null;
     const code: unknown = error.error?.code;
-    return typeof code === 'string' && Object.hasOwn(ADMISSION_ERRORS, code)
-      ? ADMISSION_ERRORS[code]
+    return typeof code === 'string' && Object.hasOwn(this.admissionMessages, code)
+      ? this.admissionMessages[code]
       : null;
   }
+}
+
+function isResponsibleRejection(error: HttpErrorResponse): boolean {
+  return (
+    error.status === 403 &&
+    error.error?.message === 'Solo el responsable del tramite puede operarlo'
+  );
 }

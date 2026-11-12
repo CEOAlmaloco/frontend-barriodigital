@@ -1,0 +1,226 @@
+@use 'tokens' as *;
+
+$icon-size: 32px;
+$icon-glyph: 18px;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+.timeline__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3 $space-4;
+}
+
+.timeline__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+// 32 px visibles; el pseudo-elemento lleva el área táctil a 44 px
+.timeline__filter {
+  position: relative;
+  min-height: $space-8;
+  padding: 0 $space-3;
+  border: $border-width solid var(--bd-border-interactive);
+  border-radius: $space-4;
+  background-color: transparent;
+  color: var(--bd-text);
+  font: inherit;
+  font-size: $font-body-sm;
+  cursor: pointer;
+
+  &::after {
+    position: absolute;
+    inset: (($space-8 - $size-touch-target) * 0.5) 0;
+    content: '';
+  }
+
+  &:hover {
+    background-color: var(--bd-primary-container);
+  }
+
+  &[aria-pressed='true'] {
+    border-color: var(--bd-primary);
+    background-color: var(--bd-primary-container);
+    color: var(--bd-primary-dark);
+    font-weight: $font-weight-medium;
+  }
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: $border-width-strong;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition:
+      background-color $transition-base,
+      border-color $transition-base;
+  }
+}
+
+.timeline__empty {
+  color: var(--bd-text-muted);
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline__event {
+  position: relative;
+  display: grid;
+  grid-template-columns: $icon-size minmax(0, 1fr);
+  gap: $space-3;
+  padding-bottom: $space-4;
+
+  &::before {
+    position: absolute;
+    top: $icon-size + $space-1;
+    bottom: $space-1;
+    left: ($icon-size - $border-width-strong) * 0.5;
+    width: $border-width-strong;
+    background-color: var(--bd-border);
+    content: '';
+  }
+
+  &:last-child {
+    padding-bottom: 0;
+
+    &::before {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: timeline-enter $transition-entrance both;
+  }
+}
+
+.timeline__icon {
+  display: grid;
+  width: $icon-size;
+  height: $icon-size;
+  place-items: center;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: 50%;
+  background-color: var(--bd-primary-container);
+  color: var(--bd-primary-dark);
+
+  mat-icon {
+    width: $icon-glyph;
+    height: $icon-glyph;
+    font-size: $icon-glyph;
+  }
+}
+
+.timeline__event--secondary .timeline__icon {
+  background-color: var(--bd-secondary-container);
+  color: var(--bd-secondary);
+}
+
+.timeline__event--accent .timeline__icon {
+  background-color: var(--bd-accent-container);
+  color: var(--bd-accent-text);
+}
+
+.timeline__event--error .timeline__icon {
+  background-color: var(--bd-error-container);
+  color: var(--bd-error);
+}
+
+.timeline__event--success .timeline__icon {
+  background-color: var(--bd-success-container);
+  color: var(--bd-success);
+}
+
+.timeline__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: $space-1;
+  padding-top: $space-1;
+}
+
+.timeline__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: $space-1 $space-2;
+  font-weight: $font-weight-medium;
+  overflow-wrap: anywhere;
+}
+
+.timeline__internal {
+  padding: 0 $space-1;
+  border: $border-width solid var(--bd-border);
+  border-radius: $space-1;
+  color: var(--bd-text-muted);
+  font-size: $font-label;
+  font-weight: $font-weight-medium;
+}
+
+.timeline__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 $space-2;
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline__next {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.timeline__note,
+.timeline__intervention {
+  padding: $space-2 $space-3;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  font-size: $font-body-sm;
+  overflow-wrap: anywhere;
+}
+
+.timeline__note {
+  background-color: var(--bd-background);
+}
+
+.timeline__intervention {
+  display: flex;
+  gap: $space-2;
+  background-color: var(--bd-accent-container);
+
+  mat-icon {
+    width: $icon-glyph;
+    height: $icon-glyph;
+    flex: none;
+    color: var(--bd-accent-text);
+    font-size: $icon-glyph;
+  }
+}
+
+@keyframes timeline-enter {
+  from {
+    opacity: 0.4;
+    transform: translateY($space-1);
+  }
+}

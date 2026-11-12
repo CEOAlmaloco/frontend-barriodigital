@@ -40,6 +40,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
+import { RouterLink } from '@angular/router';
 import { Subject, catchError, finalize, of, switchMap, tap } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
@@ -70,7 +71,8 @@ import {
   RequestStatusDialogData,
   RequestStatusDialogResult,
 } from './request-status-dialog/request-status-dialog.component';
-import { REQUEST_STATUSES, REQUEST_STATUS_VIEW } from './requests.constants';
+import { RequestStatusBadgeComponent } from './request-status-badge/request-status-badge.component';
+import { REQUEST_STATUSES, REQUEST_STATUS_VIEW, isClosedStatus } from './requests.constants';
 import { RequestsService } from './requests.service';
 import { RequestLocationMapComponent } from './request-location-map.component';
 import {
@@ -120,6 +122,8 @@ const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
     ReactiveFormsModule,
     RequestActionsComponent,
     RequestLocationMapComponent,
+    RequestStatusBadgeComponent,
+    RouterLink,
   ],
   providers: [provideNativeDateAdapter(), { provide: MAT_DATE_LOCALE, useValue: 'es-CL' }],
   templateUrl: './requests.component.html',
@@ -567,6 +571,10 @@ export class RequestsComponent {
       });
   }
 
+  protected isClosed(request: Request): boolean {
+    return isClosedStatus(request.status);
+  }
+
   protected hasRejectionReason(request: Request): boolean {
     return request.status === 'RECHAZADO' && !!request.rejectionReason?.trim();
   }
@@ -651,13 +659,6 @@ export class RequestsComponent {
     } else {
       this.listTitle().nativeElement.focus({ preventScroll: true });
     }
-  }
-
-  /** Etiqueta y tono del badge. Método tipado porque en las celdas de mat-table la fila llega como any. */
-  protected statusOf(
-    request: Request,
-  ): (typeof REQUEST_STATUS_VIEW)[keyof typeof REQUEST_STATUS_VIEW] {
-    return REQUEST_STATUS_VIEW[request.status];
   }
 
   /** Resuelve con el catálogo completo, incluidos inactivos. Sin coincidencia, muestra el código. */
