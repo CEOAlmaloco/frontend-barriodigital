@@ -1,0 +1,120 @@
+<div class="filters__bar">
+  <mat-form-field class="filters__search" subscriptSizing="dynamic">
+    <mat-label>Buscar</mat-label>
+    <mat-icon matIconPrefix aria-hidden="true">search</mat-icon>
+    <input
+      #searchInput
+      matInput
+      type="search"
+      autocomplete="off"
+      enterkeyhint="search"
+      placeholder="Folio, descripción o dirección"
+      [formControl]="search()"
+      [maxlength]="searchMaxLength"
+    />
+    @if (search().value) {
+      <button
+        matIconSuffix
+        mat-icon-button
+        type="button"
+        aria-label="Borrar la búsqueda"
+        (click)="clearSearch(searchInput)"
+      >
+        <mat-icon aria-hidden="true">close</mat-icon>
+      </button>
+    }
+  </mat-form-field>
+
+  <button
+    matButton="outlined"
+    type="button"
+    class="filters__toggle"
+    aria-controls="request-filters-panel"
+    [attr.aria-expanded]="open()"
+    (click)="toggle()"
+  >
+    <mat-icon aria-hidden="true">tune</mat-icon>
+    Filtros
+    @if (activeCount()) {
+      <span class="filters__count">
+        {{ activeCount() }}<span class="cdk-visually-hidden"> activos</span>
+      </span>
+    }
+  </button>
+</div>
+
+<div class="filters__collapse" [class.filters__collapse--open]="open()">
+  <div
+    id="request-filters-panel"
+    class="filters__panel"
+    role="group"
+    aria-label="Filtros del listado"
+    [formGroup]="form()"
+  >
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Estado</mat-label>
+      <mat-select formControlName="status">
+        <mat-option value="">Todos</mat-option>
+        @for (status of statuses; track status) {
+          <mat-option [value]="status">{{ statusView[status].label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Tipo</mat-label>
+      <mat-select formControlName="procedureType">
+        <mat-option value="">Todos</mat-option>
+        @for (type of typeOptions(); track type.value) {
+          <mat-option [value]="type.value">{{ type.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Sector</mat-label>
+      <mat-select formControlName="sector">
+        <mat-option value="">Todos</mat-option>
+        @for (sector of sectors; track sector.value) {
+          <mat-option [value]="sector.value">{{ sector.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Desde</mat-label>
+      <input
+        matInput
+        [matDatepicker]="fromPicker"
+        formControlName="from"
+        [min]="municipalitySince"
+      />
+      <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+      <mat-datepicker #fromPicker />
+    </mat-form-field>
+
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Hasta</mat-label>
+      <input matInput [matDatepicker]="toPicker" formControlName="to" [min]="toMin()" />
+      <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+      <mat-datepicker #toPicker [startAt]="form().controls.from.value" />
+    </mat-form-field>
+  </div>
+</div>
+
+<div class="filters__footer" [class.filters__footer--clearable]="activeCount() > 0">
+  @if (activeCount()) {
+    <button matButton type="button" class="filters__clear" (click)="clearFilters.emit()">
+      <mat-icon aria-hidden="true">filter_alt_off</mat-icon>
+      Limpiar filtros
+    </button>
+  }
+  <mat-form-field class="filters__sort" subscriptSizing="dynamic">
+    <mat-label>Ordenar</mat-label>
+    <mat-select [value]="sortValue()" (selectionChange)="sortChange.emit($event.value)">
+      @for (option of sortOptions; track option.label) {
+        <mat-option [value]="option.sort + ',' + option.direction">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+</div>

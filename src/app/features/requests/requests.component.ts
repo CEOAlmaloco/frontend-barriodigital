@@ -36,12 +36,14 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
+import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSort, MatSortHeader, Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
-import { RouterLink } from '@angular/router';
-import { Subject, catchError, finalize, of, switchMap, tap } from 'rxjs';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Subject, catchError, debounceTime, finalize, map, of, switchMap, tap } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { CatalogService } from '../../core/catalog/catalog.service';
@@ -54,6 +56,23 @@ import {
 } from '../../shared/models/request.model';
 import { Role } from '../../shared/models/role';
 import { MUNICIPALITY_SINCE, toDateKey } from './date-key';
+import {
+  RequestFiltersForm,
+  RequestListFiltersComponent,
+} from './request-list-filters/request-list-filters.component';
+import {
+  DEFAULT_REQUEST_QUERY,
+  REQUEST_PAGE_SIZES,
+  RequestListQuery,
+  RequestSortDirection,
+  RequestSortField,
+  SEARCH_DEBOUNCE_MS,
+  activeFilterCount,
+  parseDateKey,
+  parseRequestListParams,
+  serializeRequestListQuery,
+  toRequestListParams,
+} from './request-list-query';
 import {
   RequestActionsComponent,
   RequestStatusAction,
@@ -72,7 +91,7 @@ import {
   RequestStatusDialogResult,
 } from './request-status-dialog/request-status-dialog.component';
 import { RequestStatusBadgeComponent } from './request-status-badge/request-status-badge.component';
-import { REQUEST_STATUSES, REQUEST_STATUS_VIEW, isClosedStatus } from './requests.constants';
+import { isClosedStatus } from './requests.constants';
 import { RequestsService } from './requests.service';
 import { RequestLocationMapComponent } from './request-location-map.component';
 import {
@@ -89,7 +108,8 @@ type LoadState = 'loading' | 'ready' | 'error';
 type LoadQuery = 'catalog' | 'requests' | 'transitions';
 type AttachmentPreview = { requestId: string; url: string; imageType: string; extension: string };
 
-const COLUMNS = ['tipo', 'descripcion', 'estado', 'fecha'];
+const COLUMNS = ['folio', 'tramite', 'estado', 'fecha'];
+const STAFF_COLUMNS = ['folio', 'tramite', 'solicitante', 'estado', 'fecha', 'acciones'];
 /** A partir de aquí «Ver» sigue al texto y el resto se abre aparte. */
 const DESCRIPTION_PREVIEW_CHARS = 72;
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
@@ -108,6 +128,9 @@ const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
     MatMenu,
     MatMenuItem,
     MatMenuTrigger,
+    MatPaginator,
+    MatSort,
+    MatSortHeader,
     MatDatepickerModule,
     MatDialogActions,
     MatDialogClose,
@@ -121,6 +144,7 @@ const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
     MatTableModule,
     ReactiveFormsModule,
     RequestActionsComponent,
+    RequestListFiltersComponent,
     RequestLocationMapComponent,
     RequestStatusBadgeComponent,
     RouterLink,
@@ -138,6 +162,8 @@ export class RequestsComponent {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly listTitle = viewChild.required<ElementRef<HTMLElement>>('listTitle');
   private readonly descriptionDialogTemplate =
     viewChild.required<TemplateRef<{ $implicit: string }>>('descriptionDialog');
@@ -172,22 +198,30 @@ export class RequestsComponent {
   protected readonly catalogAvailable = computed(
     () => this.catalogState() === 'ready' && this.tiposTramite().length > 0,
   );
-  protected readonly statuses = REQUEST_STATUSES;
-  protected readonly statusView = REQUEST_STATUS_VIEW;
   protected readonly locationSummary = locationSummary;
 
   /** Admin y Auditor no llegan a esta vista (roleGuard), así que quien no es Funcionario es Vecino. */
   protected readonly isFuncionario = computed(() => this.auth.hasRole(Role.Funcionario));
-  protected readonly columns = computed(() =>
-    this.isFuncionario()
-      ? ['tipo', 'descripcion', 'solicitante', 'estado', 'fecha', 'acciones']
-      : COLUMNS,
-  );
+  protected readonly columns = computed(() => (this.isFuncionario() ? STAFF_COLUMNS : COLUMNS));
 
   protected readonly listState = signal<LoadState>('loading');
+  private readonly hasLoaded = signal(false);
+  /** Al paginar o filtrar se mantienen las filas anteriores atenuadas, sin saltos de layout. */
+  protected readonly showResults = computed(
+    () => this.listState() === 'ready' || (this.listState() === 'loading' && this.hasLoaded()),
+  );
   protected readonly statusChangeReloadFailed = signal(false);
-  /** Tal como llegan del BFF: el servidor ya filtra al Vecino por su oid y ordena por fecha descendente. */
+  /** Tal como llegan del BFF: el servidor filtra al Vecino por su oid, ordena y pagina. */
   protected readonly requests = signal<Request[]>([]);
+  protected readonly totalElements = signal(0);
+  /** Estado del listado; la URL es su copia para compartir o recargar la vista. */
+  protected readonly query = signal<RequestListQuery>(DEFAULT_REQUEST_QUERY);
+  protected readonly pageSizes = REQUEST_PAGE_SIZES;
+  protected readonly sortValue = computed(() => `${this.query().sort},${this.query().direction}`);
+  protected readonly activeFilters = computed(() => activeFilterCount(this.query()));
+  protected readonly isNarrowed = computed(() => this.activeFilters() > 0 || !!this.query().q);
+  /** Navegaciones propias en curso: su emisión de queryParamMap no es un cambio externo. */
+  private readonly ownNavigations = new Set<string>();
   protected readonly transitionsState = signal<LoadState>('loading');
   protected readonly transitions = signal<RequestTransitions | null>(null);
   protected readonly isRecovering = computed(() => this.recoveryPending().length > 0);
@@ -235,14 +269,15 @@ export class RequestsComponent {
 
   protected readonly locationError = signal<string | null>(null);
 
-  protected readonly filters = this.formBuilder.group({
-    status: [''],
+  protected readonly filters: RequestFiltersForm = this.formBuilder.group({
+    status: this.formBuilder.control<RequestStatus | ''>(''),
+    procedureType: [''],
+    sector: [''],
     from: this.formBuilder.control<Date | null>(null),
     to: this.formBuilder.control<Date | null>(null),
   });
 
-  /** Ningún filtro puede ser anterior a la instalación de la municipalidad. */
-  protected readonly municipalitySince = MUNICIPALITY_SINCE;
+  protected readonly search = this.formBuilder.control('');
 
   /** Hasta no puede caer antes de Desde ni antes de la municipalidad. */
   protected readonly toMin = signal(MUNICIPALITY_SINCE);
@@ -298,16 +333,23 @@ export class RequestsComponent {
         tap(() => this.listState.set('loading')),
         // switchMap descarta respuestas viejas si los filtros cambian antes de que llegue la anterior
         switchMap(() =>
-          this.requestsService.getRequests(this.currentFilters()).pipe(
+          this.requestsService.getRequests(toRequestListParams(this.query())).pipe(
             catchError(() => of(null)),
             finalize(() => this.finishRecovery('requests')),
           ),
         ),
         takeUntilDestroyed(),
       )
-      .subscribe((requests) => {
-        if (requests) {
-          this.requests.set(requests);
+      .subscribe((page) => {
+        if (page) {
+          // Un enlace viejo o un trámite que salió del filtro puede dejar la página fuera de rango
+          if (page.content.length === 0 && page.totalElements > 0 && this.query().page > 0) {
+            this.applyQuery({ page: Math.max(page.totalPages - 1, 0) }, false);
+            return;
+          }
+          this.requests.set(page.content);
+          this.totalElements.set(page.totalElements);
+          this.hasLoaded.set(true);
           this.listState.set('ready');
           this.reloadAfterStatusChange = false;
           this.statusChangeReloadFailed.set(false);
@@ -352,6 +394,32 @@ export class RequestsComponent {
       if (to && isBeforeDay(to, floor)) {
         this.filters.controls.to.setValue(null, { emitEvent: false });
       }
+      this.applyQuery(this.filtersFromForm());
+    });
+    this.search.valueChanges
+      .pipe(
+        debounceTime(SEARCH_DEBOUNCE_MS),
+        map((value) => value.trim()),
+        takeUntilDestroyed(),
+      )
+      .subscribe((q) => {
+        if (q !== this.query().q) {
+          this.applyQuery({ q });
+        }
+      });
+
+    const initial = parseRequestListParams((key) => this.route.snapshot.queryParamMap.get(key));
+    this.query.set(initial);
+    this.patchControls(initial);
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const next = parseRequestListParams((key) => params.get(key));
+      const key = serializeRequestListQuery(next);
+      if (this.ownNavigations.has(key) || key === serializeRequestListQuery(this.query())) {
+        return;
+      }
+      // Navegación externa, como el enlace "Trámites" del header estando ya en /tramites
+      this.query.set(next);
+      this.patchControls(next);
       this.loadRequests();
     });
     this.createForm.controls.procedureType.valueChanges
@@ -962,22 +1030,102 @@ export class RequestsComponent {
     return null;
   }
 
-  /** Query params de GET /api/requests. El Vecino no filtra. */
-  private currentFilters(): { status?: string; from?: string; to?: string } | undefined {
-    if (!this.isFuncionario()) {
-      return undefined;
+  protected changePage(event: PageEvent): void {
+    this.applyQuery({ page: event.pageIndex, size: event.pageSize }, false);
+    const title = this.listTitle().nativeElement;
+    if (title.getBoundingClientRect().top < 0) {
+      title.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
     }
+  }
 
-    const { status, from, to } = this.filters.getRawValue();
+  protected changeSort(sort: Sort): void {
+    this.applyQuery({
+      sort: sort.active as RequestSortField,
+      direction: sort.direction || 'asc',
+    });
+  }
+
+  protected changeSortValue(value: string): void {
+    const [sort, direction] = value.split(',') as [RequestSortField, RequestSortDirection];
+    this.applyQuery({ sort, direction });
+  }
+
+  protected clearFilters(): void {
+    this.filters.reset(
+      { status: '', procedureType: '', sector: '', from: null, to: null },
+      { emitEvent: false },
+    );
+    this.toMin.set(MUNICIPALITY_SINCE);
+    this.listTitle().nativeElement.focus({ preventScroll: true });
+    this.applyQuery({ status: '', procedureType: '', sector: '', from: '', to: '' });
+  }
+
+  protected clearSearchAndFilters(): void {
+    this.search.setValue('', { emitEvent: false });
+    this.query.update((query) => ({ ...query, q: '' }));
+    this.clearFilters();
+  }
+
+  /** Cambiar búsqueda, filtros u orden vuelve a la primera página. */
+  private applyQuery(changes: Partial<RequestListQuery>, resetPage = true): void {
+    this.query.update((query) => ({ ...query, ...changes, ...(resetPage ? { page: 0 } : {}) }));
+    this.syncUrl();
+    this.loadRequests();
+  }
+
+  private syncUrl(): void {
+    const key = serializeRequestListQuery(this.query());
+    const current = serializeRequestListQuery(
+      parseRequestListParams((name) => this.route.snapshot.queryParamMap.get(name)),
+    );
+    if (key === current) {
+      return;
+    }
+    this.ownNavigations.add(key);
+    // replaceUrl: cada tecla de la búsqueda no debe sumar una entrada al historial
+    void this.router
+      .navigate([], {
+        relativeTo: this.route,
+        queryParams: toRequestListParams(this.query()),
+        replaceUrl: true,
+      })
+      .catch(() => false)
+      .finally(() => this.ownNavigations.delete(key));
+  }
+
+  private filtersFromForm(): Partial<RequestListQuery> {
+    const { status, procedureType, sector, from, to } = this.filters.getRawValue();
     const fromOk = from && !isBeforeDay(from, MUNICIPALITY_SINCE) ? from : null;
     const floor = laterDay(fromOk, MUNICIPALITY_SINCE);
     const toOk = to && !isBeforeDay(to, floor) ? to : null;
     return {
-      ...(status ? { status } : {}),
-      ...(fromOk ? { from: toDateKey(fromOk) } : {}),
-      ...(toOk ? { to: toDateKey(toOk) } : {}),
+      status,
+      procedureType,
+      sector,
+      from: fromOk ? toDateKey(fromOk) : '',
+      to: toOk ? toDateKey(toOk) : '',
     };
   }
+
+  private patchControls(query: RequestListQuery): void {
+    const from = parseDateKey(query.from);
+    this.filters.setValue(
+      {
+        status: query.status,
+        procedureType: query.procedureType,
+        sector: query.sector,
+        from,
+        to: parseDateKey(query.to),
+      },
+      { emitEvent: false },
+    );
+    this.toMin.set(laterDay(from, MUNICIPALITY_SINCE));
+    this.search.setValue(query.q, { emitEvent: false });
+  }
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 /** Compara el día civil local. La misma fecha es válida en los dos extremos. */

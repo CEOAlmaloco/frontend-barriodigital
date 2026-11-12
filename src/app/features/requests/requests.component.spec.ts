@@ -6,12 +6,13 @@ import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSelect } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { Observable, Subject, Subscriber, firstValueFrom, of, throwError } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { CatalogService } from '../../core/catalog/catalog.service';
 import { ProcedureType } from '../../shared/models/procedure-type.model';
+import { Page } from '../../shared/models/page.model';
 import { Request, RequestStatus, RequestTransitions } from '../../shared/models/request.model';
 import { Role } from '../../shared/models/role';
 import {
@@ -64,6 +65,14 @@ describe('RequestsComponent', () => {
     solicitanteNombre: 'Luis Pérez',
   };
 
+  const page = (content: Request[]): Page<Request> => ({
+    content,
+    page: 0,
+    size: 20,
+    totalElements: content.length,
+    totalPages: content.length ? 1 : 0,
+  });
+
   let service: {
     getRequests: ReturnType<typeof vi.fn>;
     createRequest: ReturnType<typeof vi.fn>;
@@ -77,10 +86,11 @@ describe('RequestsComponent', () => {
 
   const render = async (
     role: Role,
-    getRequests: () => Observable<Request[]> = () => of([mine, other]),
+    getRequests: () => Observable<Page<Request>> = () => of(page([mine, other])),
     getTransitions: () => Observable<RequestTransitions> = () =>
       throwError(() => new Error('acciones no disponibles')),
     getProcedures: () => Observable<ProcedureType[]> = () => of(catalog),
+    initialUrl?: string,
   ) => {
     catalogService = { getProcedures: vi.fn(getProcedures) };
     service = {
@@ -102,6 +112,9 @@ describe('RequestsComponent', () => {
       ],
     }).compileComponents();
 
+    if (initialUrl) {
+      await TestBed.inject(Router).navigateByUrl(initialUrl);
+    }
     fixture = TestBed.createComponent(RequestsComponent);
     element = fixture.nativeElement;
     await fixture.whenStable();
@@ -141,22 +154,22 @@ describe('RequestsComponent', () => {
       .map((label) => label.nextElementSibling?.textContent?.trim()),
   });
 
-  it('Vecino: ve el formulario, sin filtros, y lo que entrega el servidor sin volver a filtrarlo', async () => {
+  it('Vecino: ve el formulario, los filtros y lo que entrega el servidor sin volver a filtrarlo', async () => {
     await render(Role.Vecino);
 
     expect(element.querySelector('.requests__card')).not.toBeNull();
     expect(element.querySelector('#requests-list-title')?.textContent).toContain('Mis trámites');
-    expect(element.querySelector('.requests__filters')).toBeNull();
-    expect(service.getRequests).toHaveBeenCalledWith(undefined);
+    expect(element.querySelector('.requests__filters')).not.toBeNull();
+    expect(service.getRequests).toHaveBeenCalledWith({});
     expect(text()).toContain('Rama sobre el cable');
     expect(text()).toContain('Bache de otro vecino');
-    expect(headers()).toEqual(['Tipo', 'Descripción', 'Estado', 'Fecha']);
+    expect(headers()).toEqual(['Folio', 'Trámite', 'Estado', 'Fecha']);
     expect(solicitanteNames()).toEqual({ table: [], cards: [] });
     expect(text()).not.toContain(mine.solicitanteNombre);
     expect(text()).not.toContain(other.solicitanteNombre);
   });
 
-  it('Funcionario: sin formulario, con filtros y Solicitante después de Descripción en tabla y tarjetas', async () => {
+  it('Funcionario: sin formulario, con filtros y Solicitante después del trámite en tabla y tarjetas', async () => {
     await render(Role.Funcionario);
 
     expect(element.querySelector('.requests__card')).toBeNull();
@@ -165,23 +178,16 @@ describe('RequestsComponent', () => {
     );
     expect(element.querySelector('.requests__filters')).not.toBeNull();
     expect(text()).toContain('Bache de otro vecino');
-    expect(headers()).toEqual([
-      'Tipo',
-      'Descripción',
-      'Solicitante',
-      'Estado',
-      'Fecha',
-      'Acciones',
-    ]);
+    expect(headers()).toEqual(['Folio', 'Trámite', 'Solicitante', 'Estado', 'Fecha', 'Acciones']);
     expect(solicitanteNames()).toEqual({
       table: [mine.solicitanteNombre, other.solicitanteNombre],
       cards: [mine.solicitanteNombre, other.solicitanteNombre],
     });
     expect(
       Array.from(element.querySelectorAll('.requests__fields dt'))
-        .slice(0, 5)
+        .slice(0, 6)
         .map((label) => label.textContent?.trim()),
-    ).toEqual(['Tipo', 'Descripción', 'Solicitante', 'Estado', 'Fecha']);
+    ).toEqual(['Folio', 'Tipo', 'Descripción', 'Solicitante', 'Estado', 'Fecha']);
     expect(text()).not.toContain('otro-vecino');
   });
 
@@ -189,7 +195,7 @@ describe('RequestsComponent', () => {
     const requestWithImage = { ...mine, hasAttachment: true };
     const objectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:request-preview');
     const revokeUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
-    await render(Role.Funcionario, () => of([requestWithImage]));
+    await render(Role.Funcionario, () => of(page([requestWithImage])));
 
     await openDetails(element, requestWithImage.id);
     menuAction('Vista previa de imagen').click();
@@ -225,7 +231,7 @@ describe('RequestsComponent', () => {
       longitude: -71.317,
       locationPrecision: 'APROXIMADO',
     };
-    await render(Role.Funcionario, () => of([request]));
+    await render(Role.Funcionario, () => of(page([request])));
 
     const summaries = Array.from(
       element.querySelectorAll<HTMLElement>('.requests__location-summary'),
@@ -262,7 +268,7 @@ describe('RequestsComponent', () => {
   ])('presenta $name como $expected en ambas vistas', async ({ name, expected }) => {
     const request: Request = { ...mine, solicitanteNombre: name };
     if (name === undefined) delete request.solicitanteNombre;
-    await render(Role.Funcionario, () => of([request]));
+    await render(Role.Funcionario, () => of(page([request])));
 
     expect(solicitanteNames()).toEqual({ table: [expected], cards: [expected] });
     expect(element.querySelector('td.mat-column-solicitante b')).toBeNull();
@@ -271,7 +277,7 @@ describe('RequestsComponent', () => {
   it('Funcionario: pide el listado con los filtros elegidos', async () => {
     await render(Role.Funcionario);
 
-    fixture.componentInstance['filters'].setValue({
+    fixture.componentInstance['filters'].patchValue({
       status: 'RESUELTO',
       from: new Date(2026, 8, 1),
       to: null,
@@ -287,7 +293,7 @@ describe('RequestsComponent', () => {
   it('Funcionario: Hasta anterior a Desde no se consulta', async () => {
     await render(Role.Funcionario);
 
-    fixture.componentInstance['filters'].setValue({
+    fixture.componentInstance['filters'].patchValue({
       status: '',
       from: new Date(2026, 9, 8),
       to: new Date(2017, 5, 22),
@@ -297,7 +303,7 @@ describe('RequestsComponent', () => {
     expect(fixture.componentInstance['filters'].controls.to.value).toBeNull();
     expect(service.getRequests).toHaveBeenLastCalledWith({ from: '2026-10-08' });
 
-    fixture.componentInstance['filters'].setValue({
+    fixture.componentInstance['filters'].patchValue({
       status: '',
       from: new Date(2026, 9, 8),
       to: new Date(2026, 9, 8),
@@ -313,7 +319,7 @@ describe('RequestsComponent', () => {
   it('Funcionario: no consulta fechas anteriores a la municipalidad', async () => {
     await render(Role.Funcionario);
 
-    fixture.componentInstance['filters'].setValue({
+    fixture.componentInstance['filters'].patchValue({
       status: '',
       from: new Date(1123, 0, 1),
       to: new Date(1123, 5, 22),
@@ -322,13 +328,15 @@ describe('RequestsComponent', () => {
 
     expect(fixture.componentInstance['filters'].getRawValue()).toEqual({
       status: '',
+      procedureType: '',
+      sector: '',
       from: null,
       to: null,
     });
     expect(service.getRequests).toHaveBeenLastCalledWith({});
 
     const installation = new Date(2004, 11, 6);
-    fixture.componentInstance['filters'].setValue({
+    fixture.componentInstance['filters'].patchValue({
       status: '',
       from: installation,
       to: installation,
@@ -342,7 +350,7 @@ describe('RequestsComponent', () => {
   });
 
   it('muestra la etiqueta del tipo y, si el código no está en la lista, el código crudo', async () => {
-    await render(Role.Vecino, () => of([mine, { ...other, procedureType: 'desconocido' }]));
+    await render(Role.Vecino, () => of(page([mine, { ...other, procedureType: 'desconocido' }])));
 
     for (const container of ['.requests__table', '.requests__cards']) {
       expect(element.querySelector(container)?.textContent).toContain('Iluminación municipal');
@@ -377,7 +385,7 @@ describe('RequestsComponent', () => {
   it('si falla la carga ofrece Reintentar y vuelve a pedir el listado', async () => {
     let attempts = 0;
     await render(Role.Vecino, () =>
-      attempts++ === 0 ? throwError(() => new Error('sin red')) : of([]),
+      attempts++ === 0 ? throwError(() => new Error('sin red')) : of(page([])),
     );
 
     expect(text()).toContain('No pudimos cargar la información de trámites. Intenta nuevamente.');
@@ -410,7 +418,7 @@ describe('RequestsComponent', () => {
       };
       await render(
         Role.Funcionario,
-        () => of([{ ...mine, status }]),
+        () => of(page([{ ...mine, status }])),
         () => of(transitions),
       );
 
@@ -429,11 +437,11 @@ describe('RequestsComponent', () => {
       await render(
         Role.Funcionario,
         () =>
-          of([
+          of(page([
             mine,
             { ...other, status: 'RESUELTO' },
             { ...mine, id: 'rechazado', status: 'RECHAZADO' },
-          ]),
+          ])),
         () =>
           state === 'loading'
             ? new Subject<RequestTransitions>()
@@ -453,11 +461,11 @@ describe('RequestsComponent', () => {
     async (role) => {
       const reason = 'Primera línea.\n' + 'TextoSinEspacios'.repeat(30);
       await render(role, () =>
-        of([
+        of(page([
           { ...mine, status: 'RECHAZADO', rejectionReason: reason },
           { ...other, status: 'RECHAZADO', rejectionReason: '   ' },
           { ...mine, id: 'no-rechazado', rejectionReason: 'Motivo de otro estado' },
-        ]),
+        ])),
       );
       const overlay = TestBed.inject(OverlayContainer).getContainerElement();
 
@@ -518,7 +526,7 @@ describe('RequestsComponent', () => {
     'el diálogo de lectura permite cerrar con %s sin recargar',
     async (closeWith) => {
       await render(Role.Vecino, () =>
-        of([{ ...mine, status: 'RECHAZADO', rejectionReason: 'Antecedentes incompletos.' }]),
+        of(page([{ ...mine, status: 'RECHAZADO', rejectionReason: 'Antecedentes incompletos.' }])),
       );
       await openDetails(element);
       menuAction('Ver motivo').click();
@@ -558,7 +566,7 @@ describe('RequestsComponent', () => {
     const controls = () => fixture.componentInstance['createForm'].controls;
 
     it('ofrece solo activos, conserva labels históricos y no selecciona el primer tipo', async () => {
-      await render(Role.Vecino, () => of([{ ...mine, procedureType: 'historico' }]));
+      await render(Role.Vecino, () => of(page([{ ...mine, procedureType: 'historico' }])));
       const select = fixture.debugElement.query(By.directive(MatSelect))
         .componentInstance as MatSelect;
       expect(select.options.map((option) => option.value)).toEqual(['alumbrado', 'otro']);
@@ -581,7 +589,7 @@ describe('RequestsComponent', () => {
             : state === 'error'
               ? throwError(() => new Error('sin red'))
               : of(state === 'empty' ? [] : [catalog[2]]);
-        await render(Role.Vecino, () => of([mine]), undefined, getProcedures);
+        await render(Role.Vecino, () => of(page([mine])), undefined, getProcedures);
         fillForm();
         submitDirectly();
         expect(controls().procedureType.disabled).toBe(true);
@@ -680,7 +688,7 @@ describe('RequestsComponent', () => {
       };
       await render(
         Role.Funcionario,
-        () => of([mine]),
+        () => of(page([mine])),
         () => of(transitions),
         () => throwError(() => new Error('sin red')),
       );
@@ -730,7 +738,7 @@ describe('RequestsComponent', () => {
       };
       await render(
         Role.Funcionario,
-        () => of([mine, request]),
+        () => of(page([mine, request])),
         () => of(transitions),
       );
       const trigger = element.querySelector<HTMLButtonElement>('.request-actions__primary')!;
@@ -891,7 +899,7 @@ describe('RequestsComponent', () => {
       expect(text().split(message)).toHaveLength(2);
       expect(recovery().classList.contains('requests__status')).toBe(true);
       expect(element.querySelector('.requests__table')).toBeNull();
-      const requestsResponse = new Subject<Request[]>();
+      const requestsResponse = new Subject<Page<Request>>();
       const catalogResponse = new Subject<ProcedureType[]>();
       const transitionsResponse = new Subject<RequestTransitions>();
       service.getRequests.mockReturnValue(requestsResponse);
@@ -906,7 +914,7 @@ describe('RequestsComponent', () => {
       expect(spinner()?.getAttribute('aria-label')).toBe('Cargando información de trámites');
       expect(recovery().querySelector('button')).toBeNull();
       expect(text()).not.toContain(message);
-      complete(requestsResponse, [mine]);
+      complete(requestsResponse, page([mine]));
       await fixture.whenStable();
       expect(recovery().classList.contains('requests__recovery--compact')).toBe(true);
       expect(element.querySelector('.requests__table')?.textContent).toContain(mine.description);
@@ -934,7 +942,7 @@ describe('RequestsComponent', () => {
       async (query) => {
         await render(
           Role.Funcionario,
-          () => of([mine]),
+          () => of(page([mine])),
           query === 'transitions' ? fail : () => of(transitions),
           query === 'catalog' ? fail : () => of(catalog),
         );
@@ -974,7 +982,7 @@ describe('RequestsComponent', () => {
       };
       checkDescriptions();
       catalogService.getProcedures.mockReturnValue(of(catalog));
-      service.getRequests.mockReturnValue(of([mine]));
+      service.getRequests.mockReturnValue(of(page([mine])));
       retry();
       await fixture.whenStable();
       expect(fixture.componentInstance['createForm'].getRawValue()).toEqual(payload);
@@ -988,9 +996,9 @@ describe('RequestsComponent', () => {
     });
 
     it('conserva filtros y el aviso de cambio guardado hasta que se recupere el listado', async () => {
-      await render(Role.Funcionario, () => of([mine]), fail);
-      const filters = { status: 'INGRESADO', from: new Date(2026, 8, 1), to: null };
-      fixture.componentInstance['filters'].setValue(filters);
+      await render(Role.Funcionario, () => of(page([mine])), fail);
+      const filters = { status: 'INGRESADO' as const, from: new Date(2026, 8, 1), to: null };
+      fixture.componentInstance['filters'].patchValue(filters);
       service.getRequests.mockReturnValue(fail());
       fixture.componentInstance['loadRequests'](true);
       catalogService.getProcedures.mockReturnValue(fail());
@@ -1003,8 +1011,8 @@ describe('RequestsComponent', () => {
       await fixture.whenStable();
       expect(text()).toContain(savedMessage);
       expect(fixture.componentInstance['statusChangeReloadFailed']()).toBe(true);
-      expect(fixture.componentInstance['filters'].getRawValue()).toEqual(filters);
-      service.getRequests.mockReturnValue(of([]));
+      expect(fixture.componentInstance['filters'].getRawValue()).toMatchObject(filters);
+      service.getRequests.mockReturnValue(of(page([])));
       retry();
       await fixture.whenStable();
       expect(service.getRequests).toHaveBeenLastCalledWith({
@@ -1020,7 +1028,7 @@ describe('RequestsComponent', () => {
     });
 
     it('mantiene un único spinner inicial de 40 y luego uno compacto de 20 sin ocultar el listado', async () => {
-      const requestsResponse = new Subject<Request[]>();
+      const requestsResponse = new Subject<Page<Request>>();
       const catalogResponse = new Subject<ProcedureType[]>();
       const transitionsResponse = new Subject<RequestTransitions>();
       await render(
@@ -1035,10 +1043,10 @@ describe('RequestsComponent', () => {
       expect(element.querySelectorAll('mat-progress-spinner')).toHaveLength(1);
       expect(diameter()).toBe(40);
       expect(text()).not.toContain('Cargando');
-      complete(requestsResponse, []);
+      complete(requestsResponse, page([]));
       await fixture.whenStable();
       expect(diameter()).toBe(20);
-      expect(text()).toContain('No hay trámites que coincidan con el filtro seleccionado.');
+      expect(text()).toContain('Aún no hay trámites ingresados.');
       complete(catalogResponse, catalog);
       complete(transitionsResponse, transitions);
       await fixture.whenStable();
@@ -1047,7 +1055,7 @@ describe('RequestsComponent', () => {
     });
 
     it('reintenta fallos sin cancelar otra consulta en curso', async () => {
-      const requestsResponse = new Subject<Request[]>();
+      const requestsResponse = new Subject<Page<Request>>();
       await render(Role.Vecino, () => requestsResponse, undefined, fail);
       catalogService.getProcedures.mockReturnValue(of(catalog));
       fixture.componentInstance['retryFailedLoads']();
@@ -1055,7 +1063,7 @@ describe('RequestsComponent', () => {
       expect(requestsResponse.observed).toBe(true);
       expect(service.getRequests).toHaveBeenCalledTimes(1);
       expect(catalogService.getProcedures).toHaveBeenCalledTimes(2);
-      complete(requestsResponse, [mine]);
+      complete(requestsResponse, page([mine]));
       await fixture.whenStable();
       expect(recovery().hidden).toBe(true);
       expect(service.getTransitions).not.toHaveBeenCalled();
@@ -1064,7 +1072,7 @@ describe('RequestsComponent', () => {
     it('conserva el diálogo abierto y su label al recuperar el catálogo sin reenviar operaciones', async () => {
       await render(
         Role.Funcionario,
-        () => of([{ ...mine, status: 'RECHAZADO', rejectionReason: 'Motivo' }]),
+        () => of(page([{ ...mine, status: 'RECHAZADO', rejectionReason: 'Motivo' }])),
         () => of(transitions),
         fail,
       );
@@ -1093,7 +1101,7 @@ describe('RequestsComponent', () => {
       async (role) => {
         await render(
           role,
-          () => of([]),
+          () => of(page([])),
           () => of(transitions),
           () => of([]),
         );
@@ -1109,8 +1117,8 @@ describe('RequestsComponent', () => {
 
     it('cancelar la recarga por filtros no termina el indicador de las otras consultas; destruir cancela el resto', async () => {
       await render(Role.Funcionario, fail, fail, fail);
-      const requestsResponse = new Subject<Request[]>();
-      const replacement = new Subject<Request[]>();
+      const requestsResponse = new Subject<Page<Request>>();
+      const replacement = new Subject<Page<Request>>();
       const catalogResponse = new Subject<ProcedureType[]>();
       const transitionsResponse = new Subject<RequestTransitions>();
       service.getRequests.mockReturnValueOnce(requestsResponse).mockReturnValueOnce(replacement);
@@ -1119,7 +1127,7 @@ describe('RequestsComponent', () => {
       retry();
       fixture.componentInstance['filters'].patchValue({ status: 'INGRESADO' });
       expect(requestsResponse.observed).toBe(false);
-      complete(replacement, [mine]);
+      complete(replacement, page([mine]));
       await fixture.whenStable();
       expect(fixture.componentInstance['isRecovering']()).toBe(true);
       expect(spinner()).not.toBeNull();
@@ -1164,7 +1172,7 @@ describe('RequestsComponent', () => {
     beforeEach(async () => {
       await render(
         Role.Funcionario,
-        () => of([mine, other]),
+        () => of(page([mine, other])),
         () => of(transitions),
       );
     });
@@ -1187,10 +1195,10 @@ describe('RequestsComponent', () => {
           },
           rejectionReason: status === 'RECHAZADO' ? reason.trim() : null,
         };
-        service.getRequests.mockReturnValue(of([request, other]));
+        service.getRequests.mockReturnValue(of(page([request, other])));
         fixture.componentInstance['loadRequests']();
         await fixture.whenStable();
-        service.getRequests.mockReturnValueOnce(new Subject<Request[]>());
+        service.getRequests.mockReturnValueOnce(new Subject<Page<Request>>());
         service.changeStatus.mockReturnValueOnce(of(saved));
         const openSnackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open');
         const dialogRef = await openDialog(status, request);
@@ -1213,7 +1221,7 @@ describe('RequestsComponent', () => {
         expect(service.changeStatus).toHaveBeenCalledTimes(1);
         expect(document.activeElement).toBe(element.querySelector('#requests-list-title'));
 
-        service.getRequests.mockReturnValueOnce(of([saved, other]));
+        service.getRequests.mockReturnValueOnce(of(page([saved, other])));
         fixture.componentInstance['loadRequests']();
         await fixture.whenStable();
         expect(openSnackBar).toHaveBeenCalledTimes(1);
@@ -1235,7 +1243,7 @@ describe('RequestsComponent', () => {
     it('conserva el nombre del creador en ambas vistas después del cambio de estado y la recarga', async () => {
       const saved: Request = { ...mine, status: 'ADMITIDO' };
       service.changeStatus.mockReturnValueOnce(of(saved));
-      service.getRequests.mockReturnValueOnce(of([saved, other]));
+      service.getRequests.mockReturnValueOnce(of(page([saved, other])));
       const callsBeforeDialog = service.getRequests.mock.calls.length;
       const dialogRef = await openDialog('ADMITIDO');
       const closed = firstValueFrom(dialogRef.afterClosed());
@@ -1429,7 +1437,7 @@ describe('RequestsComponent', () => {
     it.each([404, 409])(
       'HTTP %s: bloquea el reenvío y permite recargar con los filtros actuales',
       async (status) => {
-        fixture.componentInstance['filters'].setValue({
+        fixture.componentInstance['filters'].patchValue({
           status: 'INGRESADO',
           from: new Date(2026, 8, 1),
           to: new Date(2026, 8, 30),
@@ -1553,8 +1561,8 @@ describe('RequestsComponent', () => {
     it.each([0, 500])(
       'HTTP %s: conserva el motivo y permite reintentar el cambio',
       async (status) => {
-        const filters = { status: 'INGRESADO', from: new Date(2026, 8, 1), to: null };
-        fixture.componentInstance['filters'].setValue(filters);
+        const filters = { status: 'INGRESADO' as const, from: new Date(2026, 8, 1), to: null };
+        fixture.componentInstance['filters'].patchValue(filters);
         await fixture.whenStable();
         const callsBeforeDialog = service.getRequests.mock.calls.length;
         const saved: Request = { ...mine, status: 'RECHAZADO', rejectionReason: reason.trim() };
@@ -1587,13 +1595,13 @@ describe('RequestsComponent', () => {
         });
         expect(text()).toContain('El cambio se guardó, pero no pudimos actualizar la lista.');
         expect(fixture.componentInstance['requests']()).toEqual([mine, other]);
-        expect(fixture.componentInstance['filters'].getRawValue()).toEqual(filters);
+        expect(fixture.componentInstance['filters'].getRawValue()).toMatchObject(filters);
         expect(service.getRequests).toHaveBeenLastCalledWith({
           status: 'INGRESADO',
           from: '2026-09-01',
         });
 
-        service.getRequests.mockReturnValueOnce(of([]));
+        service.getRequests.mockReturnValueOnce(of(page([])));
         fixture.componentInstance['retryFailedLoads']();
         await fixture.whenStable();
         expect(service.getRequests).toHaveBeenCalledTimes(callsBeforeDialog + 2);
@@ -1606,5 +1614,175 @@ describe('RequestsComponent', () => {
         expect(text()).not.toContain('El cambio se guardó, pero no pudimos actualizar la lista.');
       },
     );
+  });
+
+  describe('listado paginado (EP3-48)', () => {
+    const settle = async () => {
+      await fixture.whenStable();
+      await new Promise((resolve) => setTimeout(resolve));
+      await fixture.whenStable();
+    };
+    const currentUrl = () => TestBed.inject(Router).url;
+
+    it.each([Role.Vecino, Role.Funcionario])(
+      '%s: filtra por tipo y sector, y lo refleja en la URL',
+      async (role) => {
+        await render(role);
+
+        fixture.componentInstance['filters'].patchValue({
+          procedureType: 'alumbrado',
+          sector: 'villa-ralco',
+        });
+        await settle();
+
+        expect(service.getRequests).toHaveBeenLastCalledWith({
+          procedureType: 'alumbrado',
+          sector: 'villa-ralco',
+        });
+        expect(currentUrl()).toBe('/?procedureType=alumbrado&sector=villa-ralco');
+      },
+    );
+
+    it('restaura búsqueda, filtros, orden y página desde la URL compartida', async () => {
+      await render(
+        Role.Funcionario,
+        undefined,
+        undefined,
+        undefined,
+        '/?q=poste&status=EN_GESTION&from=2026-11-01&sort=folio,asc&page=1&size=10',
+      );
+
+      expect(service.getRequests).toHaveBeenCalledOnce();
+      expect(service.getRequests).toHaveBeenCalledWith({
+        q: 'poste',
+        status: 'EN_GESTION',
+        from: '2026-11-01',
+        sort: 'folio,asc',
+        page: '1',
+        size: '10',
+      });
+      expect(fixture.componentInstance['search'].value).toBe('poste');
+      expect(fixture.componentInstance['filters'].getRawValue()).toMatchObject({
+        status: 'EN_GESTION',
+        from: new Date(2026, 10, 1),
+      });
+    });
+
+    it('espera una pausa breve antes de buscar y no consulta por espacios', async () => {
+      await render(Role.Vecino);
+      vi.useFakeTimers();
+      try {
+        const calls = service.getRequests.mock.calls.length;
+
+        fixture.componentInstance['search'].setValue('BD-2026');
+        vi.advanceTimersByTime(200);
+        fixture.componentInstance['search'].setValue('BD-2026-000123');
+        vi.advanceTimersByTime(349);
+        expect(service.getRequests).toHaveBeenCalledTimes(calls);
+
+        vi.advanceTimersByTime(1);
+        expect(service.getRequests).toHaveBeenCalledTimes(calls + 1);
+        expect(service.getRequests).toHaveBeenLastCalledWith({ q: 'BD-2026-000123' });
+
+        fixture.componentInstance['search'].setValue('  BD-2026-000123  ');
+        vi.advanceTimersByTime(400);
+        expect(service.getRequests).toHaveBeenCalledTimes(calls + 1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('cambiar de página conserva los filtros; cambiar un filtro vuelve a la primera página', async () => {
+      await render(Role.Funcionario, () =>
+        of({ ...page([mine, other]), totalElements: 45, totalPages: 3 }),
+      );
+      fixture.componentInstance['filters'].patchValue({ status: 'INGRESADO' });
+      await settle();
+
+      fixture.componentInstance['changePage']({ pageIndex: 2, pageSize: 20, length: 45 });
+      await settle();
+      expect(service.getRequests).toHaveBeenLastCalledWith({ status: 'INGRESADO', page: '2' });
+      expect(currentUrl()).toBe('/?status=INGRESADO&page=2');
+
+      fixture.componentInstance['filters'].patchValue({ sector: 'ralco' });
+      await settle();
+      expect(service.getRequests).toHaveBeenLastCalledWith({
+        status: 'INGRESADO',
+        sector: 'ralco',
+      });
+    });
+
+    it('muestra el paginador con el total del servidor y el folio en tabla y tarjetas', async () => {
+      await render(Role.Vecino, () =>
+        of({
+          ...page([{ ...mine, folio: 'BD-2026-000123' }, other]),
+          totalElements: 57,
+          totalPages: 3,
+        }),
+      );
+
+      expect(element.querySelector('mat-paginator')).not.toBeNull();
+      expect(element.querySelector('.requests__total')?.textContent).toContain('57 trámites');
+      expect(
+        Array.from(element.querySelectorAll('td.mat-column-folio'), (cell) =>
+          cell.textContent?.trim(),
+        ),
+      ).toEqual(['BD-2026-000123', 'Sin folio']);
+      expect(element.querySelector('.requests__cards')?.textContent).toContain('BD-2026-000123');
+    });
+
+    it('ordena al pulsar el encabezado de la columna y vuelve a la primera página', async () => {
+      await render(Role.Vecino, undefined, undefined, undefined, '/?page=2');
+
+      element
+        .querySelector<HTMLElement>('th.mat-column-folio .mat-sort-header-container')
+        ?.click();
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({ sort: 'folio,asc' });
+      expect(currentUrl()).toBe('/?sort=folio,asc');
+    });
+
+    it('una página fuera de rango salta a la última con resultados', async () => {
+      let call = 0;
+      await render(
+        Role.Funcionario,
+        () =>
+          call++ === 0
+            ? of({ ...page([]), page: 9, totalElements: 30, totalPages: 2 })
+            : of({ ...page([mine]), page: 1, totalElements: 30, totalPages: 2 }),
+        undefined,
+        undefined,
+        '/?page=9',
+      );
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({ page: '1' });
+      expect(text()).toContain('Rama sobre el cable');
+    });
+
+    it('sin coincidencias ofrece limpiar búsqueda y filtros', async () => {
+      await render(Role.Vecino, () => of(page([])), undefined, undefined, '/?q=xyz&sector=ralco');
+
+      expect(text()).toContain('Ningún trámite coincide con la búsqueda o los filtros.');
+      Array.from(element.querySelectorAll('button'))
+        .find((button) => button.textContent?.trim() === 'Limpiar búsqueda y filtros')
+        ?.click();
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({});
+      expect(fixture.componentInstance['search'].value).toBe('');
+      expect(currentUrl()).toBe('/');
+    });
+
+    it('una navegación externa a /tramites sin parámetros reinicia la vista', async () => {
+      await render(Role.Funcionario, undefined, undefined, undefined, '/?status=RESUELTO');
+
+      await TestBed.inject(Router).navigateByUrl('/');
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({});
+      expect(fixture.componentInstance['filters'].controls.status.value).toBe('');
+    });
   });
 });

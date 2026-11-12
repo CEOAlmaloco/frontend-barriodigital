@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import { Page } from '../../shared/models/page.model';
 import {
   ChangeRequestStatusPayload,
   CreateRequestPayload,
@@ -26,18 +27,21 @@ export class RequestsService {
   private readonly http = inject(HttpClient);
   private readonly url = `${environment.bffBaseUrl}/api/requests`;
 
-  /** Al Vecino el servidor le devuelve solo sus trámites, ordenados por fecha de creación descendente. */
-  getRequests(filters?: { status?: string; from?: string; to?: string }): Observable<Request[]> {
-    let params = new HttpParams();
-    for (const [key, value] of Object.entries(filters ?? {})) {
+  /**
+   * Página de trámites (EP3-30). Al Vecino el servidor le devuelve solo los suyos, también al
+   * buscar y filtrar. Un parámetro vacío no se envía.
+   */
+  getRequests(params: Record<string, string> = {}): Observable<Page<Request>> {
+    let httpParams = new HttpParams();
+    for (const [key, value] of Object.entries(params)) {
       if (value) {
-        params = params.set(key, value);
+        httpParams = httpParams.set(key, value);
       }
     }
 
     return this.http
-      .get<RequestResponse[]>(this.url, { params })
-      .pipe(map((requests) => requests.map(toRequest)));
+      .get<Page<RequestResponse>>(this.url, { params: httpParams })
+      .pipe(map((page) => ({ ...page, content: page.content.map(toRequest) })));
   }
 
   /** Un trámite ajeno para el Vecino responde 404, igual que uno inexistente. */
