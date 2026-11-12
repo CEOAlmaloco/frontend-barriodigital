@@ -1,7 +1,9 @@
 @use 'tokens' as *;
 
 $content-max-width: 1200px;
-$filter-min-width: 200px;
+// El listado de staff suma columnas; aprovecha pantallas anchas de escritorio municipal
+$content-max-width-wide: 1440px;
+$folio-width: 152px;
 
 .requests {
   display: flex;
@@ -15,6 +17,10 @@ $filter-min-width: 200px;
   @media (min-width: $breakpoint-lg) {
     padding: $space-12;
   }
+}
+
+.requests--wide {
+  max-width: $content-max-width-wide;
 }
 
 .requests__header {
@@ -148,14 +154,84 @@ $filter-min-width: 200px;
   color: $color-error;
 }
 
-.requests__filters {
+.requests__list {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: $space-4;
+  min-width: 0;
 }
 
-.requests__filter {
-  flex: 1 1 $filter-min-width;
+.requests__list-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: $space-2 $space-4;
+
+  .requests__section-title {
+    margin-bottom: 0;
+  }
+}
+
+.requests__total {
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+  font-variant-numeric: tabular-nums;
+}
+
+.requests__results {
+  min-width: 0;
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: opacity $transition-base;
+  }
+}
+
+// Recarga por página, orden o filtro: las filas anteriores quedan atenuadas y no reciben clics
+.requests__results--stale {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.requests__empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-3;
+  padding: $space-12 $space-6;
+  border-radius: $radius-base;
+  background-color: var(--bd-surface);
+  box-shadow: $shadow-elevated;
+  text-align: center;
+
+  mat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 40px;
+    color: var(--bd-text-muted);
+  }
+}
+
+.requests__empty-title {
+  color: var(--bd-text);
+  font-weight: $font-weight-medium;
+}
+
+.requests__folio {
+  font-variant-numeric: tabular-nums;
+  font-weight: $font-weight-medium;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.requests__folio--missing {
+  color: var(--bd-text-muted);
+  font-weight: $font-weight-regular;
+}
+
+.requests__paginator {
+  border-radius: $radius-base;
+  box-shadow: $shadow-elevated;
 }
 
 .requests__recovery[hidden] {
@@ -232,6 +308,29 @@ $filter-min-width: 200px;
 .requests__table {
   width: 100%;
 
+  .requests__row {
+    @media (prefers-reduced-motion: no-preference) {
+      transition: background-color $transition-base;
+    }
+
+    &:hover {
+      background-color: color-mix(in srgb, var(--bd-primary-container) 45%, transparent);
+    }
+  }
+
+  .mat-column-folio {
+    width: $folio-width;
+  }
+
+  .mat-column-tramite {
+    text-align: start;
+    vertical-align: middle;
+
+    .requests__description {
+      margin-top: $space-1;
+    }
+  }
+
   .mat-mdc-header-cell,
   .mat-mdc-cell {
     padding-block: $space-4;
@@ -247,11 +346,6 @@ $filter-min-width: 200px;
     vertical-align: middle;
   }
 
-  .mat-column-descripcion {
-    text-align: start;
-    vertical-align: middle;
-  }
-
   .mat-column-fecha {
     white-space: nowrap;
   }
@@ -261,13 +355,13 @@ $filter-min-width: 200px;
   }
 }
 
-// La columna adicional necesita más espacio. Vecino conserva la tabla desde md.
+// Las columnas de staff necesitan más ancho: tabla desde xl. Vecino conserva la tabla desde md.
 .requests__table-wrapper--staff {
   @media (min-width: $breakpoint-md) {
     display: none;
   }
 
-  @media (min-width: $breakpoint-lg) {
+  @media (min-width: $breakpoint-xl) {
     display: block;
   }
 }
@@ -275,16 +369,9 @@ $filter-min-width: 200px;
 .requests__table--staff {
   table-layout: fixed;
 
-  .mat-column-tipo,
-  .mat-column-descripcion,
+  .mat-column-tramite,
   .mat-column-solicitante {
     padding-inline: $space-2;
-  }
-
-  .mat-column-tipo {
-    width: $space-12 * 4 + $space-4;
-    overflow-wrap: normal;
-    word-break: normal;
   }
 
   .mat-column-solicitante {
@@ -322,10 +409,12 @@ $filter-min-width: 200px;
 
 .requests__cards--staff {
   @media (min-width: $breakpoint-md) {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
   }
 
-  @media (min-width: $breakpoint-lg) {
+  @media (min-width: $breakpoint-xl) {
     display: none;
   }
 }
@@ -388,6 +477,14 @@ $filter-min-width: 200px;
 .requests__item {
   min-width: 0;
   padding: $space-4;
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: box-shadow $transition-base;
+  }
+
+  &:hover {
+    box-shadow: 0 4px 14px rgba(37, 35, 41, 0.12);
+  }
 }
 
 .requests__item-actions {

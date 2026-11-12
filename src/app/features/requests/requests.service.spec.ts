@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import { Page } from '../../shared/models/page.model';
 import { Request } from '../../shared/models/request.model';
 import { RequestsService } from './requests.service';
 
@@ -36,29 +37,47 @@ describe('RequestsService', () => {
 
   afterEach(() => backend.verify());
 
-  it('lista con GET al BFF y descarta title y updatedAt', async () => {
+  const page = <T>(content: T[]) => ({
+    content,
+    page: 0,
+    size: 20,
+    totalElements: content.length,
+    totalPages: 1,
+  });
+
+  it('lista con GET al BFF, conserva la página y descarta title y updatedAt', async () => {
     const result = firstValueFrom(service.getRequests());
 
     const call = backend.expectOne(url);
     expect(call.request.method).toBe('GET');
     expect(call.request.params.keys()).toEqual([]);
-    call.flush([response]);
+    call.flush({ ...page([response]), totalElements: 57, totalPages: 3 });
 
-    expect(await result).toEqual([request]);
+    expect(await result).toEqual({ ...page([request]), totalElements: 57, totalPages: 3 });
   });
 
-  it('manda solo los filtros con valor como query params status, from y to', async () => {
+  it('manda como query params solo los parámetros con valor', async () => {
     const result = firstValueFrom(
-      service.getRequests({ status: 'RESUELTO', from: '2026-09-01', to: '' }),
+      service.getRequests({
+        status: 'RESUELTO',
+        from: '2026-09-01',
+        to: '',
+        q: 'BD-2026',
+        sort: 'folio,asc',
+        page: '2',
+      }),
     );
 
     const call = backend.expectOne((req) => req.url === url);
     expect(call.request.params.get('status')).toBe('RESUELTO');
     expect(call.request.params.get('from')).toBe('2026-09-01');
+    expect(call.request.params.get('q')).toBe('BD-2026');
+    expect(call.request.params.get('sort')).toBe('folio,asc');
+    expect(call.request.params.get('page')).toBe('2');
     expect(call.request.params.has('to')).toBe(false);
-    call.flush([]);
+    call.flush(page([]));
 
-    expect(await result).toEqual([]);
+    expect((await result).content).toEqual([]);
   });
 
   it('crea con POST mandando solo procedureType, description y address', async () => {
@@ -147,7 +166,7 @@ describe('RequestsService', () => {
         const raw = { ...response, solicitanteNombre: name };
         if (name === undefined) delete raw.solicitanteNombre;
         const payload = { procedureType: 'bache', description: 'Descripción', address: 'Calle 1' };
-        const result = firstValueFrom<Request | Request[]>(
+        const result = firstValueFrom<Request | Page<Request>>(
           method === 'GET'
             ? service.getRequests()
             : method === 'POST'
@@ -157,10 +176,10 @@ describe('RequestsService', () => {
 
         const call = backend.expectOne(method === 'PUT' ? `${url}/${request.id}/status` : url);
         expect(call.request.method).toBe(method);
-        call.flush(method === 'GET' ? [raw] : raw);
+        call.flush(method === 'GET' ? page([raw]) : raw);
 
         const mapped = await result;
-        const item = Array.isArray(mapped) ? mapped[0] : mapped;
+        const item = 'content' in mapped ? mapped.content[0] : mapped;
         expect(item.solicitanteNombre).toBe(name);
         expect(item.solicitanteId).toBe(request.solicitanteId);
       },

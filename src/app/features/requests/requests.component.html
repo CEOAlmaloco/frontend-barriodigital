@@ -1,4 +1,4 @@
-<main class="requests">
+<main class="requests" [class.requests--wide]="isFuncionario()">
   <header class="requests__header">
     <h1>Trámites</h1>
     <p class="requests__subtitle">
@@ -229,51 +229,38 @@
     aria-labelledby="requests-list-title"
     [attr.aria-busy]="listState() === 'loading'"
   >
-    <h2 id="requests-list-title" class="requests__section-title" #listTitle tabindex="-1">
-      @if (isFuncionario()) {
-        Todos los trámites
-      } @else {
-        Mis trámites
+    <div class="requests__list-head">
+      <h2 id="requests-list-title" class="requests__section-title" #listTitle tabindex="-1">
+        @if (isFuncionario()) {
+          Todos los trámites
+        } @else {
+          Mis trámites
+        }
+      </h2>
+      @if (showResults()) {
+        <p class="requests__total" role="status">
+          {{ totalElements() }} {{ totalElements() === 1 ? 'trámite' : 'trámites' }}
+        </p>
       }
-    </h2>
+    </div>
 
-    @if (isFuncionario()) {
-      <form class="requests__filters" [formGroup]="filters" aria-label="Filtros del listado">
-        <mat-form-field class="requests__filter">
-          <mat-label>Estado</mat-label>
-          <mat-select formControlName="status">
-            <mat-option value="">Todos</mat-option>
-            @for (status of statuses; track status) {
-              <mat-option [value]="status">{{ statusView[status].label }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field class="requests__filter">
-          <mat-label>Desde</mat-label>
-          <input
-            matInput
-            [matDatepicker]="fromPicker"
-            formControlName="from"
-            [min]="municipalitySince"
-          />
-          <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
-          <mat-datepicker #fromPicker />
-        </mat-form-field>
-
-        <mat-form-field class="requests__filter">
-          <mat-label>Hasta</mat-label>
-          <input matInput [matDatepicker]="toPicker" formControlName="to" [min]="toMin()" />
-          <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
-          <mat-datepicker #toPicker [startAt]="filters.controls.from.value" />
-        </mat-form-field>
-      </form>
-    }
+    <app-request-list-filters
+      class="requests__filters"
+      [form]="filters"
+      [search]="search"
+      [procedureTypes]="catalog()"
+      [toMin]="toMin()"
+      [activeCount]="activeFilters()"
+      [sortValue]="sortValue()"
+      [staffLayout]="isFuncionario()"
+      (clearFilters)="clearFilters()"
+      (sortChange)="changeSortValue($event)"
+    />
 
     <div
       class="requests__recovery"
-      [class.requests__status]="listState() !== 'ready'"
-      [class.requests__recovery--compact]="listState() === 'ready'"
+      [class.requests__status]="!showResults()"
+      [class.requests__recovery--compact]="showResults()"
       [hidden]="!informationLoading() && !informationFailed()"
       [attr.aria-busy]="informationLoading()"
       aria-live="polite"
@@ -282,7 +269,7 @@
       @if (informationLoading()) {
         <mat-progress-spinner
           mode="indeterminate"
-          [diameter]="listState() === 'ready' ? 20 : 40"
+          [diameter]="showResults() ? 20 : 40"
           aria-label="Cargando información de trámites"
         />
       } @else if (informationFailed()) {
@@ -297,16 +284,22 @@
       }
     </div>
 
-    @switch (listState()) {
-      @case ('ready') {
+    @if (showResults()) {
+      <div class="requests__results" [class.requests__results--stale]="listState() === 'loading'">
         @if (requests().length === 0) {
-          <p class="requests__empty">
-            @if (isFuncionario()) {
-              No hay trámites que coincidan con el filtro seleccionado.
+          <div class="requests__empty-state">
+            <mat-icon aria-hidden="true">{{ isNarrowed() ? 'search_off' : 'inbox' }}</mat-icon>
+            @if (isNarrowed()) {
+              <p class="requests__empty-title">Ningún trámite coincide con la búsqueda o los filtros.</p>
+              <button matButton="outlined" type="button" (click)="clearSearchAndFilters()">
+                Limpiar búsqueda y filtros
+              </button>
+            } @else if (isFuncionario()) {
+              <p class="requests__empty-title">Aún no hay trámites ingresados.</p>
             } @else {
-              Aún no has ingresado trámites.
+              <p class="requests__empty-title">Aún no has ingresado trámites.</p>
             }
-          </p>
+          </div>
         } @else {
           <ng-template #requestDescription let-request>
             <div class="requests__description">
@@ -343,6 +336,14 @@
                 </p>
               }
             </div>
+          </ng-template>
+
+          <ng-template #requestFolio let-request>
+            @if (request.folio) {
+              <span class="requests__folio">{{ request.folio }}</span>
+            } @else {
+              <span class="requests__folio requests__folio--missing">Sin folio</span>
+            }
           </ng-template>
 
           <ng-template #requestLink let-request>
@@ -422,20 +423,26 @@
           >
             <table
               mat-table
+              matSort
+              matSortDisableClear
+              [matSortActive]="query().sort"
+              [matSortDirection]="query().direction"
+              (matSortChange)="changeSort($event)"
               [dataSource]="requests()"
               class="requests__table"
               [class.requests__table--staff]="isFuncionario()"
             >
-              <ng-container matColumnDef="tipo">
-                <th mat-header-cell *matHeaderCellDef>Tipo</th>
+              <ng-container matColumnDef="folio">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header="folio">Folio</th>
                 <td mat-cell *matCellDef="let request">
-                  <ng-container *ngTemplateOutlet="requestLink; context: { $implicit: request }" />
+                  <ng-container *ngTemplateOutlet="requestFolio; context: { $implicit: request }" />
                 </td>
               </ng-container>
 
-              <ng-container matColumnDef="descripcion">
-                <th mat-header-cell *matHeaderCellDef>Descripción</th>
+              <ng-container matColumnDef="tramite">
+                <th mat-header-cell *matHeaderCellDef>Trámite</th>
                 <td mat-cell *matCellDef="let request">
+                  <ng-container *ngTemplateOutlet="requestLink; context: { $implicit: request }" />
                   <ng-container
                     *ngTemplateOutlet="requestDescription; context: { $implicit: request }"
                   />
@@ -450,14 +457,14 @@
               }
 
               <ng-container matColumnDef="estado">
-                <th mat-header-cell *matHeaderCellDef>Estado</th>
+                <th mat-header-cell *matHeaderCellDef mat-sort-header="status">Estado</th>
                 <td mat-cell *matCellDef="let request">
                   <ng-container *ngTemplateOutlet="requestState; context: { $implicit: request }" />
                 </td>
               </ng-container>
 
               <ng-container matColumnDef="fecha">
-                <th mat-header-cell *matHeaderCellDef>Fecha</th>
+                <th mat-header-cell *matHeaderCellDef mat-sort-header="createdAt">Fecha</th>
                 <td mat-cell *matCellDef="let request">
                   {{ request.createdAt | date: 'dd-MM-yyyy' }}
                 </td>
@@ -478,7 +485,7 @@
               }
 
               <tr mat-header-row *matHeaderRowDef="columns()"></tr>
-              <tr mat-row *matRowDef="let row; columns: columns()"></tr>
+              <tr mat-row *matRowDef="let row; columns: columns()" class="requests__row"></tr>
             </table>
           </div>
 
@@ -486,6 +493,14 @@
             @for (request of requests(); track request.id) {
               <li class="requests__item">
                 <dl class="requests__fields">
+                  <div>
+                    <dt>Folio</dt>
+                    <dd>
+                      <ng-container
+                        *ngTemplateOutlet="requestFolio; context: { $implicit: request }"
+                      />
+                    </dd>
+                  </div>
                   <div>
                     <dt>Tipo</dt>
                     <dd>
@@ -535,7 +550,21 @@
             }
           </ul>
         }
-      }
+      </div>
+    }
+
+    @if (showResults() && totalElements() > 0) {
+      <mat-paginator
+        class="requests__paginator"
+        aria-label="Páginas del listado"
+        [length]="totalElements()"
+        [pageIndex]="query().page"
+        [pageSize]="query().size"
+        [pageSizeOptions]="pageSizes"
+        [disabled]="listState() === 'loading'"
+        showFirstLastButtons
+        (page)="changePage($event)"
+      />
     }
   </section>
 </main>
