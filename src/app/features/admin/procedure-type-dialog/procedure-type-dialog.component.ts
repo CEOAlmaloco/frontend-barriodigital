@@ -75,6 +75,7 @@ export class ProcedureTypeDialogComponent {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   protected readonly data = inject<ProcedureTypeDialogData>(MAT_DIALOG_DATA);
   protected readonly isEdit = this.data.mode === 'edit';
+  protected readonly title = this.isEdit ? 'Editar tipo' : 'Nuevo tipo';
   private readonly initial = this.data.mode === 'edit' ? { ...this.data.procedure } : null;
   private previousQuota: number | null = this.initial?.dailyQuota ?? null;
 

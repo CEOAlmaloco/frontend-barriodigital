@@ -102,6 +102,15 @@ describe('RequestAssignDialogComponent', () => {
     expect(await closed).toMatchObject({ kind: 'saved', reassigned: false });
   });
 
+  it.each([
+    [unassigned, 'Asignar trámite'],
+    [assigned, 'Reasignar trámite'],
+  ])('el título no tiene espacios alrededor', async (request, title) => {
+    await open(request);
+
+    expect(overlay.querySelector('[mat-dialog-title]')?.textContent).toBe(title);
+  });
+
   it('reasignación: muestra el responsable actual y exige un motivo no vacío', async () => {
     await open(assigned);
     service.assign.mockReturnValue(of({ ...assigned, assigneeId: 'oid-ana' }));

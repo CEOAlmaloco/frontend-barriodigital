@@ -1,6 +1,5 @@
-<h2 mat-dialog-title class="procedure-type-dialog__title">
-  {{ isEdit ? 'Editar tipo' : 'Nuevo tipo' }}
-</h2>
+<!-- Sin espacios alrededor: el ::before de mat-dialog-title es inline-block y un espacio inicial se vería -->
+<h2 mat-dialog-title class="procedure-type-dialog__title">{{ title }}</h2>
 
 <form [formGroup]="form" (ngSubmit)="submit()" [attr.aria-busy]="isSubmitting()" novalidate>
   <mat-dialog-content class="procedure-type-dialog__content">

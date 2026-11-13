@@ -1,7 +1,6 @@
 <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-  <h2 mat-dialog-title class="assign-dialog__title">
-    {{ reassign() ? 'Reasignar trámite' : 'Asignar trámite' }}
-  </h2>
+  <!-- Sin espacios alrededor: el ::before de mat-dialog-title es inline-block y un espacio inicial se vería -->
+  <h2 mat-dialog-title class="assign-dialog__title">{{ title() }}</h2>
 
   <mat-dialog-content class="assign-dialog__content">
     <p id="request-assign-description" class="assign-dialog__lead">
