@@ -14,12 +14,14 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
 
 import { Request, RequestStatus } from '../../../shared/models/request.model';
 import { RequestStatusBadgeComponent } from '../request-status-badge/request-status-badge.component';
 import {
   INTERVENTION_REASON_MAX_LENGTH,
   REJECTION_REASON_MAX_LENGTH,
+  REJECTION_REPLY_TEMPLATES,
   REQUEST_STATUS_VIEW,
 } from '../requests.constants';
 import { RequestsService } from '../requests.service';
@@ -87,6 +89,7 @@ function admissionErrors(
     MatIcon,
     MatInputModule,
     MatProgressSpinner,
+    MatSelectModule,
     ReactiveFormsModule,
     RequestStatusBadgeComponent,
   ],
@@ -106,6 +109,7 @@ export class RequestStatusDialogComponent {
   protected readonly statusView = REQUEST_STATUS_VIEW;
   protected readonly maxReasonLength = REJECTION_REASON_MAX_LENGTH;
   protected readonly maxInterventionLength = INTERVENTION_REASON_MAX_LENGTH;
+  protected readonly rejectionTemplates = REJECTION_REPLY_TEMPLATES;
   protected readonly requiresIntervention = this.data.requireInterventionReason === true;
   private readonly inDetail = this.data.context === 'detail';
   private readonly admissionMessages = admissionErrors(this.inDetail ? 'el trámite' : 'el listado');
@@ -160,6 +164,14 @@ export class RequestStatusDialogComponent {
     if (!this.requiresIntervention) {
       this.rejectionForm.controls.interventionReason.disable({ emitEvent: false });
     }
+  }
+
+  protected applyRejectionTemplate(text: string): void {
+    if (!text || this.isSubmitting()) {
+      return;
+    }
+    this.rejectionForm.controls.rejectionReason.setValue(text);
+    this.rejectionForm.controls.rejectionReason.markAsDirty();
   }
 
   protected cancel(): void {
