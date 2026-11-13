@@ -21,7 +21,7 @@
       </mat-select>
     </mat-form-field>
   </div>
-  <mat-form-field>
+  <mat-form-field subscriptSizing="dynamic">
     <mat-label>Plantilla de nota</mat-label>
     <mat-select [disabled]="saving()" (selectionChange)="applyNoteTemplate($event.value)">
       <mat-option value="">Escribir nota</mat-option>
