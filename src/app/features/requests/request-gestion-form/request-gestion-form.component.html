@@ -22,6 +22,16 @@
     </mat-form-field>
   </div>
   <mat-form-field>
+    <mat-label>Plantilla de nota</mat-label>
+    <mat-select [disabled]="saving()" (selectionChange)="applyNoteTemplate($event.value)">
+      <mat-option value="">Escribir nota</mat-option>
+      @for (template of noteTemplates; track template.label) {
+        <mat-option [value]="template.text">{{ template.label }}</mat-option>
+      }
+    </mat-select>
+    <mat-hint>Puedes editar el texto después de elegir una plantilla.</mat-hint>
+  </mat-form-field>
+  <mat-form-field>
     <mat-label>Nota</mat-label>
     <textarea matInput formControlName="note" rows="2" maxlength="500"></textarea>
   </mat-form-field>

@@ -21,6 +21,7 @@ import { MatTimepickerModule } from '@angular/material/timepicker';
 import {
   CONTACT_CHANNELS,
   CONTACT_RESULTS,
+  GESTION_NOTE_TEMPLATES,
   INTERVENTION_REASON_MAX_LENGTH,
 } from '../requests.constants';
 import { RequestActivity, RequestsService } from '../requests.service';
@@ -63,6 +64,7 @@ export class RequestGestionFormComponent {
 
   protected readonly channels = CONTACT_CHANNELS;
   protected readonly results = CONTACT_RESULTS;
+  protected readonly noteTemplates = GESTION_NOTE_TEMPLATES;
   protected readonly interventionMaxLength = INTERVENTION_REASON_MAX_LENGTH;
   protected readonly saving = signal(false);
   protected readonly saveError = signal<string | null>(null);
@@ -87,6 +89,14 @@ export class RequestGestionFormComponent {
       },
     },
   );
+
+  protected applyNoteTemplate(text: string): void {
+    if (!text || this.saving()) {
+      return;
+    }
+    this.form.controls.note.setValue(text);
+    this.form.controls.note.markAsDirty();
+  }
 
   protected interventionMissing(): boolean {
     return this.requireInterventionReason() && !this.form.controls.interventionReason.value.trim();
