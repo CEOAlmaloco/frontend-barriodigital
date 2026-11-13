@@ -127,6 +127,7 @@
               [transitionsState]="transitionsState()"
               [taking]="taking()"
               (take)="take()"
+              (assign)="openAssignDialog($event)"
               (changeStatus)="openStatusDialog($event)"
               (registerGestion)="openGestionDialog($event)"
               (retryTransitions)="loadTransitions()"

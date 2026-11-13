@@ -3,7 +3,13 @@
 $content-max-width: 1200px;
 // El listado de staff suma columnas; aprovecha pantallas anchas de escritorio municipal
 $content-max-width-wide: 1440px;
-$folio-width: 152px;
+// Anchos de columna: la descripción toma el resto
+$column-type: 168px;
+$column-person: 144px;
+$column-assignee: 192px;
+$column-state: 176px;
+$column-date: 112px;
+$column-actions: 212px;
 
 .requests {
   display: flex;
@@ -164,13 +170,24 @@ $folio-width: 152px;
 .requests__list-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: $space-2 $space-4;
+  gap: $space-3 $space-4;
+}
+
+.requests__list-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: $space-1 $space-3;
 
   .requests__section-title {
     margin-bottom: 0;
   }
+}
+
+.requests__recovery[hidden] {
+  display: none;
 }
 
 .requests__total {
@@ -217,25 +234,29 @@ $folio-width: 152px;
   font-weight: $font-weight-medium;
 }
 
+.requests__empty-hint {
+  margin-top: -$space-2;
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+}
+
+// Debajo del tipo, en su propia línea
 .requests__folio {
+  display: block;
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
   font-variant-numeric: tabular-nums;
-  font-weight: $font-weight-medium;
   letter-spacing: 0.01em;
   white-space: nowrap;
 }
 
 .requests__folio--missing {
-  color: var(--bd-text-muted);
-  font-weight: $font-weight-regular;
+  font-style: italic;
 }
 
 .requests__paginator {
   border-radius: $radius-base;
   box-shadow: $shadow-elevated;
-}
-
-.requests__recovery[hidden] {
-  display: none;
 }
 
 .requests__recovery--compact {
@@ -308,6 +329,19 @@ $folio-width: 152px;
 .requests__table {
   width: 100%;
 
+  .mat-mdc-header-cell,
+  .mat-mdc-cell {
+    padding: $space-4 $space-3;
+
+    &:first-child {
+      padding-inline-start: $space-4;
+    }
+
+    &:last-child {
+      padding-inline-end: $space-4;
+    }
+  }
+
   .requests__row {
     @media (prefers-reduced-motion: no-preference) {
       transition: background-color $transition-base;
@@ -318,40 +352,27 @@ $folio-width: 152px;
     }
   }
 
-  .mat-column-folio {
-    width: $folio-width;
-  }
-
-  .mat-column-tramite {
-    text-align: start;
-    vertical-align: middle;
-
-    .requests__description {
-      margin-top: $space-1;
-    }
-  }
-
-  .mat-mdc-header-cell,
-  .mat-mdc-cell {
-    padding-block: $space-4;
-  }
-
   td {
-    overflow-wrap: anywhere;
+    vertical-align: middle;
+    text-align: start;
+  }
+
+  .mat-column-tipo {
+    width: $column-type;
   }
 
   td.mat-column-estado {
     overflow: visible;
-    text-align: start;
-    vertical-align: middle;
+  }
+
+  .mat-column-estado {
+    width: $column-state;
   }
 
   .mat-column-fecha {
+    width: $column-date;
     white-space: nowrap;
-  }
-
-  .mat-column-acciones {
-    min-width: $size-touch-target * 4;
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -369,29 +390,25 @@ $folio-width: 152px;
 .requests__table--staff {
   table-layout: fixed;
 
-  .mat-column-tramite,
   .mat-column-solicitante {
-    padding-inline: $space-2;
+    width: $column-person;
   }
 
-  .mat-column-solicitante {
-    width: $space-12 * 3;
-    overflow-wrap: normal;
-    word-break: normal;
-  }
-
-  .mat-column-estado {
-    width: $size-touch-target * 4 + $space-4;
-  }
-
-  .mat-column-fecha {
-    width: $space-12 * 2 + $space-6;
+  .mat-column-responsable {
+    width: $column-assignee;
   }
 
   .mat-column-acciones {
-    // Incluye las etiquetas largas de transición, el desplegable y el padding de la celda.
-    width: $size-touch-target * 5 + $space-4;
+    // La transición más larga ("Enviar a terreno") con su desplegable
+    width: $column-actions;
   }
+}
+
+// Tipo y folio van juntos: el enlace no reserva 44 px de alto, pero cumple el mínimo de 24 px (WCAG 2.5.8)
+.requests__table .requests__detail-link,
+.requests__item-title .requests__detail-link {
+  min-height: 24px;
+  overflow-wrap: normal;
 }
 
 .requests__cards {
@@ -419,54 +436,6 @@ $folio-width: 152px;
   }
 }
 
-.requests__description {
-  position: relative;
-  text-align: start;
-}
-
-.requests__description-text {
-  margin: 0;
-  line-height: $line-height-body;
-  overflow-wrap: normal;
-  word-break: normal;
-}
-
-.requests__location-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: $space-1 $space-2;
-  margin: $space-2 0 0;
-  font-size: $font-body-sm;
-  color: var(--bd-text-muted);
-  overflow-wrap: anywhere;
-
-  a {
-    color: var(--bd-primary);
-  }
-}
-
-.requests__description-fade {
-  background-image: linear-gradient(to right, var(--bd-text) 10%, transparent);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.requests__description-more {
-  display: inline-flex;
-  align-items: baseline;
-  vertical-align: baseline;
-  min-width: 0;
-  min-height: 0;
-  height: auto;
-  margin: 0 0 0 $space-2;
-  padding: 0;
-  color: var(--bd-primary);
-  font-weight: $font-weight-semibold;
-  line-height: inherit;
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
-}
 
 .requests__description-full {
   white-space: pre-wrap;
@@ -475,6 +444,9 @@ $folio-width: 152px;
 }
 
 .requests__item {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
   min-width: 0;
   padding: $space-4;
 
@@ -487,15 +459,46 @@ $folio-width: 152px;
   }
 }
 
+.requests__item-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $space-3;
+
+  .requests__state {
+    width: auto;
+    flex: none;
+  }
+}
+
+.requests__item-title {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+
+  .requests__detail-link {
+    font-size: $font-body + 1px;
+  }
+}
+
 .requests__item-actions {
-  margin-top: $space-4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+  padding-top: $space-3;
+  border-top: $border-width solid var(--bd-border);
 }
 
 .requests__fields {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: $space-3;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: $space-2 $space-4;
   margin: 0;
+
+  > div {
+    display: contents;
+  }
 
   dt {
     font-size: $font-label;

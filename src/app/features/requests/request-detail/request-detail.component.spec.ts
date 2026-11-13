@@ -630,4 +630,75 @@ describe('RequestDetailComponent', () => {
       expect(text()).toContain('Cancelaste este trámite.');
     });
   });
+
+  describe('asignación (EP3-47)', () => {
+    const reassignButton = () =>
+      element.querySelector<HTMLButtonElement>('[aria-label="Reasignar el trámite a otro funcionario"]');
+
+    it('el Admin asigna un trámite sin responsable como acción principal', async () => {
+      await render(Role.Admin);
+
+      expect(hasButton('Asignar funcionario')).toBe(true);
+      expect(hasButton('Tomar trámite')).toBe(false);
+      expect(text()).toContain('El trámite no tiene responsable.');
+      expect(reassignButton()).toBeNull();
+    });
+
+    it('el responsable y el Admin pueden reasignar; otro funcionario y el Auditor no', async () => {
+      await render(Role.Funcionario, () => of(assigned()));
+      expect(reassignButton()).not.toBeNull();
+
+      TestBed.resetTestingModule();
+      await render(Role.Admin, () => of(assigned('oid-otro', 'Luisa Painemal')));
+      expect(reassignButton()).not.toBeNull();
+
+      TestBed.resetTestingModule();
+      await render(Role.Funcionario, () => of(assigned('oid-otro', 'Luisa Painemal')));
+      expect(reassignButton()).toBeNull();
+
+      TestBed.resetTestingModule();
+      await render(Role.Auditor, () => of(assigned()));
+      expect(reassignButton()).toBeNull();
+    });
+
+    it('un trámite cerrado no se reasigna', async () => {
+      await render(Role.Admin, () => of({ ...assigned(), status: 'RESUELTO' }));
+
+      expect(reassignButton()).toBeNull();
+      expect(hasButton('Asignar funcionario')).toBe(false);
+    });
+
+    it('al guardar, actualiza el responsable y avisa', async () => {
+      await render(Role.Admin);
+      const saved = assigned('oid-luisa', 'Luisa Painemal');
+      const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+        afterClosed: () => of({ kind: 'saved', request: saved, reassigned: false }),
+      } as never);
+
+      button('Asignar funcionario').click();
+      await fixture.whenStable();
+
+      expect(open).toHaveBeenCalledOnce();
+      expect(snackBar.open).toHaveBeenCalledWith('Trámite asignado a Luisa Painemal.', undefined, {
+        duration: 3500,
+      });
+      expect(text()).toContain('Luisa Painemal');
+    });
+
+    it('si el trámite cambió, recarga el detalle y explica por qué', async () => {
+      await render(Role.Funcionario, () => of(assigned()));
+      vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+        afterClosed: () => of({ kind: 'reload', message: 'El trámite ya está cerrado.' }),
+      } as never);
+      const calls = service.getRequest.mock.calls.length;
+
+      reassignButton()!.click();
+      await fixture.whenStable();
+
+      expect(snackBar.open).toHaveBeenCalledWith('El trámite ya está cerrado.', undefined, {
+        duration: 5000,
+      });
+      expect(service.getRequest).toHaveBeenCalledTimes(calls + 1);
+    });
+  });
 });

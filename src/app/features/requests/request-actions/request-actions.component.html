@@ -1,53 +1,136 @@
 @if (isTerminal()) {
   <span class="request-actions__finished">Flujo finalizado</span>
-} @else if (primaryAction(); as action) {
-  <div class="request-actions">
-    <button
-      matButton="filled"
-      type="button"
-      class="request-actions__primary"
-      [class.request-actions__primary--split]="canReject()"
-      [attr.aria-label]="actionLabel(action) + '. Trámite ' + requestId()"
-      (click)="selectAction(action, $event)"
-    >
-      {{ actionLabel(action) }}
-    </button>
-
-    @if (canReject()) {
+} @else {
+  @switch (mode()) {
+    @case ('take') {
       <button
         matButton="filled"
         type="button"
-        class="request-actions__menu-trigger"
-        #menuButton
-        #menuTrigger="matMenuTrigger"
-        [matMenuTriggerFor]="rejectionMenu"
-        (menuOpened)="menuTrigger.restoreFocus = true"
-        [attr.aria-label]="'Más acciones para el trámite ' + requestId()"
+        class="request-actions__single"
+        [disabled]="busy()"
+        [attr.aria-busy]="busy()"
+        [attr.aria-label]="(busy() ? 'Tomando el trámite ' : 'Tomar el trámite ') + requestId()"
+        (click)="emit('take', $event)"
       >
-        <mat-icon>arrow_drop_down</mat-icon>
+        @if (busy()) {
+          <mat-progress-spinner
+            class="request-actions__spinner"
+            mode="indeterminate"
+            diameter="18"
+            aria-hidden="true"
+          />
+        } @else {
+          <mat-icon aria-hidden="true">assignment_ind</mat-icon>
+        }
+        Tomar
       </button>
-
-      <mat-menu #rejectionMenu="matMenu">
-        <button
-          mat-menu-item
-          type="button"
-          class="request-actions__reject"
-          [attr.aria-label]="'Rechazar el trámite ' + requestId()"
-          (click)="selectAction('RECHAZADO', $event, menuTrigger)"
-        >
-          Rechazar
-        </button>
-      </mat-menu>
     }
-  </div>
-} @else if (canReject()) {
-  <button
-    matButton
-    type="button"
-    class="request-actions__reject"
-    [attr.aria-label]="'Rechazar el trámite ' + requestId()"
-    (click)="selectAction('RECHAZADO', $event)"
-  >
-    Rechazar
-  </button>
+    @case ('assign') {
+      <button
+        matButton="filled"
+        type="button"
+        class="request-actions__single"
+        [attr.aria-label]="'Asignar el trámite ' + requestId()"
+        (click)="emit('assign', $event)"
+      >
+        <mat-icon aria-hidden="true">person_add</mat-icon>
+        Asignar
+      </button>
+    }
+    @case ('reassign') {
+      <button
+        matButton="outlined"
+        type="button"
+        class="request-actions__single"
+        [attr.aria-label]="'Reasignar el trámite ' + requestId()"
+        (click)="emit('assign', $event)"
+      >
+        <mat-icon aria-hidden="true">swap_horiz</mat-icon>
+        Reasignar
+      </button>
+    }
+    @case ('readonly') {
+      <span class="request-actions__readonly">
+        <mat-icon aria-hidden="true">lock</mat-icon>
+        Solo lectura
+      </span>
+    }
+    @default {
+      @if (primaryAction(); as action) {
+        <div class="request-actions">
+          <button
+            matButton="filled"
+            type="button"
+            class="request-actions__primary request-actions__primary--split"
+            [attr.aria-label]="actionLabel(action) + '. Trámite ' + requestId()"
+            (click)="selectAction(action, $event)"
+          >
+            {{ actionLabel(action) }}
+          </button>
+
+          <button
+            matButton="filled"
+            type="button"
+            class="request-actions__menu-trigger"
+            #menuButton
+            #menuTrigger="matMenuTrigger"
+            [matMenuTriggerFor]="moreMenu"
+            (menuOpened)="menuTrigger.restoreFocus = true"
+            [attr.aria-label]="'Más acciones para el trámite ' + requestId()"
+          >
+            <mat-icon>arrow_drop_down</mat-icon>
+          </button>
+
+          <mat-menu #moreMenu="matMenu" xPosition="before">
+            <button
+              mat-menu-item
+              type="button"
+              [attr.aria-label]="'Reasignar el trámite ' + requestId()"
+              (click)="reassignFromMenu($event, menuTrigger)"
+            >
+              <mat-icon aria-hidden="true">swap_horiz</mat-icon>
+              <span>Reasignar</span>
+            </button>
+            @if (canReject()) {
+              <mat-divider />
+              <button
+                mat-menu-item
+                type="button"
+                class="request-actions__reject"
+                [attr.aria-label]="'Rechazar el trámite ' + requestId()"
+                (click)="selectAction('RECHAZADO', $event, menuTrigger)"
+              >
+                <mat-icon aria-hidden="true">block</mat-icon>
+                <span>Rechazar</span>
+              </button>
+            }
+          </mat-menu>
+        </div>
+      } @else {
+        <div class="request-actions request-actions--wrap">
+          <button
+            matButton="outlined"
+            type="button"
+            class="request-actions__single"
+            [attr.aria-label]="'Reasignar el trámite ' + requestId()"
+            (click)="emit('assign', $event)"
+          >
+            <mat-icon aria-hidden="true">swap_horiz</mat-icon>
+            Reasignar
+          </button>
+          @if (canReject()) {
+            <button
+              matButton
+              type="button"
+              class="request-actions__reject"
+              [attr.aria-label]="'Rechazar el trámite ' + requestId()"
+              (click)="selectAction('RECHAZADO', $event)"
+            >
+              Rechazar
+            </button>
+          }
+        </div>
+      }
+    }
+  }
 }

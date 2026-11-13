@@ -1,0 +1,192 @@
+@use 'tokens' as *;
+
+$avatar-size: 32px;
+
+.assign-dialog__title {
+  padding: $space-6 $space-6 $space-2;
+  font-size: $font-h2;
+  font-weight: $font-weight-semibold;
+  color: var(--bd-text);
+}
+
+.assign-dialog__content {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  padding: $space-2 $space-6 $space-4;
+  font-size: $font-body;
+  color: var(--bd-text);
+}
+
+.assign-dialog__lead {
+  color: var(--bd-text-muted);
+}
+
+.assign-dialog__folio {
+  font-variant-numeric: tabular-nums;
+  font-weight: $font-weight-medium;
+  color: var(--bd-text);
+}
+
+.assign-dialog__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-2;
+  padding: $space-3;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  font-size: $font-body-sm;
+  color: var(--bd-text);
+
+  mat-icon {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    font-size: 20px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: assign-dialog-enter $transition-entrance;
+  }
+}
+
+.assign-dialog__notice--warning {
+  background-color: var(--bd-accent-container);
+
+  mat-icon {
+    color: var(--bd-accent-text);
+  }
+}
+
+.assign-dialog__notice--error {
+  background-color: var(--bd-error-container);
+
+  mat-icon {
+    color: var(--bd-error);
+  }
+}
+
+.assign-dialog__current {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  padding: $space-3;
+  border-radius: $radius-base;
+  background-color: var(--bd-background);
+}
+
+.assign-dialog__current-label {
+  font-size: $font-label;
+  color: var(--bd-text-muted);
+}
+
+.assign-dialog__retry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-2;
+  font-size: $font-body-sm;
+  color: var(--bd-error);
+}
+
+.assign-dialog__reason {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: assign-dialog-enter $transition-entrance;
+  }
+}
+
+.assign-dialog__counter {
+  display: flex;
+  justify-content: space-between;
+  gap: $space-3;
+  max-width: none;
+  padding-inline: $space-4;
+  font-size: $font-body-sm;
+  color: var(--bd-text-muted);
+
+  span:last-child {
+    flex: none;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.assign-dialog__feedback:empty {
+  display: none;
+}
+
+.assign-dialog__feedback {
+  font-size: $font-body-sm;
+  color: var(--bd-text-muted);
+}
+
+.assign-dialog__actions {
+  gap: $space-2;
+  padding: $space-2 $space-6 $space-6;
+}
+
+.assign-dialog__confirm {
+  position: relative;
+  min-width: 7.5rem;
+}
+
+.assign-dialog__confirm-label--hidden {
+  visibility: hidden;
+}
+
+.assign-dialog__spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+// Las opciones se declaran en esta plantilla: la encapsulación las alcanza aunque vivan en el overlay
+.assign-dialog__option,
+.assign-dialog__option-status {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  min-width: 0;
+}
+
+.assign-dialog__option-status {
+  gap: $space-2;
+  color: var(--bd-text-muted);
+}
+
+.assign-dialog__avatar {
+  display: inline-grid;
+  width: $avatar-size;
+  height: $avatar-size;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  background-color: var(--bd-secondary-container);
+  color: var(--bd-secondary);
+  font-size: 12px;
+  font-weight: $font-weight-semibold;
+}
+
+.assign-dialog__option-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.assign-dialog__option-tag {
+  margin-inline-start: auto;
+  padding-inline-start: $space-3;
+  font-size: $font-label;
+  color: var(--bd-text-muted);
+  white-space: nowrap;
+}
+
+@keyframes assign-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}

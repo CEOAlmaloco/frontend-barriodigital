@@ -5,7 +5,9 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  Injector,
   TemplateRef,
+  afterNextRender,
   computed,
   inject,
   signal,
@@ -24,6 +26,7 @@ import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatCheckbox } from '@angular/material/checkbox';
 import { MAT_DATE_LOCALE, provideNativeDateAdapter } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDivider } from '@angular/material/divider';
 import {
   MatDialog,
   MatDialogActions,
@@ -54,7 +57,8 @@ import {
   RequestStatus,
   RequestTransitions,
 } from '../../shared/models/request.model';
-import { Role } from '../../shared/models/role';
+import { Role, resolveViewerRole } from '../../shared/models/role';
+import { assignmentFailure } from './assignment-errors';
 import { MUNICIPALITY_SINCE, toDateKey } from './date-key';
 import {
   RequestFiltersForm,
@@ -64,6 +68,7 @@ import {
   DEFAULT_REQUEST_QUERY,
   REQUEST_PAGE_SIZES,
   RequestListQuery,
+  RequestQueue,
   RequestSortDirection,
   RequestSortField,
   SEARCH_DEBOUNCE_MS,
@@ -75,8 +80,20 @@ import {
 } from './request-list-query';
 import {
   RequestActionsComponent,
+  RequestRowMode,
   RequestStatusAction,
 } from './request-actions/request-actions.component';
+import {
+  RequestAssignDialogComponent,
+  RequestAssignDialogData,
+  RequestAssignDialogResult,
+} from './request-assign-dialog/request-assign-dialog.component';
+import { RequestAssigneeComponent } from './request-assignee/request-assignee.component';
+import { RequestDescriptionComponent } from './request-description/request-description.component';
+import {
+  RequestQueueComponent,
+  RequestQueueOption,
+} from './request-queue/request-queue.component';
 import {
   RequestActivityDialogComponent,
   RequestActivityDialogData,
@@ -99,7 +116,6 @@ import {
   LocationMode,
   isInsideCommune,
   locationPointValidator,
-  locationSummary,
   mapUrl,
   roundCoordinate,
 } from './request-location';
@@ -108,10 +124,8 @@ type LoadState = 'loading' | 'ready' | 'error';
 type LoadQuery = 'catalog' | 'requests' | 'transitions';
 type AttachmentPreview = { requestId: string; url: string; imageType: string; extension: string };
 
-const COLUMNS = ['folio', 'tramite', 'estado', 'fecha'];
-const STAFF_COLUMNS = ['folio', 'tramite', 'solicitante', 'estado', 'fecha', 'acciones'];
-/** A partir de aquí «Ver» sigue al texto y el resto se abre aparte. */
-const DESCRIPTION_PREVIEW_CHARS = 72;
+const COLUMNS = ['tipo', 'descripcion', 'estado', 'fecha'];
+const STAFF_COLUMNS = ['tipo', 'descripcion', 'solicitante', 'responsable', 'estado', 'fecha'];
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 const MAX_IMAGE_PIXELS = 12_000_000;
 const MAX_IMAGE_DIMENSION = 6000;
@@ -123,6 +137,7 @@ const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
     DatePipe,
     NgTemplateOutlet,
     MatButton,
+    MatDivider,
     MatIconButton,
     MatIcon,
     MatMenu,
@@ -144,7 +159,10 @@ const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
     MatTableModule,
     ReactiveFormsModule,
     RequestActionsComponent,
+    RequestAssigneeComponent,
+    RequestDescriptionComponent,
     RequestListFiltersComponent,
+    RequestQueueComponent,
     RequestLocationMapComponent,
     RequestStatusBadgeComponent,
     RouterLink,
@@ -162,6 +180,7 @@ export class RequestsComponent {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly listTitle = viewChild.required<ElementRef<HTMLElement>>('listTitle');
@@ -183,6 +202,8 @@ export class RequestsComponent {
   private activityDialog: MatDialogRef<RequestActivityDialogComponent, void> | null = null;
   private descriptionDialog: MatDialogRef<unknown, void> | null = null;
   private attachmentPreviewDialog: MatDialogRef<unknown, void> | null = null;
+  private assignDialog: MatDialogRef<RequestAssignDialogComponent, RequestAssignDialogResult> | null =
+    null;
   private reloadAfterStatusChange = false;
   private readonly recoveryPending = signal<LoadQuery[]>([]);
 
@@ -198,11 +219,34 @@ export class RequestsComponent {
   protected readonly catalogAvailable = computed(
     () => this.catalogState() === 'ready' && this.tiposTramite().length > 0,
   );
-  protected readonly locationSummary = locationSummary;
 
-  /** Admin y Auditor no llegan a esta vista (roleGuard), así que quien no es Funcionario es Vecino. */
-  protected readonly isFuncionario = computed(() => this.auth.hasRole(Role.Funcionario));
-  protected readonly columns = computed(() => (this.isFuncionario() ? STAFF_COLUMNS : COLUMNS));
+  /** El roleGuard decide quién entra; aquí el rol define columnas, bandeja y acciones. */
+  protected readonly viewer = computed(() => resolveViewerRole((role) => this.auth.hasRole(role)));
+  protected readonly isFuncionario = computed(() => this.viewer() === Role.Funcionario);
+  protected readonly isStaff = computed(() => this.viewer() !== Role.Vecino);
+  /** El Auditor solo lee; el Admin deriva desde la fila (asignar o reasignar). */
+  protected readonly canAct = computed(
+    () => this.viewer() === Role.Funcionario || this.viewer() === Role.Admin,
+  );
+  protected readonly columns = computed(() =>
+    this.isStaff() ? [...STAFF_COLUMNS, ...(this.canAct() ? ['acciones'] : [])] : COLUMNS,
+  );
+  /** "Mis asignados" no existe para Admin ni Auditor: nunca son responsables (EP3-05, sección 8). */
+  protected readonly queues = computed(() => {
+    if (!this.isStaff()) {
+      return [];
+    }
+    const queues: RequestQueueOption[] = [
+      { value: '', label: 'Todos', icon: 'inbox' },
+    ];
+    if (this.isFuncionario()) {
+      queues.push({ value: 'me', label: 'Mis asignados', icon: 'person' });
+    }
+    queues.push({ value: 'none', label: 'Sin asignar', icon: 'person_off' });
+    return queues;
+  });
+  /** Trámite en curso de toma, para mostrar el spinner en su botón. */
+  protected readonly takingId = signal<string | null>(null);
 
   protected readonly listState = signal<LoadState>('loading');
   private readonly hasLoaded = signal(false);
@@ -382,6 +426,7 @@ export class RequestsComponent {
       this.statusDialog?.close();
       this.rejectionReasonDialog?.close();
       this.activityDialog?.close();
+      this.assignDialog?.close();
     });
     this.filters.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
       const from = this.filters.controls.from.value;
@@ -408,11 +453,11 @@ export class RequestsComponent {
         }
       });
 
-    const initial = parseRequestListParams((key) => this.route.snapshot.queryParamMap.get(key));
+    const initial = this.readQuery((key) => this.route.snapshot.queryParamMap.get(key));
     this.query.set(initial);
     this.patchControls(initial);
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      const next = parseRequestListParams((key) => params.get(key));
+      const next = this.readQuery((key) => params.get(key));
       const key = serializeRequestListQuery(next);
       if (this.ownNavigations.has(key) || key === serializeRequestListQuery(this.query())) {
         return;
@@ -538,28 +583,121 @@ export class RequestsComponent {
       });
   }
 
-  protected isLongDescription(request: Request): boolean {
-    return (request.description?.trim().length ?? 0) > DESCRIPTION_PREVIEW_CHARS;
+  /** Nombre del trámite en etiquetas accesibles: el folio, o el id si es anterior al folio. */
+  protected requestName(request: Request): string {
+    return request.folio?.trim() || request.id;
   }
 
-  /** Corta en una palabra. La última se desvanece y «Ver más» sigue pegado. */
-  protected descriptionLead(request: Request): string {
-    const preview = this.cutDescription(request);
-    const space = preview.lastIndexOf(' ');
-    return space < 0 ? '' : preview.slice(0, space + 1);
+  protected isMine(request: Request): boolean {
+    const userId = this.auth.userId();
+    return !!userId && request.assigneeId === userId;
   }
 
-  protected descriptionFade(request: Request): string {
-    const preview = this.cutDescription(request);
-    const space = preview.lastIndexOf(' ');
-    return space < 0 ? preview : preview.slice(space + 1);
+  /** Acción de la fila según el rol y el responsable (EP3-04, sección 3). */
+  protected rowMode(request: Request): RequestRowMode {
+    const assigned = request.hasAssignee === true;
+    if (this.viewer() === Role.Admin) {
+      return assigned ? 'reassign' : 'assign';
+    }
+    if (!assigned) {
+      return 'take';
+    }
+    return this.isMine(request) ? 'operate' : 'readonly';
   }
 
-  private cutDescription(request: Request): string {
-    const text = request.description?.trim() ?? '';
-    const slice = text.slice(0, DESCRIPTION_PREVIEW_CHARS - 8);
-    const space = slice.lastIndexOf(' ');
-    return (space > 24 ? slice.slice(0, space) : slice).trim();
+  protected changeQueue(assignee: RequestQueue): void {
+    this.applyQuery({ assignee });
+  }
+
+  protected take(request: Request, trigger: HTMLButtonElement): void {
+    if (this.takingId() || this.anyDialogOpen() || this.rowMode(request) !== 'take') {
+      return;
+    }
+    this.takingId.set(request.id);
+    this.requestsService
+      .take(request.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (taken) => {
+          this.takingId.set(null);
+          this.snackBar.open(
+            `Tomaste el trámite ${this.requestName(taken)}. Ahora eres responsable.`,
+            undefined,
+            { duration: 4000 },
+          );
+          this.afterAssignmentChange(trigger);
+        },
+        error: (error: unknown) => {
+          this.takingId.set(null);
+          const failure = assignmentFailure(error, 'take');
+          this.snackBar.open(failure.message, undefined, { duration: 5000 });
+          if (failure.refresh) {
+            this.afterAssignmentChange(trigger);
+          }
+        },
+      });
+  }
+
+  protected openAssignDialog(request: Request, trigger: HTMLButtonElement): void {
+    const mode = this.rowMode(request);
+    if (this.anyDialogOpen() || (mode !== 'assign' && mode !== 'reassign' && mode !== 'operate')) {
+      return;
+    }
+    this.assignDialog = this.dialog.open<
+      RequestAssignDialogComponent,
+      RequestAssignDialogData,
+      RequestAssignDialogResult
+    >(RequestAssignDialogComponent, {
+      data: {
+        request,
+        procedureTypeLabel: this.getTipoLabel(request.procedureType),
+        currentUserId: this.auth.userId(),
+      },
+      panelClass: 'request-dialog',
+      autoFocus: 'first-heading',
+      restoreFocus: false,
+      width: '34rem',
+      maxWidth: 'calc(100vw - 2rem)',
+      ariaDescribedBy: 'request-assign-description',
+    });
+    this.assignDialog
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        this.assignDialog = null;
+        if (!result) {
+          this.restoreDetailsFocus(trigger);
+          return;
+        }
+        if (result.kind === 'saved') {
+          const name = result.request.assigneeName?.trim() || 'el funcionario elegido';
+          this.snackBar.open(
+            `Trámite ${this.requestName(result.request)} ${result.reassigned ? 'reasignado' : 'asignado'} a ${name}.`,
+            undefined,
+            { duration: 4000 },
+          );
+        } else {
+          this.snackBar.open(result.message, undefined, { duration: 5000 });
+        }
+        this.afterAssignmentChange(trigger);
+      });
+  }
+
+  /** La fila puede cambiar de acción o salir de la bandeja: el foco vuelve al título si su botón desaparece. */
+  private afterAssignmentChange(trigger: HTMLButtonElement): void {
+    this.loadRequests();
+    afterNextRender(() => this.restoreDetailsFocus(trigger), { injector: this.injector });
+  }
+
+  private anyDialogOpen(): boolean {
+    return !!(
+      this.statusDialog ||
+      this.rejectionReasonDialog ||
+      this.activityDialog ||
+      this.descriptionDialog ||
+      this.attachmentPreviewDialog ||
+      this.assignDialog
+    );
   }
 
   protected openDescription(request: Request): void {
@@ -588,7 +726,7 @@ export class RequestsComponent {
 
   protected previewAttachment(request: Request): void {
     if (
-      !this.isFuncionario() ||
+      !this.isStaff() ||
       !request.hasAttachment ||
       this.statusDialog ||
       this.rejectionReasonDialog ||
@@ -668,7 +806,7 @@ export class RequestsComponent {
       RequestActivityDialogData,
       void
     >(RequestActivityDialogComponent, {
-      data: { requestId: request.id, canRegister: this.isFuncionario() },
+      data: { requestId: request.id, canRegister: this.rowMode(request) === 'operate' },
       panelClass: 'request-dialog',
       autoFocus: 'first-heading',
       restoreFocus: false,
@@ -1091,6 +1229,12 @@ export class RequestsComponent {
       })
       .catch(() => false)
       .finally(() => this.ownNavigations.delete(key));
+  }
+
+  /** La bandeja es solo de staff: al Vecino el backend le respondería 403. */
+  private readQuery(get: (key: string) => string | null): RequestListQuery {
+    const query = parseRequestListParams(get);
+    return this.isStaff() || !query.assignee ? query : { ...query, assignee: '' };
   }
 
   private filtersFromForm(): Partial<RequestListQuery> {

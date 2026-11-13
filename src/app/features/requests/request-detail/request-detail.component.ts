@@ -31,8 +31,14 @@ import { Subject, catchError, combineLatest, map, of, startWith, switchMap } fro
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { Request, RequestStatus, RequestTransitions } from '../../../shared/models/request.model';
-import { REQUESTS_ROLES, Role } from '../../../shared/models/role';
+import { REQUESTS_ROLES, Role, resolveViewerRole } from '../../../shared/models/role';
+import { assignmentFailure } from '../assignment-errors';
 import { formatDuration } from '../duration';
+import {
+  RequestAssignDialogComponent,
+  RequestAssignDialogData,
+  RequestAssignDialogResult,
+} from '../request-assign-dialog/request-assign-dialog.component';
 import {
   AttentionAction,
   RequestAttentionPanelComponent,
@@ -123,12 +129,9 @@ export class RequestDetailComponent {
   private readonly attachmentExtension = signal('png');
 
   /** Un usuario tiene un solo rol (EP3-04, sección 4). Sin rol de staff se muestra lo mínimo, como al Vecino. */
-  protected readonly viewer = computed<Role>(() => {
-    if (this.auth.hasRole(Role.Admin)) return Role.Admin;
-    if (this.auth.hasRole(Role.Funcionario)) return Role.Funcionario;
-    if (this.auth.hasRole(Role.Auditor)) return Role.Auditor;
-    return Role.Vecino;
-  });
+  protected readonly viewer = computed<Role>(() =>
+    resolveViewerRole((role) => this.auth.hasRole(role)),
+  );
   protected readonly isStaff = computed(() => this.viewer() !== Role.Vecino);
   protected readonly isAuditor = computed(() => this.viewer() === Role.Auditor);
   protected readonly isClosed = computed(() => {
@@ -341,7 +344,7 @@ export class RequestDetailComponent {
         },
         error: (error: unknown) => {
           this.taking.set(false);
-          const { message, refresh } = takeFailure(error);
+          const { message, refresh } = assignmentFailure(error, 'take');
           this.snackBar.open(message, undefined, { duration: 5000 });
           if (refresh) {
             this.reload$.next();
@@ -398,6 +401,49 @@ export class RequestDetailComponent {
         } else {
           this.restoreFocus(action.trigger);
         }
+      });
+  }
+
+  protected openAssignDialog(trigger: HTMLButtonElement): void {
+    const request = this.request();
+    if (!request || this.openedDialog || this.isClosed()) {
+      return;
+    }
+    const ref = this.dialog.open<
+      RequestAssignDialogComponent,
+      RequestAssignDialogData,
+      RequestAssignDialogResult
+    >(RequestAssignDialogComponent, {
+      data: {
+        request,
+        procedureTypeLabel: this.typeLabel(),
+        currentUserId: this.auth.userId(),
+      },
+      autoFocus: 'first-heading',
+      panelClass: 'request-dialog',
+      restoreFocus: false,
+      width: '34rem',
+      maxWidth: 'calc(100vw - 2rem)',
+      ariaDescribedBy: 'request-assign-description',
+    });
+    this.openedDialog = ref;
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        this.openedDialog = null;
+        if (result?.kind === 'saved') {
+          this.request.set(result.request);
+          const name = result.request.assigneeName?.trim() || 'el funcionario elegido';
+          this.afterChange(`Trámite ${result.reassigned ? 'reasignado' : 'asignado'} a ${name}.`);
+          return;
+        }
+        if (result?.kind === 'reload') {
+          this.snackBar.open(result.message, undefined, { duration: 5000 });
+          this.reload$.next();
+          this.loadActivity();
+        }
+        this.restoreFocus(trigger);
       });
   }
 
@@ -518,33 +564,5 @@ export class RequestDetailComponent {
     }
     this.attachmentUrl.set(null);
     this.attachmentFor = null;
-  }
-}
-
-function takeFailure(error: unknown): { message: string; refresh: boolean } {
-  if (!(error instanceof HttpErrorResponse)) {
-    return { message: 'No se pudo tomar el trámite. Inténtalo de nuevo.', refresh: false };
-  }
-  const message = typeof error.error?.message === 'string' ? error.error.message : '';
-  switch (error.status) {
-    case 0:
-      return {
-        message: 'No se pudo tomar el trámite. Revisa tu conexión e inténtalo de nuevo.',
-        refresh: false,
-      };
-    case 403:
-      return { message: 'No tienes permiso para tomar este trámite.', refresh: true };
-    case 404:
-      return { message: 'El trámite ya no está disponible.', refresh: true };
-    case 409:
-      return {
-        message:
-          message === 'No se puede asignar un tramite cerrado'
-            ? 'El trámite ya está cerrado.'
-            : 'Otra persona tomó este trámite. Actualizamos la información.',
-        refresh: true,
-      };
-    default:
-      return { message: 'No se pudo tomar el trámite. Inténtalo de nuevo.', refresh: false };
   }
 }

@@ -5,6 +5,8 @@ import { REQUEST_STATUSES } from './requests.constants';
 
 export type RequestSortField = 'createdAt' | 'status' | 'folio';
 export type RequestSortDirection = 'asc' | 'desc';
+/** Bandeja de staff (EP3-05, sección 8): `me` son los propios y `none` los sin responsable. */
+export type RequestQueue = '' | 'me' | 'none';
 
 /** Estado del listado. Es la misma forma para la URL de /tramites y para el GET del BFF (EP3-30). */
 export interface RequestListQuery {
@@ -14,6 +16,7 @@ export interface RequestListQuery {
   sector: string;
   from: string;
   to: string;
+  assignee: RequestQueue;
   sort: RequestSortField;
   direction: RequestSortDirection;
   page: number;
@@ -32,6 +35,7 @@ export const DEFAULT_REQUEST_QUERY: RequestListQuery = {
   sector: '',
   from: '',
   to: '',
+  assignee: '',
   sort: 'createdAt',
   direction: 'desc',
   page: 0,
@@ -65,6 +69,7 @@ export function toRequestListParams(query: RequestListQuery): Record<string, str
   if (query.sector) params['sector'] = query.sector;
   if (query.from) params['from'] = query.from;
   if (query.to) params['to'] = query.to;
+  if (query.assignee) params['assignee'] = query.assignee;
   if (
     query.sort !== DEFAULT_REQUEST_QUERY.sort ||
     query.direction !== DEFAULT_REQUEST_QUERY.direction
@@ -109,6 +114,11 @@ export function parseRequestListParams(get: (key: string) => string | null): Req
     query.to = toDateKey(to);
   }
 
+  const assignee = get('assignee');
+  if (assignee === 'me' || assignee === 'none') {
+    query.assignee = assignee;
+  }
+
   const [sortField, sortDirection = 'asc'] = (get('sort') ?? '').split(',');
   if (
     (SORT_FIELDS as readonly string[]).includes(sortField) &&
@@ -138,7 +148,7 @@ export function serializeRequestListQuery(query: RequestListQuery): string {
   return new URLSearchParams(Object.entries(toRequestListParams(query)).sort()).toString();
 }
 
-/** Filtros que el usuario eligió; la búsqueda, el orden y la página no cuentan. */
+/** Filtros que el usuario eligió; la búsqueda, la bandeja, el orden y la página no cuentan. */
 export function activeFilterCount(query: RequestListQuery): number {
   return [query.status, query.procedureType, query.sector, query.from, query.to].filter(Boolean)
     .length;
