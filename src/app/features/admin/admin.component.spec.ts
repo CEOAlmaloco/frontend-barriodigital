@@ -73,6 +73,19 @@ describe('AdminComponent', () => {
     return dialogRef();
   };
 
+  it.each([
+    ['create', 'Nuevo tipo'],
+    ['edit', 'Editar tipo'],
+  ] as const)('%s: el título del diálogo no tiene espacios alrededor', async (mode, title) => {
+    await render();
+    await open(mode);
+
+    const heading = TestBed.inject(OverlayContainer)
+      .getContainerElement()
+      .querySelector('[mat-dialog-title]');
+    expect(heading?.textContent).toBe(title);
+  });
+
   afterEach(async () => {
     const dialog = TestBed.inject(MatDialog);
     const closed = dialog.openDialogs.map((ref) => firstValueFrom(ref.afterClosed()));

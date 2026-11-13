@@ -107,6 +107,9 @@ export class RequestAssignDialogComponent {
 
   protected readonly request = signal(this.data.request);
   protected readonly reassign = computed(() => this.request().hasAssignee === true);
+  protected readonly title = computed(() =>
+    this.reassign() ? 'Reasignar trámite' : 'Asignar trámite',
+  );
   protected readonly currentIsMine = computed(
     () => !!this.data.currentUserId && this.request().assigneeId === this.data.currentUserId,
   );
