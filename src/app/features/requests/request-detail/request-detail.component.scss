@@ -110,6 +110,11 @@ $icon-small: 18px;
   font-size: $font-body-sm;
 }
 
+.request-detail__audit {
+  align-self: flex-start;
+  margin-top: $space-2;
+}
+
 .request-detail__meta-item {
   display: inline-flex;
   align-items: center;

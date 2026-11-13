@@ -1,0 +1,230 @@
+<section class="audit__card events__filters" aria-labelledby="events-filters-title">
+  <h2 id="events-filters-title" class="cdk-visually-hidden">Filtros</h2>
+
+  @if (!wide()) {
+    <button
+      matButton="outlined"
+      type="button"
+      class="events__toggle"
+      aria-controls="audit-filters-panel"
+      [attr.aria-expanded]="filtersOpen()"
+      (click)="filtersOpen.set(!filtersOpen())"
+    >
+      <mat-icon aria-hidden="true">tune</mat-icon>
+      Filtros
+      @if (activeCount()) {
+        <span class="events__count">
+          {{ activeCount() }}<span class="cdk-visually-hidden"> activos</span>
+        </span>
+      }
+    </button>
+  }
+
+  <div
+    id="audit-filters-panel"
+    class="events__panel"
+    role="group"
+    aria-label="Filtros de la búsqueda"
+    [hidden]="!wide() && !filtersOpen()"
+    [formGroup]="form"
+  >
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Rol del actor</mat-label>
+      <mat-select formControlName="actorRole">
+        <mat-option value="">Todos</mat-option>
+        @for (role of actorRoles; track role) {
+          <mat-option [value]="role">{{ roleLabels[role] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Recurso</mat-label>
+      <mat-select formControlName="resourceType">
+        <mat-option value="">Todos</mat-option>
+        @for (resource of resourceTypes; track resource) {
+          <mat-option [value]="resource">{{ resourceLabels[resource] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field subscriptSizing="dynamic" floatLabel="always">
+      <mat-label>Tipo de evento</mat-label>
+      <mat-select formControlName="eventTypes" multiple placeholder="Todos">
+        <mat-select-trigger>{{ typeTrigger() }}</mat-select-trigger>
+        @for (group of typeGroups(); track group.label) {
+          <mat-optgroup [label]="group.label">
+            @for (type of group.types; track type.value) {
+              <mat-option [value]="type.value">{{ type.label }}</mat-option>
+            }
+          </mat-optgroup>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Desde</mat-label>
+      <input matInput [matDatepicker]="fromPicker" formControlName="from" [max]="today" />
+      <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+      <mat-datepicker #fromPicker />
+      @if (form.controls.from.hasError('matDatepickerParse')) {
+        <mat-error>Usa el formato dd-mm-aaaa</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Hasta</mat-label>
+      <input
+        matInput
+        [matDatepicker]="toPicker"
+        formControlName="to"
+        [min]="form.controls.from.value"
+        [max]="today"
+      />
+      <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+      <mat-datepicker #toPicker [startAt]="form.controls.from.value" />
+      @if (form.controls.to.hasError('range')) {
+        <mat-error>No puede ser anterior a "Desde"</mat-error>
+      } @else if (form.controls.to.hasError('matDatepickerParse')) {
+        <mat-error>Usa el formato dd-mm-aaaa</mat-error>
+      }
+    </mat-form-field>
+  </div>
+
+  @if (query().period === 'recent' || query().actorId || activeCount()) {
+    <div class="events__active">
+      <mat-chip-set aria-label="Filtros activos" class="events__chips">
+        @if (query().period === 'recent') {
+          <mat-chip class="events__chip" (removed)="removePeriod()">
+            Últimos {{ recentDays }} días
+            <button
+              matChipRemove
+              [attr.aria-label]="'Quitar el período de los últimos ' + recentDays + ' días'"
+            >
+              <mat-icon>cancel</mat-icon>
+            </button>
+          </mat-chip>
+        }
+        @if (actorName(); as name) {
+          <mat-chip class="events__chip" (removed)="removeActor()">
+            <span class="events__chip-text">Actor: {{ name }}</span>
+            <button matChipRemove [attr.aria-label]="'Quitar el filtro por ' + name">
+              <mat-icon>cancel</mat-icon>
+            </button>
+          </mat-chip>
+        }
+      </mat-chip-set>
+      @if (activeCount()) {
+        <button matButton type="button" class="events__clear" (click)="clearFilters()">
+          <mat-icon aria-hidden="true">filter_alt_off</mat-icon>
+          Limpiar filtros
+        </button>
+      }
+    </div>
+  }
+</section>
+
+<section
+  class="audit__card events__results"
+  aria-labelledby="events-results-title"
+  [attr.aria-busy]="state().status === 'loading'"
+>
+  <div class="events__head">
+    <h2 id="events-results-title" class="events__title" tabindex="-1" #resultsTitle>
+      @if (page() !== null) {
+        {{ countText() }}
+      } @else {
+        Eventos
+      }
+    </h2>
+    @if (page() !== null && periodText()) {
+      <span class="events__muted">{{ periodText() }}</span>
+    }
+    @if (page() !== null) {
+      <app-audit-refresh
+        class="events__refresh"
+        [consultedAt]="consultedAt()"
+        [loading]="state().status === 'loading'"
+        (refresh)="refresh()"
+      />
+    }
+  </div>
+  <p class="cdk-visually-hidden" role="status">{{ announcement() }}</p>
+  @if (state().status === 'loading' && page() !== null) {
+    <mat-progress-bar
+      mode="indeterminate"
+      class="events__progress"
+      aria-label="Actualizando los eventos"
+    />
+  }
+
+  @if (failure(); as kind) {
+    <app-audit-state
+      [error]="true"
+      [icon]="failureText()!.icon"
+      [heading]="failureText()!.heading"
+      [message]="failureText()!.message"
+    >
+      @if (kind === 'invalid') {
+        <button matButton="filled" type="button" (click)="clearFilters()">
+          <mat-icon aria-hidden="true">filter_alt_off</mat-icon>
+          Limpiar filtros
+        </button>
+      } @else if (kind !== 'forbidden') {
+        <button matButton="filled" type="button" (click)="retry()">
+          <mat-icon aria-hidden="true">refresh</mat-icon>
+          Reintentar
+        </button>
+      }
+    </app-audit-state>
+  } @else {
+    @if (page() === null) {
+      <ul class="events__skeleton" aria-hidden="true">
+        @for (row of [1, 2, 3, 4, 5]; track row) {
+          <li>
+            <span class="events__bone events__bone--short"></span>
+            <span class="events__bone"></span>
+            <span class="events__bone events__bone--mid"></span>
+          </li>
+        }
+      </ul>
+    } @else if (views().length === 0) {
+      <app-audit-state
+        icon="search_off"
+        heading="Sin eventos para estos filtros"
+        message="Amplía el rango de fechas o quita algún filtro."
+      >
+        @if (activeCount()) {
+          <button matButton="outlined" type="button" (click)="clearFilters()">
+            <mat-icon aria-hidden="true">filter_alt_off</mat-icon>
+            Limpiar filtros
+          </button>
+        }
+      </app-audit-state>
+    } @else {
+      <app-audit-event-results
+        [views]="views()"
+        [wide]="wide()"
+        [expanded]="expanded()"
+        [filteredActorId]="query().actorId"
+        (toggle)="toggle($event)"
+        (filterActor)="filterActor($event)"
+      />
+    }
+
+    @if (page(); as current) {
+      @if (current.totalElements > 0) {
+        <mat-paginator
+          class="events__paginator"
+          aria-label="Páginas de eventos"
+          [length]="current.totalElements"
+          [pageIndex]="query().page"
+          [pageSize]="query().size"
+          [pageSizeOptions]="pageSizes"
+          showFirstLastButtons
+          (page)="changePage($event)"
+        />
+      }
+    }
+  }
+</section>

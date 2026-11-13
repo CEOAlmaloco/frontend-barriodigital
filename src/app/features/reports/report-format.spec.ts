@@ -1,6 +1,4 @@
-import { HttpErrorResponse } from '@angular/common/http';
-
-import { bucketLabels, failureKind, formatPercent, plural } from './report-format';
+import { bucketLabels, formatPercent, plural } from './report-format';
 
 describe('report-format', () => {
   it('etiqueta las horas en hora de Chile', () => {
@@ -49,12 +47,5 @@ describe('report-format', () => {
     expect(formatPercent(0.875)).toMatch(/^87,5\s?%$/);
     expect(plural(1, 'trámite', 'trámites')).toBe('1 trámite');
     expect(plural(1200, 'trámite', 'trámites')).toBe('1.200 trámites');
-  });
-
-  it('distingue servicio no disponible, sin permiso y otros errores', () => {
-    expect(failureKind(new HttpErrorResponse({ status: 503 }))).toBe('unavailable');
-    expect(failureKind(new HttpErrorResponse({ status: 403 }))).toBe('forbidden');
-    expect(failureKind(new HttpErrorResponse({ status: 0 }))).toBe('generic');
-    expect(failureKind(new Error('x'))).toBe('generic');
   });
 });

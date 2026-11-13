@@ -1,0 +1,70 @@
+@use 'tokens' as *;
+
+.change {
+  max-width: 100%;
+  overflow-x: auto;
+  border: $border-width solid var(--bd-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-surface);
+}
+
+.change__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: $font-body-sm;
+  font-variant-numeric: tabular-nums;
+
+  th,
+  td {
+    padding: $space-2 $space-3;
+    border-bottom: $border-width solid var(--bd-border);
+    text-align: start;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+
+  thead th {
+    color: var(--bd-text-muted);
+    font-weight: $font-weight-semibold;
+    white-space: nowrap;
+  }
+
+  tbody th {
+    font-weight: $font-weight-medium;
+  }
+
+  tbody tr:last-child > * {
+    border-bottom: 0;
+  }
+}
+
+.change__caption {
+  padding: $space-2 $space-3;
+  border-bottom: $border-width solid var(--bd-border);
+  color: var(--bd-text-muted);
+  font-size: $font-label;
+  font-weight: $font-weight-semibold;
+  text-align: start;
+}
+
+.change__row--changed > * {
+  background-color: var(--bd-accent-container);
+}
+
+// El borde marca la fila sin depender solo del color (WCAG 1.4.1)
+.change__row--changed > th {
+  box-shadow: inset 3px 0 0 var(--bd-accent-text);
+}
+
+.change__old {
+  color: var(--bd-text-muted);
+  text-decoration: line-through;
+}
+
+.change__new {
+  font-weight: $font-weight-semibold;
+}
+
+.change__none {
+  color: var(--bd-text-muted);
+}

@@ -1,0 +1,12 @@
+@use 'tokens' as *;
+
+// Tarjeta de las vistas de auditoría. _accessibility.scss la reengancha a la superficie en los modos de contraste
+@mixin card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-surface);
+  box-shadow: $shadow-elevated;
+}

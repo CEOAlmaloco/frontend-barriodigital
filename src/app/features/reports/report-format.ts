@@ -1,5 +1,3 @@
-import { HttpErrorResponse } from '@angular/common/http';
-
 import { ReportRange, ReportSeries } from '../../shared/models/report.model';
 
 /** Los tramos de report se cortan en hora de Chile (EP3-07, sección 3.3). */
@@ -92,15 +90,4 @@ export function bucketLabels(series: ReportSeries): BucketLabel[] {
     const repeated = plain.indexOf(plain[index]) !== plain.lastIndexOf(plain[index]);
     return { axis: p.time, full: repeated ? `${plain[index]} (${p.offset})` : plain[index] };
   });
-}
-
-export type FailureKind = 'unavailable' | 'forbidden' | 'generic';
-
-/** 503 lo responde el BFF cuando report no contesta (EP3-44); 403, cuando el rol no alcanza. */
-export function failureKind(error: unknown): FailureKind {
-  if (error instanceof HttpErrorResponse) {
-    if (error.status === 503) return 'unavailable';
-    if (error.status === 403) return 'forbidden';
-  }
-  return 'generic';
 }

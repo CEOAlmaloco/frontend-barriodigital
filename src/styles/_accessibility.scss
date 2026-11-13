@@ -19,6 +19,8 @@
   --bd-error-container: #{rgba($color-error, 0.1)};
   --bd-accent-container: #{rgba($color-accent, 0.18)};
   --bd-container-border: transparent;
+  // Se calcula sobre el contenedor de cada modo de contraste: los modos lo redefinen en el mismo elemento
+  --bd-row-hover: color-mix(in srgb, var(--bd-primary-container) 45%, transparent);
   --bd-border-interactive: #{$color-border-interactive};
   --bd-field: #{$color-surface};
   --bd-font: #{$font-family-base};
@@ -155,6 +157,7 @@ html[data-bd-contrast='dark'] .admin__item,
 html[data-bd-contrast='dark'] .login__panel,
 html[data-bd-contrast='dark'] .request-detail__card,
 html[data-bd-contrast='dark'] .reports__card,
+html[data-bd-contrast='dark'] .audit__card,
 html[data-bd-contrast='high'] .requests__card,
 html[data-bd-contrast='high'] .requests__item,
 html[data-bd-contrast='high'] .requests__table-wrapper,
@@ -164,6 +167,7 @@ html[data-bd-contrast='high'] .admin__item,
 html[data-bd-contrast='high'] .login__panel,
 html[data-bd-contrast='high'] .request-detail__card,
 html[data-bd-contrast='high'] .reports__card,
+html[data-bd-contrast='high'] .audit__card,
 html[data-bd-contrast='negative'] .requests__card,
 html[data-bd-contrast='negative'] .requests__item,
 html[data-bd-contrast='negative'] .requests__table-wrapper,
@@ -172,7 +176,8 @@ html[data-bd-contrast='negative'] .admin__table-wrapper,
 html[data-bd-contrast='negative'] .admin__item,
 html[data-bd-contrast='negative'] .login__panel,
 html[data-bd-contrast='negative'] .request-detail__card,
-html[data-bd-contrast='negative'] .reports__card {
+html[data-bd-contrast='negative'] .reports__card,
+html[data-bd-contrast='negative'] .audit__card {
   background-color: var(--bd-surface);
   color: var(--bd-text);
 }

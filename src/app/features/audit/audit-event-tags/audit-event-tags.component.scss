@@ -1,0 +1,32 @@
+@use 'tokens' as *;
+
+:host {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: $space-1 $space-2;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  padding: 2px $space-2;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: 4px;
+  background-color: var(--bd-secondary-container);
+  color: var(--bd-secondary);
+  font-size: 12px;
+  font-weight: $font-weight-semibold;
+  white-space: nowrap;
+
+  mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
+.tag--accent {
+  background-color: var(--bd-accent-container);
+  color: var(--bd-accent-text);
+}
