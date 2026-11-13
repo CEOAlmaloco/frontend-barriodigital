@@ -1412,7 +1412,8 @@ describe('RequestsComponent', () => {
       expect(counter.textContent?.trim()).toBe('3 / 500');
       expect(textarea.getAttribute('aria-describedby')).toContain(counter.id);
       expect(textarea.getAttribute('aria-describedby')).toContain(error.id);
-      expect(overlay().querySelector('mat-hint')).toBeNull();
+      // El contador va fuera del campo; la ayuda de la plantilla es de otro campo
+      expect(textarea.closest('mat-form-field')!.querySelector('mat-hint')).toBeNull();
       expect(service.changeStatus).not.toHaveBeenCalled();
       dialogRef.close();
       await fixture.whenStable();
