@@ -24,7 +24,7 @@ export interface AttentionAction {
 })
 export class RequestAttentionPanelComponent {
   readonly request = input.required<Request>();
-  readonly viewer = input.required<Role>();
+  readonly viewer = input.required<Role | null>();
   readonly isResponsible = input(false);
   readonly allowedStatuses = input<readonly RequestStatus[]>([]);
   readonly transitionsState = input<'loading' | 'ready' | 'error'>('ready');

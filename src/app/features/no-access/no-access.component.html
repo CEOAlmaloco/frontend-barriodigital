@@ -1,0 +1,78 @@
+<main class="no-access__panel" aria-labelledby="no-access-title">
+  <span class="no-access__wordmark">BarrioDigital</span>
+
+  <div class="no-access__icon" aria-hidden="true">
+    <mat-icon>{{ reason().icon }}</mat-icon>
+  </div>
+
+  <h1 id="no-access-title" class="no-access__title">{{ reason().title }}</h1>
+
+  <div class="no-access__reason">
+    @switch (denied().kind) {
+      @case ('none') {
+        <p>Tu cuenta no tiene un rol asignado en BarrioDigital.</p>
+        <p class="no-access__hint">
+          Pide a la Municipalidad que te asigne uno o ingresa con otra cuenta.
+        </p>
+      }
+      @case ('multiple') {
+        <p>Tu cuenta tiene más de un rol asignado: <strong>{{ roles() }}</strong>.</p>
+        <p class="no-access__hint">
+          Cada cuenta debe tener solo uno. Pide a la Municipalidad que deje el que corresponde.
+        </p>
+      }
+      @default {
+        <p>Puede ser un problema momentáneo de conexión con Microsoft. Intenta nuevamente.</p>
+      }
+    }
+  </div>
+
+  @if (accountUsername()) {
+    <dl class="no-access__account">
+      <dt>Sesión iniciada como</dt>
+      <dd>
+        @if (accountName()) {
+          <span class="no-access__account-name">{{ accountName() }}</span>
+        }
+        <span class="no-access__account-username">{{ accountUsername() }}</span>
+      </dd>
+    </dl>
+  }
+
+  <div class="no-access__actions">
+    @if (denied().kind === 'unavailable') {
+      <button
+        matButton="filled"
+        type="button"
+        [disabled]="retrying()"
+        [attr.aria-busy]="retrying()"
+        (click)="retry()"
+      >
+        @if (retrying()) {
+          <mat-progress-spinner
+            class="no-access__spinner"
+            mode="indeterminate"
+            [diameter]="20"
+            aria-hidden="true"
+          />
+        }
+        Reintentar
+      </button>
+      <button matButton type="button" (click)="signOut()">Cerrar sesión</button>
+    } @else {
+      <button matButton="filled" type="button" (click)="signOut()">Ingresar con otra cuenta</button>
+    }
+  </div>
+
+  <div class="no-access__status" aria-live="polite">
+    @if (retrying()) {
+      <p class="cdk-visually-hidden">Verificando tus permisos.</p>
+    } @else if (retryFailed()) {
+      <p class="no-access__error">Todavía no pudimos verificar tus permisos.</p>
+    }
+  </div>
+</main>
+
+<footer class="no-access__footer">
+  <p>¿Necesitas ayuda? <a class="no-access__link" [href]="supportHref()">Contacta a soporte</a></p>
+</footer>

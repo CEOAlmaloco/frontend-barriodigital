@@ -57,7 +57,7 @@ import {
   RequestStatus,
   RequestTransitions,
 } from '../../shared/models/request.model';
-import { Role, resolveViewerRole } from '../../shared/models/role';
+import { Role } from '../../shared/models/role';
 import { assignmentFailure } from './assignment-errors';
 import { MUNICIPALITY_SINCE, toDateKey } from './date-key';
 import {
@@ -221,9 +221,9 @@ export class RequestsComponent {
   );
 
   /** El roleGuard decide quién entra; aquí el rol define columnas, bandeja y acciones. */
-  protected readonly viewer = computed(() => resolveViewerRole((role) => this.auth.hasRole(role)));
+  protected readonly viewer = computed(() => this.auth.role());
   protected readonly isFuncionario = computed(() => this.viewer() === Role.Funcionario);
-  protected readonly isStaff = computed(() => this.viewer() !== Role.Vecino);
+  protected readonly isStaff = computed(() => this.viewer() !== null && this.viewer() !== Role.Vecino);
   /** El Auditor solo lee; el Admin deriva desde la fila (asignar o reasignar). */
   protected readonly canAct = computed(
     () => this.viewer() === Role.Funcionario || this.viewer() === Role.Admin,

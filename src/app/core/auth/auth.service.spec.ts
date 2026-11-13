@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { MsalBroadcastService, MsalService } from '@azure/msal-angular';
 import { AccountInfo, InteractionStatus } from '@azure/msal-browser';
-import { BehaviorSubject, firstValueFrom, of } from 'rxjs';
+import { BehaviorSubject, NEVER, firstValueFrom, of, throwError } from 'rxjs';
 
 import { Role } from '../../shared/models/role';
 import { AuthService } from './auth.service';
@@ -71,7 +71,8 @@ describe('AuthService', () => {
     await firstValueFrom(service.hasSession());
 
     expect(msal.acquireTokenSilent).toHaveBeenCalledWith({ scopes: [apiScope], account: adminAccount });
-    expect(service.roles()).toEqual([Role.Admin]);
+    expect(service.access()).toEqual({ kind: 'granted', role: Role.Admin });
+    expect(service.role()).toBe(Role.Admin);
     expect(service.hasRole(Role.Admin)).toBe(true);
     expect(service.hasRole(Role.Vecino)).toBe(false);
   });
@@ -91,7 +92,7 @@ describe('AuthService', () => {
     await firstValueFrom(service.hasSession());
 
     expect(msal.acquireTokenSilent).not.toHaveBeenCalled();
-    expect(service.roles()).toEqual([]);
+    expect(service.role()).toBeNull();
   });
 
   it('entrega los roles a los guards al llegar el token y expone el id de la cuenta', async () => {
@@ -99,8 +100,68 @@ describe('AuthService', () => {
 
     await firstValueFrom(service.hasSession());
 
-    expect(await firstValueFrom(service.whenRolesLoaded())).toEqual([Role.Admin]);
+    expect(await firstValueFrom(service.whenAccessResolved())).toEqual({
+      kind: 'granted',
+      role: Role.Admin,
+    });
     expect(service.userId()).toBe('oid-admin');
+  });
+
+  it('whenAccessResolved sincroniza la cuenta aunque se llame antes que hasSession', async () => {
+    const service = setup(adminAccount);
+
+    expect(await firstValueFrom(service.whenAccessResolved())).toEqual({
+      kind: 'granted',
+      role: Role.Admin,
+    });
+    expect(msal.acquireTokenSilent).toHaveBeenCalledTimes(1);
+  });
+
+  it('un token sin el claim roles es una cuenta sin rol', async () => {
+    const service = setup(adminAccount);
+    msal.acquireTokenSilent.mockReturnValue(of({ accessToken: fakeJwt({}) }));
+
+    expect(await firstValueFrom(service.whenAccessResolved())).toEqual({ kind: 'none' });
+    expect(service.role()).toBeNull();
+    expect(service.hasRole(Role.Vecino)).toBe(false);
+  });
+
+  it('con más de un rol no concede ninguno', async () => {
+    const service = setup(adminAccount);
+    msal.acquireTokenSilent.mockReturnValue(
+      of({ accessToken: fakeJwt({ roles: [Role.Admin, Role.Funcionario] }) }),
+    );
+
+    await firstValueFrom(service.hasSession());
+
+    expect(service.access()).toEqual({ kind: 'multiple', roles: [Role.Admin, Role.Funcionario] });
+    expect(service.hasRole(Role.Admin)).toBe(false);
+  });
+
+  it('distingue la falla al leer el token de una cuenta sin rol y permite reintentar', async () => {
+    const service = setup(adminAccount);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    msal.acquireTokenSilent.mockReturnValueOnce(throwError(() => new Error('sin red')));
+
+    expect(await firstValueFrom(service.whenAccessResolved())).toEqual({ kind: 'unavailable' });
+    expect(service.access()).toEqual({ kind: 'unavailable' });
+
+    expect(await firstValueFrom(service.retryAccess())).toEqual({
+      kind: 'granted',
+      role: Role.Admin,
+    });
+    expect(service.role()).toBe(Role.Admin);
+    expect(msal.acquireTokenSilent).toHaveBeenCalledTimes(2);
+  });
+
+  it('mientras llega el token el acceso queda pendiente', async () => {
+    const service = setup(adminAccount);
+    msal.acquireTokenSilent.mockReturnValue(NEVER);
+
+    await firstValueFrom(service.hasSession());
+
+    expect(service.access()).toBeNull();
+    expect(service.role()).toBeNull();
   });
 
   it('cierra sesión con logoutRedirect sobre la cuenta activa', async () => {

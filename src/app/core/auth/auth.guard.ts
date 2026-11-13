@@ -6,6 +6,8 @@ import { map, of, switchMap } from 'rxjs';
 import { Role } from '../../shared/models/role';
 import { AuthService } from './auth.service';
 
+export const NO_ACCESS_PATH = '/no-access';
+
 /**
  * Protege rutas privadas delegando en MsalGuard. Sin sesión lleva al login ('/') en vez de dejar
  * que MsalGuard redirija directo a Microsoft, porque el login es el punto de entrada único.
@@ -23,15 +25,38 @@ export const authGuard: CanActivateFn = (route, state) => {
     );
 };
 
-/** Deja pasar solo a los roles de data.roles de la ruta; el resto vuelve al inicio. Va después de authGuard. */
+/** Sin rol, con más de uno o con el token sin leer, la sesión no entra al layout (EP3-04, sección 4). */
+export const accessGuard: CanActivateFn = () => {
+  const router = inject(Router);
+
+  return inject(AuthService)
+    .whenAccessResolved()
+    .pipe(map((access) => access.kind === 'granted' || router.createUrlTree([NO_ACCESS_PATH])));
+};
+
+/** La pantalla "sin acceso" es solo para quien no tiene un rol válido; el resto vuelve al inicio. */
+export const noAccessGuard: CanActivateFn = () => {
+  const router = inject(Router);
+
+  return inject(AuthService)
+    .whenAccessResolved()
+    .pipe(map((access) => access.kind !== 'granted' || router.createUrlTree(['/inicio'])));
+};
+
+/** Deja pasar solo al rol de data.roles de la ruta; el resto vuelve al inicio. Va después de accessGuard. */
 export const roleGuard: CanActivateFn = (route) => {
   const router = inject(Router);
   const allowedRoles = (route.data['roles'] ?? []) as readonly Role[];
 
   return inject(AuthService)
-    .whenRolesLoaded()
+    .whenAccessResolved()
     .pipe(
-      map((roles) => allowedRoles.some((role) => roles.includes(role)) || router.createUrlTree(['/inicio'])),
+      map((access) => {
+        if (access.kind !== 'granted') {
+          return router.createUrlTree([NO_ACCESS_PATH]);
+        }
+        return allowedRoles.includes(access.role) || router.createUrlTree(['/inicio']);
+      }),
     );
 };
 

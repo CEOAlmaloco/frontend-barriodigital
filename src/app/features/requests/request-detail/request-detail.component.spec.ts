@@ -132,7 +132,7 @@ describe('RequestDetailComponent', () => {
     };
     snackBar = { open: vi.fn() };
     params = new BehaviorSubject(convertToParamMap({ id: 'req-1' }));
-    const auth = { hasRole: (value: Role) => value === role, userId: signal(ME) };
+    const auth = { role: signal(role), hasRole: (value: Role) => value === role, userId: signal(ME) };
 
     TestBed.configureTestingModule({
       imports: [RequestDetailComponent],
@@ -227,11 +227,11 @@ describe('RequestDetailComponent', () => {
       expect(element.querySelector('a[href="/tramites"]')).not.toBeNull();
     });
 
-    it('quien no entra al listado vuelve al inicio', async () => {
-      await render(Role.Auditor, () => throwError(() => new HttpErrorResponse({ status: 404 })));
+    it.each([Role.Admin, Role.Auditor])('%s vuelve al listado de trámites', async (role) => {
+      await render(role, () => throwError(() => new HttpErrorResponse({ status: 404 })));
 
-      expect(element.querySelector('a[href="/inicio"]')?.textContent).toContain('Inicio');
-      expect(element.querySelector('a[href="/tramites"]')).toBeNull();
+      expect(element.querySelector('a[href="/tramites"]')?.textContent).toContain('Trámites');
+      expect(element.querySelector('a[href="/inicio"]')).toBeNull();
     });
 
     it('un fallo del historial no oculta el trámite y se reintenta por separado', async () => {

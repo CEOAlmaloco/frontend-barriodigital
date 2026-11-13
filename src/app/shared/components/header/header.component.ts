@@ -4,21 +4,22 @@ import { MatIcon } from '@angular/material/icon';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
-import { REQUESTS_ROLES, Role } from '../../models/role';
+import { OVERSIGHT_ROLES, REQUESTS_ROLES, ROLE_LABELS, Role } from '../../models/role';
 
 interface NavItem {
   label: string;
   path: string;
-  /** Sin roles, el ítem es visible para cualquier usuario autenticado. */
+  /** Sin roles, el ítem es visible para cualquier usuario con un rol válido. */
   roles?: readonly Role[];
 }
 
+/** Mismos roles que data.roles de cada ruta en app.routes.ts. */
 const NAV_ITEMS: readonly NavItem[] = [
   { label: 'Inicio', path: '/inicio' },
   { label: 'Trámites', path: '/tramites', roles: REQUESTS_ROLES },
   { label: 'Administración', path: '/admin', roles: [Role.Admin] },
-  { label: 'Reportes', path: '/reports', roles: [Role.Admin] },
-  { label: 'Auditoría', path: '/audit', roles: [Role.Auditor] },
+  { label: 'Reportes', path: '/reports', roles: OVERSIGHT_ROLES },
+  { label: 'Auditoría', path: '/audit', roles: OVERSIGHT_ROLES },
 ];
 
 @Component({
@@ -38,9 +39,16 @@ export class HeaderComponent {
     return account?.name ?? account?.username ?? '';
   });
 
-  protected readonly navItems = computed(() =>
-    NAV_ITEMS.filter((item) => !item.roles || item.roles.some((role) => this.auth.hasRole(role))),
-  );
+  protected readonly roleLabel = computed(() => {
+    const role = this.auth.role();
+    return role ? ROLE_LABELS[role] : '';
+  });
+
+  /** El layout solo se monta con un rol válido (accessGuard); sin él no hay navegación. */
+  protected readonly navItems = computed(() => {
+    const role = this.auth.role();
+    return role ? NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role)) : [];
+  });
 
   protected toggleMenu(): void {
     this.isMenuOpen.update((isOpen) => !isOpen);

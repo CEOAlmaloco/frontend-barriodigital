@@ -1,9 +1,15 @@
 import { Routes } from '@angular/router';
 
-import { authGuard, redirectAuthenticatedGuard, roleGuard } from './core/auth/auth.guard';
+import {
+  accessGuard,
+  authGuard,
+  noAccessGuard,
+  redirectAuthenticatedGuard,
+  roleGuard,
+} from './core/auth/auth.guard';
 import { AuthenticatedLayoutComponent } from './core/layout/authenticated-layout.component';
 import { LoginComponent } from './features/login/login.component';
-import { REQUEST_DETAIL_ROLES, REQUESTS_ROLES, Role } from './shared/models/role';
+import { OVERSIGHT_ROLES, REQUESTS_ROLES, Role } from './shared/models/role';
 
 export const routes: Routes = [
   {
@@ -13,11 +19,20 @@ export const routes: Routes = [
     canActivate: [redirectAuthenticatedGuard],
     title: 'Iniciar sesión | BarrioDigital',
   },
-  // Rutas privadas: van como hijas del layout autenticado, que monta el header y aplica authGuard
+  // Fuera del layout: sin un rol válido no hay navegación que mostrar
+  {
+    path: 'no-access',
+    canActivate: [authGuard, noAccessGuard],
+    loadComponent: () =>
+      import('./features/no-access/no-access.component').then((m) => m.NoAccessComponent),
+    title: 'Sin acceso | BarrioDigital',
+  },
+  // Rutas privadas: hijas del layout autenticado, que monta el header. accessGuard corre después de authGuard
   {
     path: '',
     component: AuthenticatedLayoutComponent,
     canActivate: [authGuard],
+    canActivateChild: [accessGuard],
     children: [
       {
         path: 'inicio',
@@ -36,7 +51,7 @@ export const routes: Routes = [
       {
         path: 'tramites/:id',
         canActivate: [roleGuard],
-        data: { roles: REQUEST_DETAIL_ROLES },
+        data: { roles: REQUESTS_ROLES },
         loadComponent: () =>
           import('./features/requests/request-detail/request-detail.component').then(
             (m) => m.RequestDetailComponent,
@@ -54,7 +69,7 @@ export const routes: Routes = [
       {
         path: 'reports',
         canActivate: [roleGuard],
-        data: { roles: [Role.Admin] },
+        data: { roles: OVERSIGHT_ROLES },
         loadComponent: () =>
           import('./features/reports/reports.component').then((m) => m.ReportsComponent),
         title: 'Reportes | BarrioDigital',
@@ -62,7 +77,7 @@ export const routes: Routes = [
       {
         path: 'audit',
         canActivate: [roleGuard],
-        data: { roles: [Role.Auditor] },
+        data: { roles: OVERSIGHT_ROLES },
         loadComponent: () =>
           import('./features/audit/audit.component').then((m) => m.AuditComponent),
         title: 'Auditoría | BarrioDigital',

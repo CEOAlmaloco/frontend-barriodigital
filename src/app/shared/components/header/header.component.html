@@ -32,7 +32,14 @@
   </nav>
 
   <div class="header__account">
-    <span class="header__account-name">{{ accountName() }}</span>
+    <p class="header__account-identity">
+      <span class="header__account-name">{{ accountName() }}</span>
+      @if (roleLabel(); as label) {
+        <span class="header__account-role">
+          <span class="cdk-visually-hidden">Rol: </span>{{ label }}
+        </span>
+      }
+    </p>
     <button matButton type="button" class="header__sign-out" (click)="signOut()">Cerrar sesión</button>
   </div>
 </header>
