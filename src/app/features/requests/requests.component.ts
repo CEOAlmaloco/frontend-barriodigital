@@ -110,6 +110,7 @@ import {
   RequestStatusDialogResult,
 } from './request-status-dialog/request-status-dialog.component';
 import { RequestStatusBadgeComponent } from './request-status-badge/request-status-badge.component';
+import { procedureTypeLabel } from './procedure-label';
 import { NEW_REQUEST_FRAGMENT, isClosedStatus } from './requests.constants';
 import { RequestsService } from './requests.service';
 import { RequestLocationMapComponent } from './request-location-map.component';
@@ -565,7 +566,7 @@ export class RequestsComponent {
       data: {
         request,
         status: action.status,
-        procedureTypeLabel: this.getTipoLabel(request.procedureType),
+        procedureTypeLabel: this.getTipoLabel(request),
       },
       autoFocus: 'first-heading',
       panelClass: 'request-dialog',
@@ -669,7 +670,7 @@ export class RequestsComponent {
     >(RequestAssignDialogComponent, {
       data: {
         request,
-        procedureTypeLabel: this.getTipoLabel(request.procedureType),
+        procedureTypeLabel: this.getTipoLabel(request),
         currentUserId: this.auth.userId(),
       },
       panelClass: 'request-dialog',
@@ -862,7 +863,7 @@ export class RequestsComponent {
     >(RequestRejectionReasonDialogComponent, {
       data: {
         request,
-        procedureTypeLabel: this.getTipoLabel(request.procedureType),
+        procedureTypeLabel: this.getTipoLabel(request),
       },
       panelClass: 'request-dialog',
       autoFocus: 'first-heading',
@@ -886,9 +887,9 @@ export class RequestsComponent {
     }
   }
 
-  /** Resuelve con el catálogo completo, incluidos inactivos. Sin coincidencia, muestra el código. */
-  protected getTipoLabel(value: string): string {
-    return this.typeLabels().get(value) ?? value;
+  /** Catálogo completo, incluidos inactivos; sin el tipo, el nombre guardado en el trámite. */
+  protected getTipoLabel(request: Request): string {
+    return procedureTypeLabel(request.procedureType, request.procedureLabel, this.typeLabels());
   }
 
   protected getSolicitanteNombre(request: Request): string {

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { CatalogService } from '../../core/catalog/catalog.service';
 import { Role } from '../../shared/models/role';
 import { HomeAdminComponent } from './home-admin/home-admin.component';
 import { HomeAuditorComponent } from './home-auditor/home-auditor.component';
@@ -49,6 +50,7 @@ import { HomeVecinoComponent } from './home-vecino/home-vecino.component';
 })
 export class HomeComponent {
   private readonly auth = inject(AuthService);
+  private readonly catalogService = inject(CatalogService);
 
   protected readonly Role = Role;
   protected readonly role = this.auth.role;
@@ -56,4 +58,13 @@ export class HomeComponent {
     const account = this.auth.account();
     return account?.name ?? account?.username ?? '';
   });
+
+  constructor() {
+    // En paralelo con los bloques y sin bloquearlos: mientras llega, las listas usan el nombre guardado. El
+    // Auditor no lo necesita, porque la auditoría conserva el nombre que tenía el tipo en cada hecho.
+    const role = this.role();
+    if (role !== null && role !== Role.Auditor) {
+      this.catalogService.loadLabels();
+    }
+  }
 }

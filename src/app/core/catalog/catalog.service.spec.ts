@@ -138,4 +138,41 @@ describe('CatalogService', () => {
       error: { message: 'Catálogo no disponible' },
     });
   });
+
+  describe('nombres para las vistas', () => {
+    const type = (value: string, label: string) => ({
+      value,
+      label,
+      active: false,
+      dailyQuota: null,
+      remainingQuota: null,
+    });
+
+    it('cualquier consulta del catálogo actualiza los nombres, incluidos los inactivos', () => {
+      service.getProcedures().subscribe();
+      backend.expectOne(url).flush([type('bache', 'Bache en calzada')]);
+
+      expect(service.labels().get('bache')).toBe('Bache en calzada');
+      service.loadLabels();
+      backend.expectNone(url);
+    });
+
+    it('loadLabels consulta una sola vez aunque varias vistas lo pidan', () => {
+      service.loadLabels();
+      service.loadLabels();
+      backend.expectOne(url).flush([type('poda', 'Poda de árboles')]);
+
+      expect(service.labels().get('poda')).toBe('Poda de árboles');
+    });
+
+    it('una falla deja los nombres vacíos y la próxima vista vuelve a intentar', () => {
+      service.loadLabels();
+      backend.expectOne(url).flush(null, { status: 503, statusText: 'Service Unavailable' });
+      expect(service.labels().size).toBe(0);
+
+      service.loadLabels();
+      backend.expectOne(url).flush([type('bache', 'Bache en calzada')]);
+      expect(service.labels().size).toBe(1);
+    });
+  });
 });

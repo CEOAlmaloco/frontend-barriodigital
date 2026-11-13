@@ -125,6 +125,13 @@ describe('HomeComponent', () => {
     req.flush(body);
     render();
   };
+  const catalogType = (value: string, label: string) => ({
+    value,
+    label,
+    active: true,
+    dailyQuota: null,
+    remainingQuota: null,
+  });
   const unavailable = (req: TestRequest) => {
     req.flush({ message: 'No disponible' }, { status: 503, statusText: 'Service Unavailable' });
     render();
@@ -208,7 +215,8 @@ describe('HomeComponent', () => {
       const stats = Array.from(element().querySelectorAll<HTMLAnchorElement>('.stat'));
       expect(stats.map((stat) => text(stat.querySelector('.stat__value')))).toEqual(['3', '12']);
       expect(stats[1].getAttribute('href')).toBe('/tramites?open=false');
-      // Ni plazos ni auditoría: el Vecino no los ve (EP3-04, sección 2)
+      // Ni plazos ni auditoría: el Vecino no los ve (EP3-04, sección 2). Solo el catálogo, para los nombres
+      one('/api/catalog/procedures').flush([]);
       backend.verify();
     });
 
@@ -237,6 +245,59 @@ describe('HomeComponent', () => {
       );
       expect(text(element().querySelector('.stats'))).toContain('No disponible');
       expect(element().querySelector('.cta a')).not.toBeNull();
+    });
+  });
+
+  describe('nombre del tipo', () => {
+    it('usa el nombre actual del catálogo, también para trámites antiguos y en los plazos', async () => {
+      await open(Role.Funcionario);
+      const catalog = one('/api/catalog/procedures');
+      flush(
+        one('/api/report/sla'),
+        slaPage([alert({ procedureType: 'alumbrado', procedureLabel: 'Alumbrado público' })]),
+      );
+      flush(
+        one('/api/requests', { assignee: 'me' }),
+        page([request({ procedureType: 'bache', procedureLabel: null })]),
+      );
+      flush(one('/api/requests', { assignee: 'none' }), page([]));
+
+      // Antes del catálogo: nombre guardado y, sin él, el código. Los bloques no lo esperan
+      expect(text(block('Mis asignados'))).toContain('bache');
+      expect(text(block('Plazos por vencer y vencidos'))).toContain('Alumbrado público');
+
+      flush(catalog, [
+        catalogType('bache', 'Bache en calzada'),
+        catalogType('alumbrado', 'Luminaria apagada'),
+      ]);
+      expect(text(block('Mis asignados'))).toContain('Bache en calzada');
+      expect(text(block('Plazos por vencer y vencidos'))).toContain('Luminaria apagada');
+    });
+
+    it('catálogo no disponible: los bloques siguen con el nombre guardado y sin error', async () => {
+      await open(Role.Vecino);
+      unavailable(one('/api/catalog/procedures'));
+      flush(one('/api/requests', { open: 'true' }), page([request()]));
+      flush(one('/api/requests', { open: 'false' }), page([]));
+
+      const list = block('Mis trámites abiertos')!;
+      expect(text(list)).toContain('Bache en calzada');
+      expect(text(list)).not.toContain('No disponible');
+    });
+
+    it('un tipo que el catálogo no tiene conserva el nombre guardado', async () => {
+      await open(Role.Admin);
+      flush(one('/api/catalog/procedures'), [catalogType('poda', 'Poda de árboles')]);
+      flush(one('/api/report/kpis'), kpis());
+      flush(one('/api/report/sla'), slaPage([alert()]));
+      flush(one('/api/requests'), page([]));
+
+      expect(text(block('Plazos vencidos'))).toContain('Luminaria apagada');
+    });
+
+    it('el Auditor no pide el catálogo: la auditoría conserva el nombre histórico', async () => {
+      await open(Role.Auditor);
+      expect(pending('/api/catalog/procedures')).toHaveLength(0);
     });
   });
 

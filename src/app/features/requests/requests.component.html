@@ -331,10 +331,10 @@
               [routerLink]="['/tramites', request.id]"
               [attr.aria-label]="
                 'Ver detalle del trámite ' +
-                getTipoLabel(request.procedureType) +
+                getTipoLabel(request) +
                 (request.folio ? ', folio ' + request.folio : '')
               "
-              >{{ getTipoLabel(request.procedureType) }}</a
+              >{{ getTipoLabel(request) }}</a
             >
             @if (request.folio) {
               <span class="requests__folio">{{ request.folio }}</span>

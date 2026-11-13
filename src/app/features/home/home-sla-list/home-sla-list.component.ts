@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { CatalogService } from '../../../core/catalog/catalog.service';
 import { SlaAlert } from '../../../shared/models/report.model';
+import { procedureTypeLabel } from '../../requests/procedure-label';
 import { RequestAssigneeComponent } from '../../requests/request-assignee/request-assignee.component';
 import { SlaStatusBadgeComponent } from '../../requests/sla-status-badge/sla-status-badge.component';
 import { dueDateLabel } from '../home-format';
@@ -48,6 +50,8 @@ interface SlaRow {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HomeSlaListComponent {
+  private readonly catalogLabels = inject(CatalogService).labels;
+
   readonly alerts = input.required<readonly SlaAlert[]>();
   /** El Admin ve el responsable; el Funcionario solo ve los suyos. */
   readonly showAssignee = input(false);
@@ -56,7 +60,7 @@ export class HomeSlaListComponent {
   protected readonly rows = computed<SlaRow[]>(() =>
     this.alerts().map((alert) => ({
       alert,
-      label: alert.procedureLabel?.trim() || alert.procedureType,
+      label: procedureTypeLabel(alert.procedureType, alert.procedureLabel, this.catalogLabels()),
       due: dueDateLabel(alert.dueDate, this.now()),
       late: alert.slaStatus === 'VENCIDO',
     })),

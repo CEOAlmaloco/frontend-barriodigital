@@ -1,9 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
+import { CatalogService } from '../../../core/catalog/catalog.service';
 import { Request } from '../../../shared/models/request.model';
 import { formatElapsed } from '../../requests/duration';
+import { procedureTypeLabel } from '../../requests/procedure-label';
 import { RequestDatePipe } from '../../requests/request-date.pipe';
 import { RequestStatusBadgeComponent } from '../../requests/request-status-badge/request-status-badge.component';
 
@@ -52,6 +54,8 @@ interface RequestRow {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HomeRequestListComponent {
+  private readonly catalogLabels = inject(CatalogService).labels;
+
   readonly requests = input.required<readonly Request[]>();
   readonly citizen = input(false);
   /** Instante de referencia para la antigüedad; se fija por carga para que no cambie entre filas. */
@@ -60,7 +64,11 @@ export class HomeRequestListComponent {
   protected readonly rows = computed<RequestRow[]>(() =>
     this.requests().map((request) => ({
       request,
-      label: request.procedureLabel?.trim() || request.procedureType,
+      label: procedureTypeLabel(
+        request.procedureType,
+        request.procedureLabel,
+        this.catalogLabels(),
+      ),
     })),
   );
 

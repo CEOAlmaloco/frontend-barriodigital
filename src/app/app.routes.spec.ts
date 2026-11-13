@@ -56,7 +56,10 @@ const setup = () => {
       provideRouter(routes),
       { provide: AuthService, useValue: auth.stub },
       { provide: MsalGuard, useValue: msalGuard },
-      { provide: CatalogService, useValue: { getProcedures: () => of([]) } },
+      {
+        provide: CatalogService,
+        useValue: { getProcedures: () => of([]), labels: () => new Map(), loadLabels: () => {} },
+      },
       {
         provide: RequestsService,
         useValue: {

@@ -8,6 +8,7 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { BehaviorSubject, Observable, firstValueFrom, of, throwError } from 'rxjs';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { CatalogService } from '../../../core/catalog/catalog.service';
 import { Request, RequestTransitions } from '../../../shared/models/request.model';
 import { Role } from '../../../shared/models/role';
 import { RequestLocationMapComponent } from '../request-location-map.component';
@@ -114,6 +115,9 @@ describe('RequestDetailComponent', () => {
     registerGestion: ReturnType<typeof vi.fn>;
   };
   let snackBar: { open: ReturnType<typeof vi.fn> };
+  /** Nombres del catálogo: vacío equivale a un catálogo que no respondió. */
+  const catalogLabels = signal<ReadonlyMap<string, string>>(new Map());
+  const loadLabels = vi.fn();
   let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
 
   const render = async (
@@ -142,6 +146,7 @@ describe('RequestDetailComponent', () => {
         { provide: RequestsService, useValue: service },
         { provide: AuthService, useValue: auth },
         { provide: MatSnackBar, useValue: snackBar },
+        { provide: CatalogService, useValue: { labels: catalogLabels, loadLabels } },
       ],
     });
     TestBed.overrideComponent(RequestDetailComponent, {
@@ -158,6 +163,37 @@ describe('RequestDetailComponent', () => {
 
   afterEach(() => {
     overlay?.replaceChildren();
+    catalogLabels.set(new Map());
+    loadLabels.mockClear();
+  });
+
+  describe('nombre del tipo', () => {
+    const title = () => element.querySelector('h1')?.textContent?.trim();
+
+    it('pide el catálogo sin esperarlo y, al llegar, muestra el nombre actual de un tipo renombrado', async () => {
+      await render(Role.Funcionario);
+      expect(loadLabels).toHaveBeenCalledOnce();
+      expect(title()).toBe('Alumbrado público');
+
+      catalogLabels.set(new Map([['alumbrado', 'Luminaria apagada']]));
+      await fixture.whenStable();
+      expect(title()).toBe('Luminaria apagada');
+    });
+
+    it('un trámite antiguo sin nombre guardado toma el del catálogo y, sin catálogo, el código', async () => {
+      await render(Role.Vecino, () => of({ ...base, procedureLabel: null }));
+      expect(title()).toBe('alumbrado');
+
+      catalogLabels.set(new Map([['alumbrado', 'Alumbrado público']]));
+      await fixture.whenStable();
+      expect(title()).toBe('Alumbrado público');
+    });
+
+    it('un tipo que el catálogo ya no tiene conserva el nombre guardado', async () => {
+      catalogLabels.set(new Map([['bache', 'Bache en calzada']]));
+      await render(Role.Funcionario);
+      expect(title()).toBe('Alumbrado público');
+    });
   });
 
   const text = () => element.textContent ?? '';

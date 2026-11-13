@@ -969,6 +969,17 @@ describe('RequestsComponent', () => {
       },
     );
 
+    it('nombre del tipo: catálogo actual, luego el guardado y al final el código', async () => {
+      await render(Role.Funcionario);
+      const label = (procedureType: string, procedureLabel: string | null) =>
+        fixture.componentInstance['getTipoLabel']({ ...mine, procedureType, procedureLabel });
+
+      // Renombrado: el catálogo manda sobre el nombre guardado al crear
+      expect(label('alumbrado', 'Alumbrado público')).toBe('Iluminación municipal');
+      expect(label('tipo-retirado', 'Retiro de escombros')).toBe('Retiro de escombros');
+      expect(label('tipo-retirado', null)).toBe('tipo-retirado');
+    });
+
     it('conserva campos y labels; Vecino nunca consulta transiciones y las asociaciones accesibles siguen presentes', async () => {
       await render(Role.Vecino);
       const payload = { procedureType: 'alumbrado', description: 'Poste', address: 'Calle 2' };
@@ -978,7 +989,13 @@ describe('RequestsComponent', () => {
       fixture.componentInstance['loadCatalog']();
       fixture.componentInstance['loadRequests']();
       await fixture.whenStable();
-      expect(fixture.componentInstance['getTipoLabel']('alumbrado')).toBe('Iluminación municipal');
+      expect(
+        fixture.componentInstance['getTipoLabel']({
+          ...mine,
+          procedureType: 'alumbrado',
+          procedureLabel: null,
+        }),
+      ).toBe('Iluminación municipal');
       expect(fixture.componentInstance['createForm'].getRawValue()).toEqual(payload);
       const checkDescriptions = () => {
         const select = element.querySelector('[formControlName="procedureType"]')!;
