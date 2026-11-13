@@ -1,0 +1,31 @@
+// Distribución de los bloques de /inicio: una columna en móvil, dos desde md
+@use 'tokens' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  @media (min-width: $breakpoint-md) {
+    gap: $space-6;
+  }
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: $space-4;
+
+  @media (min-width: $breakpoint-md) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: $space-6;
+  }
+}
+
+// El Auditor lee motivos de hasta 500 caracteres: la columna de intervenciones necesita más ancho
+.home-grid--wide-start {
+  @media (min-width: $breakpoint-lg) {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+}

@@ -52,10 +52,19 @@
     [formGroup]="form()"
   >
     <mat-form-field subscriptSizing="dynamic">
+      <mat-label>Situación</mat-label>
+      <mat-select formControlName="open">
+        @for (situation of situations; track situation.value) {
+          <mat-option [value]="situation.value">{{ situation.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field subscriptSizing="dynamic">
       <mat-label>Estado</mat-label>
       <mat-select formControlName="status">
         <mat-option value="">Todos</mat-option>
-        @for (status of statuses; track status) {
+        @for (status of statusesFor(form().controls.open.value); track status) {
           <mat-option [value]="status">{{ statusView[status].label }}</mat-option>
         }
       </mat-select>

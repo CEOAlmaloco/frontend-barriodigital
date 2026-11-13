@@ -1,0 +1,64 @@
+@use 'tokens' as *;
+
+$icon-size: 40px;
+
+:host {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-3;
+  padding: $space-4;
+}
+
+.state__icon {
+  display: grid;
+  flex-shrink: 0;
+  width: $icon-size;
+  height: $icon-size;
+  place-items: center;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: 50%;
+
+  mat-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+}
+
+.state__icon--neutral {
+  background-color: var(--bd-secondary-container);
+  color: var(--bd-secondary);
+}
+
+.state__icon--success {
+  background-color: var(--bd-success-container);
+  color: var(--bd-success);
+}
+
+.state__icon--error {
+  background-color: var(--bd-error-container);
+  color: var(--bd-error);
+}
+
+.state__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $space-1;
+  // Centra un título de una línea con el ícono
+  padding-block-start: $space-2;
+}
+
+.state__title,
+.state__text {
+  margin: 0;
+}
+
+.state__title {
+  font-weight: $font-weight-semibold;
+}
+
+.state__text {
+  color: var(--bd-text-muted);
+}

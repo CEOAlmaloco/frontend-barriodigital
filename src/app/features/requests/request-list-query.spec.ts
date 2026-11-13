@@ -1,6 +1,7 @@
 import {
   DEFAULT_REQUEST_QUERY,
   activeFilterCount,
+  matchesSituation,
   parseDateKey,
   parseRequestListParams,
   sameRequestListQuery,
@@ -56,6 +57,30 @@ describe('request-list-query', () => {
     expect(toRequestListParams(parseRequestListParams(fromRecord(params)))).toEqual(params);
   });
 
+  it('lleva la situación de abiertos o cerrados con el nombre open de EP3-30', () => {
+    const params = { assignee: 'me', open: 'true', sort: 'createdAt,asc' };
+    const query = parseRequestListParams(fromRecord(params));
+    expect(query.open).toBe('true');
+    expect(toRequestListParams(query)).toEqual(params);
+  });
+
+  it('descarta un estado de la otra situación, que siempre daría una lista vacía', () => {
+    expect(parseRequestListParams(fromRecord({ open: 'true', status: 'RESUELTO' }))).toMatchObject({
+      open: 'true',
+      status: '',
+    });
+    expect(
+      parseRequestListParams(fromRecord({ open: 'false', status: 'RECHAZADO' })),
+    ).toMatchObject({ open: 'false', status: 'RECHAZADO' });
+  });
+
+  it('matchesSituation separa los estados abiertos de los cerrados', () => {
+    expect(matchesSituation('EN_TERRENO', 'true')).toBe(true);
+    expect(matchesSituation('CANCELADO', 'true')).toBe(false);
+    expect(matchesSituation('CANCELADO', 'false')).toBe(true);
+    expect(matchesSituation('INGRESADO', '')).toBe(true);
+  });
+
   it('un orden sin dirección es ascendente, como en el backend', () => {
     expect(parseRequestListParams(fromRecord({ sort: 'folio' }))).toMatchObject({
       sort: 'folio',
@@ -76,6 +101,7 @@ describe('request-list-query', () => {
     ['from', '1990-01-01'],
     ['to', 'ayer'],
     ['assignee', 'oid-ana'],
+    ['open', 'si'],
   ])('descarta %s=%s manipulado en la URL', (key, value) => {
     expect(parseRequestListParams(fromRecord({ [key]: value }))).toEqual(DEFAULT_REQUEST_QUERY);
   });
@@ -95,10 +121,11 @@ describe('request-list-query', () => {
         ...DEFAULT_REQUEST_QUERY,
         q: 'bache',
         status: 'INGRESADO',
+        open: 'true',
         from: '2026-11-01',
         sort: 'folio',
       }),
-    ).toBe(2);
+    ).toBe(3);
   });
 
   it('compara consultas por su forma en la URL', () => {

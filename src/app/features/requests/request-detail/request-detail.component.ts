@@ -30,10 +30,12 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Subject, catchError, combineLatest, map, of, startWith, switchMap } from 'rxjs';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { CatalogService } from '../../../core/catalog/catalog.service';
 import { Request, RequestStatus, RequestTransitions } from '../../../shared/models/request.model';
 import { OVERSIGHT_ROLES, Role } from '../../../shared/models/role';
 import { assignmentFailure } from '../assignment-errors';
 import { formatDuration } from '../duration';
+import { procedureTypeLabel } from '../procedure-label';
 import {
   RequestAssignDialogComponent,
   RequestAssignDialogData,
@@ -101,6 +103,7 @@ export class RequestDetailComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
   private readonly requestsService = inject(RequestsService);
+  private readonly catalogService = inject(CatalogService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly titleService = inject(Title);
@@ -150,7 +153,13 @@ export class RequestDetailComponent {
   protected readonly backLink = { path: '/tramites', label: 'Trámites' } as const;
   protected readonly typeLabel = computed(() => {
     const request = this.request();
-    return request ? request.procedureLabel?.trim() || request.procedureType : '';
+    return request
+      ? procedureTypeLabel(
+          request.procedureType,
+          request.procedureLabel,
+          this.catalogService.labels(),
+        )
+      : '';
   });
   protected readonly folio = computed(() => this.request()?.folio?.trim() || null);
   protected readonly auditLink = computed(() => {
@@ -202,6 +211,8 @@ export class RequestDetailComponent {
   });
 
   constructor() {
+    // Sin esperarlo: el trámite se muestra con el nombre guardado hasta que llegue el catálogo
+    this.catalogService.loadLabels();
     this.activityReload$
       .pipe(
         switchMap(() => {

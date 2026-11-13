@@ -337,6 +337,7 @@ describe('RequestsComponent', () => {
 
     expect(fixture.componentInstance['filters'].getRawValue()).toEqual({
       status: '',
+      open: '',
       procedureType: '',
       sector: '',
       from: null,
@@ -968,6 +969,17 @@ describe('RequestsComponent', () => {
       },
     );
 
+    it('nombre del tipo: catálogo actual, luego el guardado y al final el código', async () => {
+      await render(Role.Funcionario);
+      const label = (procedureType: string, procedureLabel: string | null) =>
+        fixture.componentInstance['getTipoLabel']({ ...mine, procedureType, procedureLabel });
+
+      // Renombrado: el catálogo manda sobre el nombre guardado al crear
+      expect(label('alumbrado', 'Alumbrado público')).toBe('Iluminación municipal');
+      expect(label('tipo-retirado', 'Retiro de escombros')).toBe('Retiro de escombros');
+      expect(label('tipo-retirado', null)).toBe('tipo-retirado');
+    });
+
     it('conserva campos y labels; Vecino nunca consulta transiciones y las asociaciones accesibles siguen presentes', async () => {
       await render(Role.Vecino);
       const payload = { procedureType: 'alumbrado', description: 'Poste', address: 'Calle 2' };
@@ -977,7 +989,13 @@ describe('RequestsComponent', () => {
       fixture.componentInstance['loadCatalog']();
       fixture.componentInstance['loadRequests']();
       await fixture.whenStable();
-      expect(fixture.componentInstance['getTipoLabel']('alumbrado')).toBe('Iluminación municipal');
+      expect(
+        fixture.componentInstance['getTipoLabel']({
+          ...mine,
+          procedureType: 'alumbrado',
+          procedureLabel: null,
+        }),
+      ).toBe('Iluminación municipal');
       expect(fixture.componentInstance['createForm'].getRawValue()).toEqual(payload);
       const checkDescriptions = () => {
         const select = element.querySelector('[formControlName="procedureType"]')!;
@@ -1943,6 +1961,36 @@ describe('RequestsComponent', () => {
       expect(TestBed.inject(Router).url).toBe('/?assignee=me');
     });
 
+    it('el enlace de /inicio llega con la situación: open va al GET y cuenta como filtro', async () => {
+      await render(
+        Role.Funcionario,
+        undefined,
+        undefined,
+        undefined,
+        '/?assignee=me&open=true&sort=createdAt,asc',
+      );
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({
+        assignee: 'me',
+        open: 'true',
+        sort: 'createdAt,asc',
+      });
+      expect(element.querySelector('.filters__count')?.textContent).toContain('1');
+
+      // Un estado de la otra situación daría siempre una lista vacía: se limpia al elegir la situación
+      const filters = fixture.componentInstance['filters'];
+      filters.patchValue({ open: '', status: 'RESUELTO' });
+      await fixture.whenStable();
+      filters.patchValue({ open: 'true' });
+      await fixture.whenStable();
+      expect(filters.controls.status.value).toBe('');
+      expect(service.getRequests).toHaveBeenLastCalledWith({
+        assignee: 'me',
+        open: 'true',
+        sort: 'createdAt,asc',
+      });
+    });
+
     it('bandeja vacía de mis asignados invita a tomar uno sin asignar', async () => {
       await render(Role.Funcionario, () => of(page([])), undefined, undefined, '/?assignee=me');
 
@@ -1951,6 +1999,13 @@ describe('RequestsComponent', () => {
       await settle();
 
       expect(service.getRequests).toHaveBeenLastCalledWith({ assignee: 'none' });
+    });
+
+    it('"Nuevo trámite" del inicio deja el foco en el formulario de alta', async () => {
+      await render(Role.Vecino, undefined, undefined, undefined, '/#nuevo-tramite');
+      await fixture.whenStable();
+
+      expect(document.activeElement?.id).toBe('new-request-title');
     });
 
     it('Admin: asigna o reasigna desde la fila, sin "Mis asignados"', async () => {

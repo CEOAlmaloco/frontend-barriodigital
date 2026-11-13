@@ -1,3 +1,4 @@
+import { SlaStatus } from '../../shared/models/report.model';
 import { RequestStatus } from '../../shared/models/request.model';
 
 export type StatusTone = 'neutral' | 'secondary' | 'success' | 'error';
@@ -15,6 +16,19 @@ export const REQUEST_STATUS_VIEW: Record<RequestStatus, { label: string; tone: S
 
 export const REQUEST_STATUSES = Object.keys(REQUEST_STATUS_VIEW) as RequestStatus[];
 
+export type SlaTone = 'neutral' | 'secondary' | 'success' | 'warning' | 'error';
+
+/** Texto de EP3-06, sección 4.1, y tono del indicador de plazo. */
+export const SLA_STATUS_VIEW: Record<SlaStatus, { label: string; tone: SlaTone; icon: string }> = {
+  DENTRO_DE_PLAZO: { label: 'Dentro de plazo', tone: 'secondary', icon: 'schedule' },
+  POR_VENCER: { label: 'Por vencer', tone: 'warning', icon: 'hourglass_bottom' },
+  VENCIDO: { label: 'Vencido', tone: 'error', icon: 'error' },
+  CUMPLIDO: { label: 'Cumplido', tone: 'success', icon: 'task_alt' },
+  FUERA_DE_PLAZO: { label: 'Fuera de plazo', tone: 'error', icon: 'event_busy' },
+  NO_APLICA: { label: 'No aplica', tone: 'neutral', icon: 'remove' },
+  SIN_PLAZO: { label: 'Sin plazo', tone: 'neutral', icon: 'remove' },
+};
+
 /** Camino normal de atención. RECHAZADO y CANCELADO lo cortan. */
 export const REQUEST_FLOW: readonly RequestStatus[] = [
   'INGRESADO',
@@ -25,6 +39,9 @@ export const REQUEST_FLOW: readonly RequestStatus[] = [
 ];
 
 export const CLOSED_STATUSES: readonly RequestStatus[] = ['RESUELTO', 'RECHAZADO', 'CANCELADO'];
+export const OPEN_STATUSES: readonly RequestStatus[] = REQUEST_STATUSES.filter(
+  (status) => !CLOSED_STATUSES.includes(status),
+);
 
 export function isClosedStatus(status: RequestStatus): boolean {
   return CLOSED_STATUSES.includes(status);
@@ -58,6 +75,9 @@ export const CONTACT_RESULTS = [
   { value: 'CONFIRMADO', label: 'Contacto confirmado' },
   { value: 'VISITA_FALLIDA', label: 'Visita fallida' },
 ] as const;
+
+/** Ancla del formulario de alta en /tramites, enlazada desde el inicio del Vecino. */
+export const NEW_REQUEST_FRAGMENT = 'nuevo-tramite';
 
 export const REJECTION_REASON_MAX_LENGTH = 500;
 export const INTERVENTION_REASON_MAX_LENGTH = 500;

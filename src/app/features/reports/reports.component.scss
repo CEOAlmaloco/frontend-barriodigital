@@ -157,48 +157,6 @@ $content-max-width: 1200px;
   gap: $space-4;
 }
 
-.reports__tiles {
-  display: grid;
-  margin: 0;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: $space-3;
-
-  @media (min-width: $breakpoint-lg) {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: $space-4;
-  }
-}
-
-// Anidado: dt y dd están en la escala global de texto, que fijaría el valor al tamaño del cuerpo
-.reports__tile {
-  gap: $space-1;
-
-  dt,
-  dd {
-    margin: 0;
-    color: var(--bd-text-muted);
-    font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
-  }
-
-  .reports__tile-value {
-    color: var(--bd-text);
-    font-size: calc(#{$font-h2} * var(--bd-text-scale, 1));
-    font-weight: $font-weight-semibold;
-    font-variant-numeric: tabular-nums;
-    line-height: 1.2;
-
-    @media (min-width: $breakpoint-md) {
-      font-size: calc(#{$font-h1} * var(--bd-text-scale, 1));
-    }
-  }
-
-  .reports__tile-value--empty {
-    color: var(--bd-text-muted);
-    font-size: calc(#{$font-h3} * var(--bd-text-scale, 1));
-    font-weight: $font-weight-medium;
-  }
-}
-
 .reports__grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

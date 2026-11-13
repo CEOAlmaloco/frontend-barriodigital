@@ -1,0 +1,33 @@
+// Enlace "Ver …" del pie de los bloques de /inicio
+@use 'tokens' as *;
+
+.home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  min-height: $size-touch-target;
+  border-radius: $space-1;
+  color: var(--bd-primary);
+  font-weight: $font-weight-medium;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: $space-1;
+  }
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    transition: transform $transition-base;
+  }
+
+  &:hover mat-icon {
+    transform: translateX(2px);
+  }
+}

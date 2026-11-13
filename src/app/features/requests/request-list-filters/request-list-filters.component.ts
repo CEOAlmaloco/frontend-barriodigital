@@ -11,12 +11,18 @@ import { MatSelectModule } from '@angular/material/select';
 import { ProcedureType } from '../../../shared/models/procedure-type.model';
 import { RequestStatus } from '../../../shared/models/request.model';
 import { MUNICIPALITY_SINCE } from '../date-key';
-import { REQUEST_SORT_OPTIONS, SEARCH_MAX_LENGTH } from '../request-list-query';
+import {
+  REQUEST_SORT_OPTIONS,
+  RequestSituation,
+  SEARCH_MAX_LENGTH,
+  matchesSituation,
+} from '../request-list-query';
 import { COMMUNE_SECTORS } from '../request-location';
 import { REQUEST_STATUSES, REQUEST_STATUS_VIEW } from '../requests.constants';
 
 export type RequestFiltersForm = FormGroup<{
   status: FormControl<RequestStatus | ''>;
+  open: FormControl<RequestSituation>;
   procedureType: FormControl<string>;
   sector: FormControl<string>;
   from: FormControl<Date | null>;
@@ -56,7 +62,11 @@ export class RequestListFiltersComponent {
   readonly sortChange = output<string>();
 
   protected readonly open = signal(false);
-  protected readonly statuses = REQUEST_STATUSES;
+  protected readonly situations: readonly { value: RequestSituation; label: string }[] = [
+    { value: '', label: 'Todos' },
+    { value: 'true', label: 'Abiertos' },
+    { value: 'false', label: 'Cerrados' },
+  ];
   protected readonly statusView = REQUEST_STATUS_VIEW;
   protected readonly sectors = COMMUNE_SECTORS;
   protected readonly sortOptions = REQUEST_SORT_OPTIONS;
@@ -66,6 +76,11 @@ export class RequestListFiltersComponent {
   protected readonly typeOptions = computed(() =>
     [...this.procedureTypes()].sort((a, b) => a.label.localeCompare(b.label, 'es')),
   );
+
+  /** Con una situación elegida, el estado ofrece solo los de esa situación. */
+  protected statusesFor(situation: RequestSituation): readonly RequestStatus[] {
+    return REQUEST_STATUSES.filter((status) => matchesSituation(status, situation));
+  }
 
   protected toggle(): void {
     this.open.update((open) => !open);

@@ -56,7 +56,10 @@ const setup = () => {
       provideRouter(routes),
       { provide: AuthService, useValue: auth.stub },
       { provide: MsalGuard, useValue: msalGuard },
-      { provide: CatalogService, useValue: { getProcedures: () => of([]) } },
+      {
+        provide: CatalogService,
+        useValue: { getProcedures: () => of([]), labels: () => new Map(), loadLabels: () => {} },
+      },
       {
         provide: RequestsService,
         useValue: {
@@ -168,6 +171,15 @@ describe('Ruta /inicio', () => {
     await harness.navigateByUrl('/inicio');
 
     expect(TestBed.inject(Router).url).toBe('/inicio');
+  });
+
+  it('con más de un rol tampoco hay inicio: va a la pantalla sin acceso', async () => {
+    ctx.auth.tokenRoles.set([Role.Vecino, Role.Funcionario]);
+    const harness = await RouterTestingHarness.create();
+
+    await harness.navigateByUrl('/inicio');
+
+    expect(TestBed.inject(Router).url).toBe('/no-access');
   });
 
   it('sin rol no llega al layout vacío: va a la pantalla sin acceso', async () => {

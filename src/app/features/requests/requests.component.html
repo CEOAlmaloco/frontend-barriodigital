@@ -11,8 +11,10 @@
   </header>
 
   @if (!isStaff()) {
-    <section class="requests__card" aria-labelledby="new-request-title">
-      <h2 id="new-request-title" class="requests__section-title">Nuevo trámite</h2>
+    <section id="nuevo-tramite" class="requests__card" aria-labelledby="new-request-title">
+      <h2 id="new-request-title" class="requests__section-title" #newRequestTitle tabindex="-1">
+        Nuevo trámite
+      </h2>
 
       <form
         class="requests__form"
@@ -329,10 +331,10 @@
               [routerLink]="['/tramites', request.id]"
               [attr.aria-label]="
                 'Ver detalle del trámite ' +
-                getTipoLabel(request.procedureType) +
+                getTipoLabel(request) +
                 (request.folio ? ', folio ' + request.folio : '')
               "
-              >{{ getTipoLabel(request.procedureType) }}</a
+              >{{ getTipoLabel(request) }}</a
             >
             @if (request.folio) {
               <span class="requests__folio">{{ request.folio }}</span>

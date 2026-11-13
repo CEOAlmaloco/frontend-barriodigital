@@ -1,17 +1,20 @@
 import { RequestStatus } from '../../shared/models/request.model';
 import { MUNICIPALITY_SINCE, toDateKey } from './date-key';
 import { COMMUNE_SECTORS } from './request-location';
-import { REQUEST_STATUSES } from './requests.constants';
+import { CLOSED_STATUSES, REQUEST_STATUSES } from './requests.constants';
 
 export type RequestSortField = 'createdAt' | 'status' | 'folio';
 export type RequestSortDirection = 'asc' | 'desc';
 /** Bandeja de staff (EP3-05, sección 8): `me` son los propios y `none` los sin responsable. */
 export type RequestQueue = '' | 'me' | 'none';
+/** Filtro `open` de requests (EP3-30): se combina con `status` por un Y lógico. */
+export type RequestSituation = '' | 'true' | 'false';
 
 /** Estado del listado. Es la misma forma para la URL de /tramites y para el GET del BFF (EP3-30). */
 export interface RequestListQuery {
   q: string;
   status: RequestStatus | '';
+  open: RequestSituation;
   procedureType: string;
   sector: string;
   from: string;
@@ -31,6 +34,7 @@ export const SEARCH_DEBOUNCE_MS = 350;
 export const DEFAULT_REQUEST_QUERY: RequestListQuery = {
   q: '',
   status: '',
+  open: '',
   procedureType: '',
   sector: '',
   from: '',
@@ -65,6 +69,7 @@ export function toRequestListParams(query: RequestListQuery): Record<string, str
   const q = query.q.trim();
   if (q) params['q'] = q;
   if (query.status) params['status'] = query.status;
+  if (query.open) params['open'] = query.open;
   if (query.procedureType) params['procedureType'] = query.procedureType;
   if (query.sector) params['sector'] = query.sector;
   if (query.from) params['from'] = query.from;
@@ -93,6 +98,15 @@ export function parseRequestListParams(get: (key: string) => string | null): Req
   const status = get('status');
   if (status && (REQUEST_STATUSES as readonly string[]).includes(status)) {
     query.status = status as RequestStatus;
+  }
+
+  const open = get('open');
+  if (open === 'true' || open === 'false') {
+    query.open = open;
+    // Un estado de la otra situación daría siempre una lista vacía: gana la situación
+    if (query.status && !matchesSituation(query.status, open)) {
+      query.status = '';
+    }
   }
 
   const procedureType = get('procedureType')?.toLowerCase();
@@ -150,8 +164,17 @@ export function serializeRequestListQuery(query: RequestListQuery): string {
 
 /** Filtros que el usuario eligió; la búsqueda, la bandeja, el orden y la página no cuentan. */
 export function activeFilterCount(query: RequestListQuery): number {
-  return [query.status, query.procedureType, query.sector, query.from, query.to].filter(Boolean)
-    .length;
+  return [query.status, query.open, query.procedureType, query.sector, query.from, query.to].filter(
+    Boolean,
+  ).length;
+}
+
+/** Sin situación, cualquier estado coincide. */
+export function matchesSituation(status: RequestStatus, situation: RequestSituation): boolean {
+  if (!situation) {
+    return true;
+  }
+  return CLOSED_STATUSES.includes(status) === (situation === 'false');
 }
 
 /** Día civil local; rechaza fechas imposibles como 2026-02-31. */

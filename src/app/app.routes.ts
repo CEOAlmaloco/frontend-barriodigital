@@ -36,8 +36,7 @@ export const routes: Routes = [
     children: [
       {
         path: 'inicio',
-        loadComponent: () =>
-          import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+        loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent),
         title: 'Inicio | BarrioDigital',
       },
       {
