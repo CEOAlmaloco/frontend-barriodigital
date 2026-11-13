@@ -10,15 +10,15 @@ describe('HeaderComponent', () => {
   let element: HTMLElement;
   const logout = vi.fn();
 
-  const render = async (userRoles: Role[]) => {
-    const roles = signal<string[]>(userRoles);
+  const render = async (userRole: Role | null) => {
+    const role = signal<Role | null>(userRole);
     const auth = {
       account: signal({
         name: 'Usuario de prueba',
         username: 'usuario@cloudproyecto.onmicrosoft.com',
       }),
-      roles,
-      hasRole: (role: string) => roles().includes(role),
+      role,
+      hasRole: (value: Role) => role() === value,
       logout,
     };
 
@@ -42,41 +42,48 @@ describe('HeaderComponent', () => {
   const linkLabels = () =>
     Array.from(element.querySelectorAll('.header__link'), (link) => link.textContent?.trim());
 
-  it.each([Role.Vecino, Role.Funcionario])('%s ve Inicio y Trámites', async (role) => {
-    await render([role]);
+  it.each([
+    { role: Role.Vecino, links: ['Inicio', 'Trámites'] },
+    { role: Role.Funcionario, links: ['Inicio', 'Trámites'] },
+    {
+      role: Role.Admin,
+      links: ['Inicio', 'Trámites', 'Administración', 'Reportes', 'Auditoría'],
+    },
+    { role: Role.Auditor, links: ['Inicio', 'Trámites', 'Reportes', 'Auditoría'] },
+  ])('$role ve la navegación de su rol', async ({ role, links }) => {
+    await render(role);
 
-    expect(linkLabels()).toEqual(['Inicio', 'Trámites']);
+    expect(linkLabels()).toEqual(links);
   });
 
-  it('Admin ve Inicio, Administración y Reportes', async () => {
-    await render([Role.Admin]);
+  it('el Auditor no ve Administración', async () => {
+    await render(Role.Auditor);
 
-    expect(linkLabels()).toEqual(['Inicio', 'Administración', 'Reportes']);
-    expect(element.querySelector('a[href="/admin"]')).not.toBeNull();
+    expect(element.querySelector('a[href="/admin"]')).toBeNull();
     expect(element.querySelector('a[href="/reports"]')).not.toBeNull();
-  });
-
-  it('Auditor ve Inicio y Auditoría', async () => {
-    await render([Role.Auditor]);
-
-    expect(linkLabels()).toEqual(['Inicio', 'Auditoría']);
     expect(element.querySelector('a[href="/audit"]')).not.toBeNull();
   });
 
-  it('Admin con Auditor conserva ambos grupos de navegación', async () => {
-    await render([Role.Admin, Role.Auditor]);
+  it('sin un rol válido no ofrece navegación', async () => {
+    await render(null);
 
-    expect(linkLabels()).toEqual(['Inicio', 'Administración', 'Reportes', 'Auditoría']);
+    expect(linkLabels()).toEqual([]);
+    expect(element.querySelector('.header__account-role')).toBeNull();
   });
 
-  it('sin roles ve solo Inicio', async () => {
-    await render([]);
+  it.each([
+    { role: Role.Admin, label: 'Administrador' },
+    { role: Role.Auditor, label: 'Auditor' },
+  ])('identifica el rol $role junto al nombre', async ({ role, label }) => {
+    await render(role);
 
-    expect(linkLabels()).toEqual(['Inicio']);
+    expect(element.querySelector('.header__account-role')?.textContent?.trim()).toBe(
+      `Rol: ${label}`,
+    );
   });
 
-  it('muestra solo el nombre de la cuenta y cierra sesión desde el header', async () => {
-    await render([Role.Vecino]);
+  it('muestra el nombre de la cuenta y cierra sesión desde el header', async () => {
+    await render(Role.Vecino);
 
     expect(element.querySelector('.header__account-name')?.textContent?.trim()).toBe(
       'Usuario de prueba',
@@ -87,7 +94,7 @@ describe('HeaderComponent', () => {
   });
 
   it('el botón de menú abre la navegación y lo indica con aria-expanded', async () => {
-    const fixture = await render([Role.Vecino]);
+    const fixture = await render(Role.Vecino);
     const toggle = element.querySelector<HTMLButtonElement>('.header__menu-toggle');
 
     expect(toggle?.getAttribute('aria-expanded')).toBe('false');
@@ -103,7 +110,7 @@ describe('HeaderComponent', () => {
     { label: 'Reportes', path: '/reports', role: Role.Admin },
     { label: 'Auditoría', path: '/audit', role: Role.Auditor },
   ])('navegar a $label cierra el menú móvil y marca el enlace activo', async ({ path, role }) => {
-    const fixture = await render([role]);
+    const fixture = await render(role);
     const toggle = element.querySelector<HTMLButtonElement>('.header__menu-toggle');
     const link = element.querySelector<HTMLAnchorElement>(`a[href="${path}"]`);
 

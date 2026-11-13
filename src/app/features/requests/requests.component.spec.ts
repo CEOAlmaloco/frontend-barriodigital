@@ -105,6 +105,7 @@ describe('RequestsComponent', () => {
       changeStatus: vi.fn(),
     };
     const auth = {
+      role: () => role,
       hasRole: (userRole: string) => userRole === role,
       userId: () => (role === Role.Vecino ? 'vecino-actual' : 'funcionario-actual'),
     };
@@ -1959,6 +1960,7 @@ describe('RequestsComponent', () => {
       expect(actions[0]).toContain('Asignar');
       expect(actions[1]).toContain('Reasignar');
       expect(element.querySelector('.requests__card')).toBeNull();
+      expect(element.querySelector('#new-request-title')).toBeNull();
     });
 
     it('Auditor: ve el responsable y la bandeja, sin columna de acciones', async () => {
@@ -1967,6 +1969,7 @@ describe('RequestsComponent', () => {
       expect(headers()).not.toContain('Acciones');
       expect(headers()).toContain('Responsable');
       expect(element.querySelector('app-request-actions')).toBeNull();
+      expect(element.querySelector('#new-request-title')).toBeNull();
       expect(queueLabels()).toEqual(['inbox Todos', 'person_off Sin asignar']);
     });
 

@@ -112,13 +112,32 @@ $header-layer: 10;
   margin-left: auto;
 }
 
-.header__account-name {
+.header__account-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   min-width: 0;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.header__account-name,
+.header__account-role {
+  max-width: 100%;
   overflow: hidden;
-  font-size: $font-body-sm;
-  color: var(--bd-text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.header__account-name {
+  font-size: $font-body-sm;
+  color: var(--bd-text-muted);
+}
+
+.header__account-role {
+  font-size: $font-label;
+  font-weight: $font-weight-medium;
+  color: var(--bd-primary);
 }
 
 // Tokens de Material en el propio botón: gris en reposo para no competir con el botón primario de la página

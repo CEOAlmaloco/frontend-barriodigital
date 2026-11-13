@@ -62,14 +62,14 @@ src/
 ├── app/
 │   ├── core/          Servicios únicos de la app: auth/ (MSAL, sesión, roles y guards), catalog/ (catálogo vía BFF) y layout/ (contenedor de las rutas autenticadas)
 │   ├── shared/        Componentes, pipes y modelos compartidos entre features. Hoy: components/header y models/ (roles, trámites y tipos de trámite)
-│   └── features/      Una carpeta por dominio: login/, dashboard/ (placeholder de /inicio) y requests/ (listado en /tramites y detalle en /tramites/:id)
+│   └── features/      Una carpeta por dominio: login/, no-access/ (sesión sin un rol válido), dashboard/ (placeholder de /inicio) y requests/ (listado en /tramites y detalle en /tramites/:id)
 ├── styles/            _tokens.scss (paleta, tipografía, espaciado), _material-theme.scss y styles.scss global
 └── environments/      Configuración por entorno: Microsoft Entra ID y URL del BFF
 ```
 
 Los componentes importan los tokens con `@use 'tokens' as *;`, sin colores ni tamaños escritos a mano.
 
-Las rutas privadas van como hijas del layout de rutas autenticadas en `app.routes.ts`: ese layout monta el header y aplica `authGuard`, así que una ruta nueva queda protegida solo por estar ahí. Si además es solo para ciertos roles, se le agrega `canActivate: [roleGuard]` y `data: { roles: [...] }`, como `/tramites` con `REQUESTS_ROLES` o `/tramites/:id` con `REQUEST_DETAIL_ROLES`.
+Las rutas privadas van como hijas del layout de rutas autenticadas en `app.routes.ts`: ese layout monta el header y aplica `authGuard` y `accessGuard`, así que una ruta nueva queda protegida solo por estar ahí. Si además es solo para ciertos roles, se le agrega `canActivate: [roleGuard]` y `data: { roles: [...] }`, como `/reports` con `OVERSIGHT_ROLES`, y el ítem del header con los mismos roles.
 
 ## Despliegue
 
@@ -84,15 +84,16 @@ Las rutas privadas van como hijas del layout de rutas autenticadas en `app.route
 
 - Login con MSAL (redirect) contra Microsoft Entra ID, con estados de carga, error y redirección a `/inicio` si ya hay sesión.
 - Sesión compartida entre pestañas y ventanas; dura hasta cerrar el navegador o cerrar sesión.
-- Rutas privadas bajo un layout protegido con `authGuard`, que delega en `MsalGuard`. Sin sesión, llevan al login (`/`). `roleGuard` restringe una ruta a los roles de su `data.roles`.
+- Rutas privadas bajo un layout protegido con `authGuard`, que delega en `MsalGuard`. Sin sesión, llevan al login (`/`). `accessGuard` exige exactamente uno de los cuatro roles y `roleGuard` restringe una ruta a los roles de su `data.roles`; un rol válido sin permiso para la ruta vuelve a `/inicio`.
 - Las llamadas `HttpClient` a `bffBaseUrl` llevan `Authorization: Bearer <accessToken>` con el scope `access_as_user`, que trae el claim `roles`. Las demás URLs salen sin token.
-- Roles del usuario leídos del claim `roles` del accessToken: `AuthService.roles()` y `AuthService.hasRole(Role.Admin)`, con los nombres de rol en `shared/models/role.ts`.
-- Header compartido en todas las rutas autenticadas: navegación según rol (Trámites solo para Vecino y Funcionario), nombre de la cuenta y cierre de sesión. Bajo 768px la navegación se colapsa en un menú.
+- Rol del usuario leído del claim `roles` del accessToken con `resolveAccess` (`shared/models/role.ts`), con el mismo criterio que el BFF: cuenta solo Admin, Funcionario, Vecino y Auditor, e ignora otros App Roles. `AuthService.access()` entrega el resultado y `AuthService.role()` el único rol.
+- Pantalla `/no-access`, fuera del layout y sin navegación, para una sesión sin rol, con más de un rol o con el token sin leer. Explica el motivo, muestra la cuenta en uso y ofrece ingresar con otra cuenta o contactar a soporte. Si el token no se pudo leer, no culpa a la cuenta: ofrece reintentar y, si ahora trae un solo rol, lleva a `/inicio`.
+- Header compartido en todas las rutas autenticadas: navegación del único rol (Vecino y Funcionario: Inicio y Trámites; Admin: además Administración, Reportes y Auditoría; Auditor: además Reportes y Auditoría), nombre de la cuenta con su rol y cierre de sesión. Bajo 768px la navegación se colapsa en un menú.
 - `/inicio` como placeholder: título Inicio, saludo con el nombre de la cuenta y un ejemplo temporal de contenido para Admin y para Vecino.
 
 ### Trámites
 
-- Listado en `/tramites`, conectado al BFF (`GET` y `POST /api/requests`): el Vecino ingresa trámites y ve solo los suyos, que el servidor filtra según el token; el Funcionario ve todos. Admin y Auditor no tienen acceso al listado. La respuesta es paginada (`mat-paginator` de 10, 20 o 50 filas), con búsqueda por folio, descripción o dirección, filtros de estado, tipo, sector y fechas para todos los roles, y orden por folio, estado y fecha. Búsqueda, filtros, bandeja, orden y página quedan en la URL para compartir o recargar la vista; un valor inválido en la URL se descarta.
+- Listado en `/tramites`, conectado al BFF (`GET` y `POST /api/requests`): el Vecino ingresa trámites y ve solo los suyos, que el servidor filtra según el token; el Funcionario, el Admin y el Auditor ven todos; el Auditor sin acciones. La respuesta es paginada (`mat-paginator` de 10, 20 o 50 filas), con búsqueda por folio, descripción o dirección, filtros de estado, tipo, sector y fechas para todos los roles, y orden por folio, estado y fecha. Búsqueda, filtros, bandeja, orden y página quedan en la URL para compartir o recargar la vista; un valor inválido en la URL se descarta.
 - Fila del listado: tipo con su folio (enlace al detalle), descripción recortada con «Ver más» cuando no cabe, solicitante y responsable para el personal, estado con un menú rápido (detalle, actividad, motivo, imagen y mapa) y fecha. Bajo 1280 px el personal ve tarjetas; el Vecino, bajo 768 px.
 - Asignación desde el listado: el Funcionario toma un trámite sin responsable, reasigna los suyos desde el menú de acciones y solo lee los de otro funcionario. El Admin asigna y reasigna desde la fila. Un diálogo ofrece la lista de funcionarios con búsqueda y pide el motivo solo al reasignar; si otra persona tomó el trámite mientras tanto, muestra el responsable nuevo y pide el motivo. La bandeja «Todos», «Mis asignados» y «Sin asignar» filtra por responsable; «Mis asignados» no aparece para Admin ni Auditor, que nunca son responsables.
 - Detalle en `/tramites/:id`, con acceso directo para los cuatro roles; requests responde 404 cuando el trámite no existe o es ajeno al Vecino. Muestra folio (copiable), tipo, estado con su avance, plazo en días hábiles si tiene, datos de la solicitud, el punto en un mapa que se arrastra y se acerca con sus botones (la rueda no hace zoom, para no atrapar el scroll de la página), la imagen adjunta ampliable y el historial de `/actividad`, del más reciente al más antiguo. La carga, el error con reintento y el 404 tienen pantalla propia; el historial y la imagen cargan y fallan por separado del trámite.
@@ -105,13 +106,13 @@ Las rutas privadas van como hijas del layout de rutas autenticadas en `app.route
 
 ### Catálogo y administración
 
-- Catálogo real de tipos de trámite, obtenido con `GET /api/catalog/procedures` mediante el BFF para Vecino y Funcionario. El formulario ofrece solo tipos activos; los labels del listado y diálogos usan el catálogo completo, con el código como respaldo. La carga y el reintento son independientes del listado y las transiciones. Los errores conservan los textos del formulario; una recarga fallida conserva los últimos labels, pero bloquea la creación. El BFF vuelve a validar el tipo al crear. No se muestran cupos.
+- Catálogo real de tipos de trámite, obtenido con `GET /api/catalog/procedures` mediante el BFF para los cuatro roles. El formulario ofrece solo tipos activos; los labels del listado y diálogos usan el catálogo completo, con el código como respaldo. La carga y el reintento son independientes del listado y las transiciones. Los errores conservan los textos del formulario; una recarga fallida conserva los últimos labels, pero bloquea la creación. El BFF vuelve a validar el tipo al crear. No se muestran cupos.
 - Administración de tipos de trámite, solo para Admin: catálogo completo con tabla y tarjetas, creación sin límite diario y edición de nombre, actividad y cupo. El código se presenta en un campo de solo lectura al editar y es inmutable; cada PUT envía el cupo explícitamente. Se muestra «Cupo disponible hoy» con el dato del backend: número, «Agotado», «Sin límite» o «No disponible» ante datos ausentes o inconsistentes. «Actualizar» consulta solo el catálogo, sin cálculo local ni actualización periódica, conservando los últimos datos durante la carga y ante errores. Los diálogos conservan los datos ante errores y las recargas fallidas después de guardar permiten reintentar solo el GET; en error, «Reintentar» es la única acción de recuperación.
 
 ### Reportes y auditoría
 
-- `/reports`, solo para Admin mediante `roleGuard`, con enlace «Reportes» junto a Administración en escritorio y móvil. Pantalla provisional con el título «Reportes» y un mensaje sobre los futuros indicadores comunales al implementar el procesamiento de eventos con Kafka; no realiza consultas HTTP ni depende de un servicio de reportes.
-- `/audit`, solo para usuarios con rol Auditor mediante `roleGuard`, con enlace «Auditoría» en escritorio y móvil. Pantalla provisional del futuro historial de eventos de los trámites al implementar la integración con Kafka; no realiza consultas HTTP ni depende de un servicio de auditoría.
+- `/reports`, para Admin y Auditor mediante `roleGuard`, con enlace «Reportes» en escritorio y móvil. Pantalla provisional con el título «Reportes» y un mensaje sobre los futuros indicadores comunales al implementar el procesamiento de eventos con Kafka; no realiza consultas HTTP ni depende de un servicio de reportes.
+- `/audit`, para Admin y Auditor mediante `roleGuard`, con enlace «Auditoría» en escritorio y móvil. Pantalla provisional del futuro historial de eventos de los trámites al implementar la integración con Kafka; no realiza consultas HTTP ni depende de un servicio de auditoría.
 
 ### Accesibilidad
 

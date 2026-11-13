@@ -31,7 +31,7 @@ import { Subject, catchError, combineLatest, map, of, startWith, switchMap } fro
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { Request, RequestStatus, RequestTransitions } from '../../../shared/models/request.model';
-import { REQUESTS_ROLES, Role, resolveViewerRole } from '../../../shared/models/role';
+import { Role } from '../../../shared/models/role';
 import { assignmentFailure } from '../assignment-errors';
 import { formatDuration } from '../duration';
 import {
@@ -128,11 +128,9 @@ export class RequestDetailComponent {
   protected readonly taking = signal(false);
   private readonly attachmentExtension = signal('png');
 
-  /** Un usuario tiene un solo rol (EP3-04, sección 4). Sin rol de staff se muestra lo mínimo, como al Vecino. */
-  protected readonly viewer = computed<Role>(() =>
-    resolveViewerRole((role) => this.auth.hasRole(role)),
-  );
-  protected readonly isStaff = computed(() => this.viewer() !== Role.Vecino);
+  /** Único rol del usuario (EP3-04, sección 4); accessGuard impide llegar aquí sin uno. */
+  protected readonly viewer = computed(() => this.auth.role());
+  protected readonly isStaff = computed(() => this.viewer() !== null && this.viewer() !== Role.Vecino);
   protected readonly isAuditor = computed(() => this.viewer() === Role.Auditor);
   protected readonly isClosed = computed(() => {
     const request = this.request();
@@ -149,11 +147,7 @@ export class RequestDetailComponent {
     const request = this.request();
     return request ? (this.transitions()?.[request.status] ?? []) : [];
   });
-  protected readonly backLink = computed(() =>
-    REQUESTS_ROLES.includes(this.viewer())
-      ? { path: '/tramites', label: 'Trámites' }
-      : { path: '/inicio', label: 'Inicio' },
-  );
+  protected readonly backLink = { path: '/tramites', label: 'Trámites' } as const;
   protected readonly typeLabel = computed(() => {
     const request = this.request();
     return request ? request.procedureLabel?.trim() || request.procedureType : '';

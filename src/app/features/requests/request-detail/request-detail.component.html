@@ -1,8 +1,8 @@
 <main class="request-detail">
   <nav class="request-detail__crumbs" aria-label="Ruta de navegación">
-    <a class="request-detail__back" [routerLink]="backLink().path">
+    <a class="request-detail__back" [routerLink]="backLink.path">
       <mat-icon aria-hidden="true">arrow_back</mat-icon>
-      {{ backLink().label }}
+      {{ backLink.label }}
     </a>
     @if (state() === 'ready') {
       <span aria-hidden="true">/</span>
@@ -29,7 +29,7 @@
             <mat-icon aria-hidden="true">refresh</mat-icon>
             Reintentar
           </button>
-          <a matButton [routerLink]="backLink().path">Volver a {{ backLink().label }}</a>
+          <a matButton [routerLink]="backLink.path">Volver a {{ backLink.label }}</a>
         </div>
       </section>
     }
@@ -41,7 +41,7 @@
         <h1>Trámite no encontrado</h1>
         <p>El enlace no corresponde a un trámite disponible para tu cuenta.</p>
         <div class="request-detail__state-actions">
-          <a matButton="filled" [routerLink]="backLink().path">Ir a {{ backLink().label }}</a>
+          <a matButton="filled" [routerLink]="backLink.path">Ir a {{ backLink.label }}</a>
         </div>
       </section>
     }
