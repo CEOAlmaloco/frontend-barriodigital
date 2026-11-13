@@ -185,4 +185,27 @@ describe('RequestsService', () => {
       },
     );
   });
+
+  it('asigna con PUT /assignee y devuelve el trámite con su responsable', async () => {
+    const result = firstValueFrom(
+      service.assign(request.id, { assigneeId: 'oid-ana', reason: 'Cambio de turno' }),
+    );
+    const call = backend.expectOne(`${url}/${request.id}/assignee`);
+
+    expect(call.request.method).toBe('PUT');
+    expect(call.request.body).toEqual({ assigneeId: 'oid-ana', reason: 'Cambio de turno' });
+    call.flush({ ...response, hasAssignee: true, assigneeId: 'oid-ana', assigneeName: 'Ana' });
+
+    expect(await result).toMatchObject({ assigneeId: 'oid-ana', assigneeName: 'Ana' });
+  });
+
+  it('lista los funcionarios con GET /assignees, una ruta literal', async () => {
+    const result = firstValueFrom(service.getAssignees());
+    const call = backend.expectOne(`${url}/assignees`);
+
+    expect(call.request.method).toBe('GET');
+    call.flush([{ id: 'oid-ana', name: 'Ana' }]);
+
+    expect(await result).toEqual([{ id: 'oid-ana', name: 'Ana' }]);
+  });
 });

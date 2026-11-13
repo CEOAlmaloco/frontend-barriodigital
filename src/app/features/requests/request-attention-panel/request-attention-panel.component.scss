@@ -46,8 +46,20 @@ $avatar-size: 40px;
 
 .panel__who {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: $space-3;
+}
+
+.panel__reassign {
+  flex: none;
+  margin-inline-start: auto;
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
 }
 
 .panel__avatar {

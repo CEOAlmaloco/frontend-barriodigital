@@ -1,8 +1,8 @@
-<main class="requests" [class.requests--wide]="isFuncionario()">
+<main class="requests" [class.requests--wide]="isStaff()">
   <header class="requests__header">
     <h1>Trámites</h1>
     <p class="requests__subtitle">
-      @if (isFuncionario()) {
+      @if (isStaff()) {
         Trámites ingresados por los vecinos de la comuna.
       } @else {
         Ingresa un nuevo trámite y revisa el estado de los tuyos.
@@ -10,7 +10,7 @@
     </p>
   </header>
 
-  @if (!isFuncionario()) {
+  @if (!isStaff()) {
     <section class="requests__card" aria-labelledby="new-request-title">
       <h2 id="new-request-title" class="requests__section-title">Nuevo trámite</h2>
 
@@ -230,17 +230,27 @@
     [attr.aria-busy]="listState() === 'loading'"
   >
     <div class="requests__list-head">
-      <h2 id="requests-list-title" class="requests__section-title" #listTitle tabindex="-1">
-        @if (isFuncionario()) {
-          Todos los trámites
-        } @else {
-          Mis trámites
+      <div class="requests__list-heading">
+        <h2 id="requests-list-title" class="requests__section-title" #listTitle tabindex="-1">
+          @if (isStaff()) {
+            Todos los trámites
+          } @else {
+            Mis trámites
+          }
+        </h2>
+        @if (showResults()) {
+          <p class="requests__total" role="status">
+            {{ totalElements() }} {{ totalElements() === 1 ? 'trámite' : 'trámites' }}
+          </p>
         }
-      </h2>
-      @if (showResults()) {
-        <p class="requests__total" role="status">
-          {{ totalElements() }} {{ totalElements() === 1 ? 'trámite' : 'trámites' }}
-        </p>
+      </div>
+
+      @if (queues().length) {
+        <app-request-queue
+          [queues]="queues()"
+          [value]="query().assignee"
+          (valueChange)="changeQueue($event)"
+        />
       }
     </div>
 
@@ -252,7 +262,7 @@
       [toMin]="toMin()"
       [activeCount]="activeFilters()"
       [sortValue]="sortValue()"
-      [staffLayout]="isFuncionario()"
+      [staffLayout]="isStaff()"
       (clearFilters)="clearFilters()"
       (sortChange)="changeSortValue($event)"
     />
@@ -288,57 +298,42 @@
       <div class="requests__results" [class.requests__results--stale]="listState() === 'loading'">
         @if (requests().length === 0) {
           <div class="requests__empty-state">
-            <mat-icon aria-hidden="true">{{ isNarrowed() ? 'search_off' : 'inbox' }}</mat-icon>
             @if (isNarrowed()) {
+              <mat-icon aria-hidden="true">search_off</mat-icon>
               <p class="requests__empty-title">Ningún trámite coincide con la búsqueda o los filtros.</p>
               <button matButton="outlined" type="button" (click)="clearSearchAndFilters()">
                 Limpiar búsqueda y filtros
               </button>
-            } @else if (isFuncionario()) {
+            } @else if (query().assignee === 'me') {
+              <mat-icon aria-hidden="true">assignment_ind</mat-icon>
+              <p class="requests__empty-title">No tienes trámites asignados.</p>
+              <p class="requests__empty-hint">Toma uno desde "Sin asignar" para empezar a atenderlo.</p>
+              <button matButton="outlined" type="button" (click)="changeQueue('none')">
+                Ver sin asignar
+              </button>
+            } @else if (query().assignee === 'none') {
+              <mat-icon aria-hidden="true">task_alt</mat-icon>
+              <p class="requests__empty-title">Todos los trámites tienen responsable.</p>
+            } @else if (isStaff()) {
+              <mat-icon aria-hidden="true">inbox</mat-icon>
               <p class="requests__empty-title">Aún no hay trámites ingresados.</p>
             } @else {
+              <mat-icon aria-hidden="true">inbox</mat-icon>
               <p class="requests__empty-title">Aún no has ingresado trámites.</p>
             }
           </div>
         } @else {
-          <ng-template #requestDescription let-request>
-            <div class="requests__description">
-              <p class="requests__description-text">
-                @if (isLongDescription(request)) {
-                  {{ descriptionLead(request)
-                  }}<span class="requests__description-fade">{{ descriptionFade(request) }}</span>
-                  <button
-                    matButton
-                    type="button"
-                    class="requests__description-more"
-                    [attr.aria-label]="'Ver la descripción completa del trámite ' + request.id"
-                    (click)="openDescription(request)"
-                  >
-                    Ver más
-                  </button>
-                } @else {
-                  {{ request.description }}
-                }
-              </p>
-              @if (isFuncionario() && locationSummary(request); as place) {
-                <p class="requests__location-summary">
-                  <span><strong>Ubicación:</strong> {{ place }}</span>
-                  @if (hasPoint(request)) {
-                    <a
-                      [href]="mapLink(request)"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      [attr.aria-label]="'Ver en el mapa el trámite ' + request.id"
-                    >
-                      Ver en el mapa
-                    </a>
-                  }
-                </p>
-              }
-            </div>
-          </ng-template>
-
-          <ng-template #requestFolio let-request>
+          <ng-template #requestType let-request>
+            <a
+              class="requests__detail-link"
+              [routerLink]="['/tramites', request.id]"
+              [attr.aria-label]="
+                'Ver detalle del trámite ' +
+                getTipoLabel(request.procedureType) +
+                (request.folio ? ', folio ' + request.folio : '')
+              "
+              >{{ getTipoLabel(request.procedureType) }}</a
+            >
             @if (request.folio) {
               <span class="requests__folio">{{ request.folio }}</span>
             } @else {
@@ -346,16 +341,6 @@
             }
           </ng-template>
 
-          <ng-template #requestLink let-request>
-            <a
-              class="requests__detail-link"
-              [routerLink]="['/tramites', request.id]"
-              [attr.aria-label]="
-                'Ver detalle del trámite ' + (request.folio || getTipoLabel(request.procedureType))
-              "
-              >{{ getTipoLabel(request.procedureType) }}</a
-            >
-          </ng-template>
 
           <ng-template #requestState let-request>
             <div class="requests__state">
@@ -368,38 +353,48 @@
                 [matMenuTriggerFor]="detailsMenu"
                 (click)="rememberDetails($event)"
                 (menuOpened)="detailsTrigger.restoreFocus = true"
-                [attr.aria-label]="'Más información del trámite ' + request.id"
+                [attr.aria-label]="'Más información del trámite ' + requestName(request)"
               >
                 <mat-icon aria-hidden="true">more_vert</mat-icon>
               </button>
-              <mat-menu #detailsMenu="matMenu">
-                <a mat-menu-item [routerLink]="['/tramites', request.id]">Ver detalle</a>
+              <mat-menu #detailsMenu="matMenu" xPosition="before">
+                <a mat-menu-item [routerLink]="['/tramites', request.id]">
+                  <mat-icon aria-hidden="true">open_in_new</mat-icon>
+                  <span>Ver detalle</span>
+                </a>
                 <button
                   mat-menu-item
                   type="button"
-                  [attr.aria-label]="'Ver actividad del trámite ' + request.id"
+                  [attr.aria-label]="'Ver actividad del trámite ' + requestName(request)"
                   (click)="openActivityDialog(request, detailsTrigger)"
                 >
-                  Actividad
+                  <mat-icon aria-hidden="true">history</mat-icon>
+                  <span>Actividad</span>
                 </button>
                 @if (hasRejectionReason(request)) {
                   <button
                     mat-menu-item
                     type="button"
-                    [attr.aria-label]="'Ver motivo del rechazo del trámite ' + request.id"
+                    [attr.aria-label]="'Ver motivo del rechazo del trámite ' + requestName(request)"
                     (click)="openRejectionReasonDialog(request, detailsTrigger)"
                   >
-                    Ver motivo
+                    <mat-icon aria-hidden="true">info</mat-icon>
+                    <span>Ver motivo</span>
                   </button>
                 }
+                @if (request.hasAttachment || hasPoint(request)) {
+                  <mat-divider />
+                }
                 @if (request.hasAttachment) {
-                  @if (isFuncionario()) {
+                  @if (isStaff()) {
                     <button mat-menu-item type="button" (click)="previewAttachment(request)">
-                      Vista previa de imagen
+                      <mat-icon aria-hidden="true">image</mat-icon>
+                      <span>Vista previa de imagen</span>
                     </button>
                   }
                   <button mat-menu-item type="button" (click)="downloadAttachment(request)">
-                    Descargar imagen adjunta
+                    <mat-icon aria-hidden="true">download</mat-icon>
+                    <span>Descargar imagen adjunta</span>
                   </button>
                 }
                 @if (hasPoint(request)) {
@@ -408,18 +403,42 @@
                     [href]="mapLink(request)"
                     target="_blank"
                     rel="noopener noreferrer"
-                    [attr.aria-label]="'Ver en el mapa el trámite ' + request.id"
+                    [attr.aria-label]="
+                      'Ver en el mapa el trámite ' + requestName(request) + ' (se abre en otra pestaña)'
+                    "
                   >
-                    Ver en el mapa
+                    <mat-icon aria-hidden="true">map</mat-icon>
+                    <span>Ver en el mapa</span>
                   </a>
                 }
               </mat-menu>
             </div>
           </ng-template>
 
+          <ng-template #requestAssignee let-request>
+            <app-request-assignee
+              [assigned]="request.hasAssignee === true"
+              [name]="request.assigneeName"
+              [mine]="isMine(request)"
+            />
+          </ng-template>
+
+          <ng-template #requestActions let-request>
+            <app-request-actions
+              [requestId]="requestName(request)"
+              [status]="request.status"
+              [allowedStatuses]="transitionsFor(request)"
+              [mode]="rowMode(request)"
+              [busy]="takingId() === request.id"
+              (changeStatus)="openStatusDialog(request, $event)"
+              (take)="take(request, $event)"
+              (assign)="openAssignDialog(request, $event)"
+            />
+          </ng-template>
+
           <div
             class="requests__table-wrapper"
-            [class.requests__table-wrapper--staff]="isFuncionario()"
+            [class.requests__table-wrapper--staff]="isStaff()"
           >
             <table
               mat-table
@@ -430,55 +449,83 @@
               (matSortChange)="changeSort($event)"
               [dataSource]="requests()"
               class="requests__table"
-              [class.requests__table--staff]="isFuncionario()"
+              [class.requests__table--staff]="isStaff()"
             >
-              <ng-container matColumnDef="folio">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header="folio">Folio</th>
+              <ng-container matColumnDef="tipo">
+                <th
+                  mat-header-cell
+                  *matHeaderCellDef
+                  mat-sort-header="folio"
+                  sortActionDescription="Ordenar por folio"
+                >
+                  Tipo
+                </th>
                 <td mat-cell *matCellDef="let request">
-                  <ng-container *ngTemplateOutlet="requestFolio; context: { $implicit: request }" />
+                  <ng-container *ngTemplateOutlet="requestType; context: { $implicit: request }" />
                 </td>
               </ng-container>
 
-              <ng-container matColumnDef="tramite">
-                <th mat-header-cell *matHeaderCellDef>Trámite</th>
+              <ng-container matColumnDef="descripcion">
+                <th mat-header-cell *matHeaderCellDef>Descripción</th>
                 <td mat-cell *matCellDef="let request">
-                  <ng-container *ngTemplateOutlet="requestLink; context: { $implicit: request }" />
-                  <ng-container
-                    *ngTemplateOutlet="requestDescription; context: { $implicit: request }"
+                  <app-request-description
+                    [text]="request.description ?? ''"
+                    [requestName]="requestName(request)"
+                    (expand)="openDescription(request)"
                   />
                 </td>
               </ng-container>
 
-              @if (isFuncionario()) {
+              @if (isStaff()) {
                 <ng-container matColumnDef="solicitante">
                   <th mat-header-cell *matHeaderCellDef>Solicitante</th>
                   <td mat-cell *matCellDef="let request">{{ getSolicitanteNombre(request) }}</td>
                 </ng-container>
+
+                <ng-container matColumnDef="responsable">
+                  <th mat-header-cell *matHeaderCellDef>Responsable</th>
+                  <td mat-cell *matCellDef="let request">
+                    <ng-container
+                      *ngTemplateOutlet="requestAssignee; context: { $implicit: request }"
+                    />
+                  </td>
+                </ng-container>
               }
 
               <ng-container matColumnDef="estado">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header="status">Estado</th>
+                <th
+                  mat-header-cell
+                  *matHeaderCellDef
+                  mat-sort-header="status"
+                  sortActionDescription="Ordenar por estado"
+                >
+                  Estado
+                </th>
                 <td mat-cell *matCellDef="let request">
                   <ng-container *ngTemplateOutlet="requestState; context: { $implicit: request }" />
                 </td>
               </ng-container>
 
               <ng-container matColumnDef="fecha">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header="createdAt">Fecha</th>
+                <th
+                  mat-header-cell
+                  *matHeaderCellDef
+                  mat-sort-header="createdAt"
+                  sortActionDescription="Ordenar por fecha"
+                >
+                  Fecha
+                </th>
                 <td mat-cell *matCellDef="let request">
                   {{ request.createdAt | date: 'dd-MM-yyyy' }}
                 </td>
               </ng-container>
 
-              @if (isFuncionario()) {
+              @if (canAct()) {
                 <ng-container matColumnDef="acciones">
                   <th mat-header-cell *matHeaderCellDef>Acciones</th>
                   <td mat-cell *matCellDef="let request">
-                    <app-request-actions
-                      [requestId]="request.id"
-                      [status]="request.status"
-                      [allowedStatuses]="transitionsFor(request)"
-                      (changeStatus)="openStatusDialog(request, $event)"
+                    <ng-container
+                      *ngTemplateOutlet="requestActions; context: { $implicit: request }"
                     />
                   </td>
                 </ng-container>
@@ -489,60 +536,48 @@
             </table>
           </div>
 
-          <ul class="requests__cards" [class.requests__cards--staff]="isFuncionario()">
+          <ul class="requests__cards" [class.requests__cards--staff]="isStaff()">
             @for (request of requests(); track request.id) {
               <li class="requests__item">
+                <div class="requests__item-head">
+                  <div class="requests__item-title">
+                    <ng-container *ngTemplateOutlet="requestType; context: { $implicit: request }" />
+                  </div>
+                  <ng-container *ngTemplateOutlet="requestState; context: { $implicit: request }" />
+                </div>
+
+                <app-request-description
+                  [text]="request.description ?? ''"
+                  [requestName]="requestName(request)"
+                  [lines]="3"
+                  (expand)="openDescription(request)"
+                />
+
                 <dl class="requests__fields">
-                  <div>
-                    <dt>Folio</dt>
-                    <dd>
-                      <ng-container
-                        *ngTemplateOutlet="requestFolio; context: { $implicit: request }"
-                      />
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Tipo</dt>
-                    <dd>
-                      <ng-container
-                        *ngTemplateOutlet="requestLink; context: { $implicit: request }"
-                      />
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Descripción</dt>
-                    <dd>
-                      <ng-container
-                        *ngTemplateOutlet="requestDescription; context: { $implicit: request }"
-                      />
-                    </dd>
-                  </div>
-                  @if (isFuncionario()) {
+                  @if (isStaff()) {
                     <div>
                       <dt>Solicitante</dt>
                       <dd>{{ getSolicitanteNombre(request) }}</dd>
                     </div>
+                    <div>
+                      <dt>Responsable</dt>
+                      <dd>
+                        <ng-container
+                          *ngTemplateOutlet="requestAssignee; context: { $implicit: request }"
+                        />
+                      </dd>
+                    </div>
                   }
-                  <div>
-                    <dt>Estado</dt>
-                    <dd>
-                      <ng-container
-                        *ngTemplateOutlet="requestState; context: { $implicit: request }"
-                      />
-                    </dd>
-                  </div>
                   <div>
                     <dt>Fecha</dt>
                     <dd>{{ request.createdAt | date: 'dd-MM-yyyy' }}</dd>
                   </div>
                 </dl>
-                @if (isFuncionario() && (transitionsFor(request).length || isClosed(request))) {
+
+                @if (canAct()) {
                   <div class="requests__item-actions">
-                    <app-request-actions
-                      [requestId]="request.id"
-                      [status]="request.status"
-                      [allowedStatuses]="transitionsFor(request)"
-                      (changeStatus)="openStatusDialog(request, $event)"
+                    <ng-container
+                      *ngTemplateOutlet="requestActions; context: { $implicit: request }"
                     />
                   </div>
                 }

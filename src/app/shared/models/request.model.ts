@@ -47,6 +47,18 @@ export interface CreateRequestPayload {
 
 export type RequestTransitions = Partial<Record<RequestStatus, readonly RequestStatus[]>>;
 
+/** Funcionario de la lista de GET /api/requests/assignees (EP3-05, sección 5.2). */
+export interface Assignee {
+  id: string;
+  name: string;
+}
+
+/** Body de PUT /assignee. reason solo se envía al reasignar; en una primera asignación se ignora. */
+export interface AssignRequestPayload {
+  assigneeId: string;
+  reason?: string;
+}
+
 /** Body del PUT de estado. El motivo solo se envía al rechazar y el de intervención solo lo envía el Admin. */
 export interface ChangeRequestStatusPayload {
   status: RequestStatus;

@@ -35,6 +35,18 @@
           <strong class="panel__assignee">{{ assigneeName() }}</strong>
           <span>Responsable{{ isResponsible() ? ' · tú' : '' }}</span>
         </p>
+        @if (canReassign()) {
+          <button
+            matButton
+            type="button"
+            class="panel__reassign"
+            aria-label="Reasignar el trámite a otro funcionario"
+            (click)="emitAssign($event)"
+          >
+            <mat-icon aria-hidden="true">swap_horiz</mat-icon>
+            Reasignar
+          </button>
+        }
       } @else {
         <span class="panel__avatar panel__avatar--empty" aria-hidden="true">
           <mat-icon>person_outline</mat-icon>
@@ -98,6 +110,20 @@
           <span>Solo {{ assigneeName() }} puede operar este trámite.</span>
         </p>
       } @else if (canOperate()) {
+        @if (canAssign()) {
+          <button
+            matButton="filled"
+            type="button"
+            class="panel__button"
+            (click)="emitAssign($event)"
+          >
+            <mat-icon aria-hidden="true">person_add</mat-icon>
+            Asignar funcionario
+          </button>
+          <p class="panel__hint">
+            El trámite no tiene responsable. Asígnalo a un funcionario para que lo atienda.
+          </p>
+        }
         @if (isAdmin()) {
           <p class="panel__notice panel__notice--accent">
             <mat-icon aria-hidden="true">shield</mat-icon>
@@ -123,7 +149,7 @@
           @default {
             @if (nextStatus(); as status) {
               <button
-                matButton="filled"
+                [matButton]="canAssign() ? 'outlined' : 'filled'"
                 type="button"
                 class="panel__button"
                 (click)="emitStatus(status, $event)"

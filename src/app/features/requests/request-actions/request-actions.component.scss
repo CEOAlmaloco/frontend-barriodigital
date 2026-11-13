@@ -7,8 +7,14 @@
   max-width: 100%;
 }
 
+.request-actions--wrap {
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
 .request-actions__primary,
 .request-actions__menu-trigger,
+.request-actions__single,
 .request-actions__reject {
   min-height: $size-touch-target;
   height: auto;
@@ -63,4 +69,37 @@
     text-label-text-color: $color-error,
   ));
   color: $color-error;
+}
+
+.request-actions__single {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.request-actions__spinner {
+  margin-inline-end: $space-2;
+}
+
+.request-actions__readonly {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+  white-space: nowrap;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+// El ítem vive en el overlay del menú, pero se declara aquí: la encapsulación lo alcanza
+.mat-mdc-menu-item.request-actions__reject {
+  color: var(--bd-error);
+
+  mat-icon {
+    color: currentColor;
+  }
 }

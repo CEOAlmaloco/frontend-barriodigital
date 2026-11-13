@@ -45,6 +45,7 @@ describe('request-list-query', () => {
   it('lee la URL y vuelve a serializarla igual', () => {
     const params = {
       q: 'luminaria',
+      assignee: 'none',
       status: 'RESUELTO',
       sector: 'ralco',
       from: '2026-10-01',
@@ -74,6 +75,7 @@ describe('request-list-query', () => {
     ['from', '2026-02-31'],
     ['from', '1990-01-01'],
     ['to', 'ayer'],
+    ['assignee', 'oid-ana'],
   ])('descarta %s=%s manipulado en la URL', (key, value) => {
     expect(parseRequestListParams(fromRecord({ [key]: value }))).toEqual(DEFAULT_REQUEST_QUERY);
   });

@@ -5,6 +5,8 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Page } from '../../shared/models/page.model';
 import {
+  AssignRequestPayload,
+  Assignee,
   ChangeRequestStatusPayload,
   CreateRequestPayload,
   Request,
@@ -80,6 +82,18 @@ export class RequestsService {
   /** El Funcionario se asigna un trámite sin responsable. */
   take(id: string): Observable<Request> {
     return this.http.post<RequestResponse>(`${this.url}/${id}/take`, null).pipe(map(toRequest));
+  }
+
+  /** Primera asignación (Admin) o reasignación (Admin o el Funcionario responsable). */
+  assign(id: string, payload: AssignRequestPayload): Observable<Request> {
+    return this.http
+      .put<RequestResponse>(`${this.url}/${id}/assignee`, payload)
+      .pipe(map(toRequest));
+  }
+
+  /** Funcionarios que pueden ser responsables, ordenados por nombre. */
+  getAssignees(): Observable<Assignee[]> {
+    return this.http.get<Assignee[]>(`${this.url}/assignees`);
   }
 
   getActividad(id: string): Observable<RequestActivity> {

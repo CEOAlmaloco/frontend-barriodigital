@@ -1,0 +1,180 @@
+<form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <h2 mat-dialog-title class="assign-dialog__title">
+    {{ reassign() ? 'Reasignar trámite' : 'Asignar trámite' }}
+  </h2>
+
+  <mat-dialog-content class="assign-dialog__content">
+    <p id="request-assign-description" class="assign-dialog__lead">
+      @if (request().folio) {
+        <span class="assign-dialog__folio">{{ request().folio }}</span>
+        <span aria-hidden="true"> · </span>
+      }
+      {{ data.procedureTypeLabel }}
+    </p>
+
+    @if (notice(); as notice) {
+      <p class="assign-dialog__notice assign-dialog__notice--{{ notice.tone }}" role="alert">
+        <mat-icon aria-hidden="true">{{
+          notice.tone === 'warning' ? 'sync_problem' : 'error'
+        }}</mat-icon>
+        <span>{{ notice.message }}</span>
+      </p>
+    }
+
+    @if (reassign()) {
+      <div class="assign-dialog__current">
+        <span class="assign-dialog__current-label">Responsable actual</span>
+        <app-request-assignee
+          [assigned]="true"
+          [name]="request().assigneeName"
+          [mine]="currentIsMine()"
+        />
+      </div>
+    }
+
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>{{ reassign() ? 'Nuevo responsable' : 'Funcionario responsable' }}</mat-label>
+      <mat-icon matIconPrefix aria-hidden="true">person_search</mat-icon>
+      <input
+        #assigneeInput
+        matInput
+        type="text"
+        autocomplete="off"
+        placeholder="Busca por nombre"
+        formControlName="assignee"
+        required
+        [matAutocomplete]="assigneeList"
+      />
+      <mat-autocomplete
+        #assigneeList="matAutocomplete"
+        requireSelection
+        [displayWith]="displayName"
+      >
+        @switch (assigneesState()) {
+          @case ('loading') {
+            <mat-option disabled>
+              <span class="assign-dialog__option-status">
+                <mat-progress-spinner mode="indeterminate" diameter="18" aria-hidden="true" />
+                Cargando funcionarios
+              </span>
+            </mat-option>
+          }
+          @case ('error') {
+            <mat-option disabled>
+              <span class="assign-dialog__option-status">
+                No se pudo cargar la lista de funcionarios.
+              </span>
+            </mat-option>
+          }
+          @default {
+            @for (assignee of options(); track assignee.id) {
+              <mat-option [value]="assignee" [disabled]="isCurrent(assignee)">
+                <span class="assign-dialog__option">
+                  <span class="assign-dialog__avatar" aria-hidden="true">{{
+                    initials(assignee.name)
+                  }}</span>
+                  <span class="assign-dialog__option-name">{{ assignee.name }}</span>
+                  @if (isCurrent(assignee)) {
+                    <span class="assign-dialog__option-tag">Responsable actual</span>
+                  } @else if (isSelf(assignee)) {
+                    <span class="assign-dialog__option-tag">Tú</span>
+                  }
+                </span>
+              </mat-option>
+            } @empty {
+              <mat-option disabled>
+                <span class="assign-dialog__option-status">
+                  @if (assignees().length) {
+                    Ningún funcionario coincide con la búsqueda.
+                  } @else {
+                    Aún no hay funcionarios disponibles.
+                  }
+                </span>
+              </mat-option>
+            }
+          }
+        }
+      </mat-autocomplete>
+      @if (assigneesState() === 'ready' && !assignees().length) {
+        <mat-hint>Un funcionario aparece después de su primer ingreso a BarrioDigital.</mat-hint>
+      }
+      <mat-error>
+        @if (form.controls.assignee.getError('server'); as message) {
+          {{ message }}
+        } @else {
+          Elige un funcionario de la lista.
+        }
+      </mat-error>
+    </mat-form-field>
+
+    @if (assigneesState() === 'error') {
+      <div class="assign-dialog__retry" role="alert">
+        <span>No se pudo cargar la lista de funcionarios.</span>
+        <button matButton type="button" (click)="loadAssignees()">
+          <mat-icon aria-hidden="true">refresh</mat-icon>
+          Reintentar
+        </button>
+      </div>
+    }
+
+    @if (reassign()) {
+      <div class="assign-dialog__reason">
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-label>Motivo de la reasignación</mat-label>
+          <textarea
+            #reasonInput
+            matInput
+            formControlName="reason"
+            rows="3"
+            placeholder="Por qué cambia el responsable"
+            required
+            [maxlength]="maxReasonLength"
+            aria-describedby="request-assign-reason-counter"
+          ></textarea>
+          <mat-error>
+            @if (form.controls.reason.getError('server'); as message) {
+              {{ message }}
+            } @else if (form.controls.reason.hasError('maxlength')) {
+              El motivo no puede superar {{ maxReasonLength }} caracteres.
+            } @else {
+              Indica el motivo de la reasignación.
+            }
+          </mat-error>
+        </mat-form-field>
+        <p id="request-assign-reason-counter" class="assign-dialog__counter">
+          <span>Queda en el historial interno. El vecino no lo ve.</span>
+          <span>{{ reasonLength().length }} / {{ maxReasonLength }}</span>
+        </p>
+      </div>
+    }
+
+    <div class="assign-dialog__feedback" aria-live="polite" aria-atomic="true">
+      @if (isSubmitting()) {
+        <p>{{ reassign() ? 'Reasignando el trámite.' : 'Asignando el trámite.' }}</p>
+      }
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="assign-dialog__actions" align="end">
+    <button matButton type="button" [disabled]="isSubmitting()" (click)="cancel()">Cancelar</button>
+    <button
+      matButton="filled"
+      type="submit"
+      class="assign-dialog__confirm"
+      [disabled]="isSubmitting()"
+      [attr.aria-busy]="isSubmitting()"
+    >
+      <span [class.assign-dialog__confirm-label--hidden]="isSubmitting()">
+        {{ reassign() ? 'Reasignar' : 'Asignar' }}
+      </span>
+      @if (isSubmitting()) {
+        <mat-progress-spinner
+          class="assign-dialog__spinner"
+          mode="indeterminate"
+          diameter="20"
+          aria-hidden="true"
+        />
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

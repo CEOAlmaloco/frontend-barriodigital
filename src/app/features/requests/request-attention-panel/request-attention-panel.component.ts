@@ -5,6 +5,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 
 import { Request, RequestStatus } from '../../../shared/models/request.model';
 import { Role } from '../../../shared/models/role';
+import { personInitials } from '../../../shared/utils/person-initials';
 import { RequestStatusBadgeComponent } from '../request-status-badge/request-status-badge.component';
 import { formatElapsed } from '../duration';
 import { actionLabel, isClosedStatus } from '../requests.constants';
@@ -30,6 +31,7 @@ export class RequestAttentionPanelComponent {
   readonly taking = input(false);
 
   readonly take = output<void>();
+  readonly assign = output<HTMLButtonElement>();
   readonly changeStatus = output<AttentionAction>();
   readonly registerGestion = output<HTMLButtonElement>();
   readonly retryTransitions = output<void>();
@@ -43,13 +45,7 @@ export class RequestAttentionPanelComponent {
   protected readonly assigneeName = computed(
     () => this.request().assigneeName?.trim() || 'Funcionario asignado',
   );
-  protected readonly initials = computed(() =>
-    this.assigneeName()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part.charAt(0).toUpperCase())
-      .join(''),
-  );
+  protected readonly initials = computed(() => personInitials(this.assigneeName()));
   protected readonly canTake = computed(
     () => this.viewer() === Role.Funcionario && !this.isClosed() && !this.hasAssignee(),
   );
@@ -59,6 +55,16 @@ export class RequestAttentionPanelComponent {
       !this.isClosed() &&
       this.hasAssignee() &&
       !this.isResponsible(),
+  );
+  /** El Admin deriva un trámite sin responsable; el Funcionario lo toma (EP3-05, sección 3). */
+  protected readonly canAssign = computed(
+    () => this.isAdmin() && !this.isClosed() && !this.hasAssignee(),
+  );
+  protected readonly canReassign = computed(
+    () =>
+      !this.isClosed() &&
+      this.hasAssignee() &&
+      (this.isAdmin() || (this.viewer() === Role.Funcionario && this.isResponsible())),
   );
   protected readonly canOperate = computed(
     () =>
@@ -82,6 +88,10 @@ export class RequestAttentionPanelComponent {
 
   protected emitStatus(status: RequestStatus, event: Event): void {
     this.changeStatus.emit({ status, trigger: event.currentTarget as HTMLButtonElement });
+  }
+
+  protected emitAssign(event: Event): void {
+    this.assign.emit(event.currentTarget as HTMLButtonElement);
   }
 
   protected emitGestion(event: Event): void {

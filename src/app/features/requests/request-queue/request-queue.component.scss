@@ -1,0 +1,47 @@
+@use '@angular/material' as mat;
+@use 'tokens' as *;
+
+:host {
+  display: block;
+  max-width: 100%;
+
+  @media (max-width: $breakpoint-sm - 1px) {
+    width: 100%;
+  }
+}
+
+.queue {
+  @include mat.button-toggle-overrides(
+    (
+      shape: $radius-base,
+      height: $size-touch-target,
+      selected-state-background-color: var(--bd-primary-container),
+      selected-state-text-color: var(--bd-primary-dark),
+      divider-color: var(--bd-border-interactive),
+      label-text-weight: $font-weight-medium,
+    )
+  );
+  border-color: var(--bd-border-interactive);
+  background-color: var(--bd-surface);
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    margin-inline-end: $space-1;
+    font-size: 18px;
+    vertical-align: -4px;
+  }
+
+  // Mobile: los tres filtros ocupan el ancho y el texto basta
+  @media (max-width: $breakpoint-sm - 1px) {
+    width: 100%;
+
+    .mat-button-toggle {
+      flex: 1 1 0;
+    }
+
+    mat-icon {
+      display: none;
+    }
+  }
+}

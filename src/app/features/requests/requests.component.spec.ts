@@ -56,6 +56,9 @@ describe('RequestsComponent', () => {
     createdAt: '2026-09-01T12:00:00.000Z',
     solicitanteId: 'vecino-actual',
     solicitanteNombre: 'Ana María Soto',
+    hasAssignee: true,
+    assigneeId: 'funcionario-actual',
+    assigneeName: 'Pedro Levi Manquepi',
   };
   const other: Request = {
     ...mine,
@@ -79,6 +82,7 @@ describe('RequestsComponent', () => {
     getAttachment: ReturnType<typeof vi.fn>;
     getTransitions: ReturnType<typeof vi.fn>;
     changeStatus: ReturnType<typeof vi.fn>;
+    take?: ReturnType<typeof vi.fn>;
   };
   let fixture: ComponentFixture<RequestsComponent>;
   let element: HTMLElement;
@@ -100,7 +104,10 @@ describe('RequestsComponent', () => {
       getTransitions: vi.fn(getTransitions),
       changeStatus: vi.fn(),
     };
-    const auth = { hasRole: (userRole: string) => userRole === role };
+    const auth = {
+      hasRole: (userRole: string) => userRole === role,
+      userId: () => (role === Role.Vecino ? 'vecino-actual' : 'funcionario-actual'),
+    };
 
     await TestBed.configureTestingModule({
       imports: [RequestsComponent],
@@ -135,7 +142,8 @@ describe('RequestsComponent', () => {
   const menuAction = (label: string) => {
     const overlay = TestBed.inject(OverlayContainer).getContainerElement();
     const item = [...overlay.querySelectorAll<HTMLButtonElement>('button')].find(
-      (button) => button.textContent?.trim() === label,
+      (button) =>
+        (button.querySelector('.mat-mdc-menu-item-text') ?? button).textContent?.trim() === label,
     );
     if (!item) {
       throw new Error(`No está la acción ${label}`);
@@ -163,13 +171,13 @@ describe('RequestsComponent', () => {
     expect(service.getRequests).toHaveBeenCalledWith({});
     expect(text()).toContain('Rama sobre el cable');
     expect(text()).toContain('Bache de otro vecino');
-    expect(headers()).toEqual(['Folio', 'Trámite', 'Estado', 'Fecha']);
+    expect(headers()).toEqual(['Tipo', 'Descripción', 'Estado', 'Fecha']);
     expect(solicitanteNames()).toEqual({ table: [], cards: [] });
     expect(text()).not.toContain(mine.solicitanteNombre);
     expect(text()).not.toContain(other.solicitanteNombre);
   });
 
-  it('Funcionario: sin formulario, con filtros y Solicitante después del trámite en tabla y tarjetas', async () => {
+  it('Funcionario: sin formulario, con filtros, Solicitante y Responsable en tabla y tarjetas', async () => {
     await render(Role.Funcionario);
 
     expect(element.querySelector('.requests__card')).toBeNull();
@@ -178,16 +186,24 @@ describe('RequestsComponent', () => {
     );
     expect(element.querySelector('.requests__filters')).not.toBeNull();
     expect(text()).toContain('Bache de otro vecino');
-    expect(headers()).toEqual(['Folio', 'Trámite', 'Solicitante', 'Estado', 'Fecha', 'Acciones']);
+    expect(headers()).toEqual([
+      'Tipo',
+      'Descripción',
+      'Solicitante',
+      'Responsable',
+      'Estado',
+      'Fecha',
+      'Acciones',
+    ]);
     expect(solicitanteNames()).toEqual({
       table: [mine.solicitanteNombre, other.solicitanteNombre],
       cards: [mine.solicitanteNombre, other.solicitanteNombre],
     });
     expect(
       Array.from(element.querySelectorAll('.requests__fields dt'))
-        .slice(0, 6)
+        .slice(0, 3)
         .map((label) => label.textContent?.trim()),
-    ).toEqual(['Folio', 'Tipo', 'Descripción', 'Solicitante', 'Estado', 'Fecha']);
+    ).toEqual(['Solicitante', 'Responsable', 'Fecha']);
     expect(text()).not.toContain('otro-vecino');
   });
 
@@ -222,7 +238,7 @@ describe('RequestsComponent', () => {
     revokeUrl.mockRestore();
   });
 
-  it('Funcionario: muestra la ubicación reportada en tabla y tarjetas, con enlace al mapa', async () => {
+  it('Funcionario: la fila no repite la ubicación y el menú ofrece el mapa en otra pestaña', async () => {
     const request: Request = {
       ...mine,
       sector: 'ralco',
@@ -233,23 +249,15 @@ describe('RequestsComponent', () => {
     };
     await render(Role.Funcionario, () => of(page([request])));
 
-    const summaries = Array.from(
-      element.querySelectorAll<HTMLElement>('.requests__location-summary'),
-      (summary) => summary.textContent?.trim(),
+    expect(text()).not.toContain('Frente a la plaza');
+    await openDetails(element, request.id);
+    const overlay = TestBed.inject(OverlayContainer).getContainerElement();
+    const mapLink = [...overlay.querySelectorAll<HTMLAnchorElement>('a[mat-menu-item]')].find(
+      (link) => link.textContent?.includes('Ver en el mapa'),
     );
-    const mapLinks = Array.from(
-      element.querySelectorAll<HTMLAnchorElement>('.requests__location-summary a'),
-    );
-
-    expect(summaries).toHaveLength(2);
-    expect(
-      summaries.every((summary) =>
-        summary?.includes('Ralco. Frente a la plaza. punto aproximado -37.933, -71.317'),
-      ),
-    ).toBe(true);
-    expect(mapLinks).toHaveLength(2);
-    expect(mapLinks[0].href).toContain('mlat=-37.933&mlon=-71.317');
-    expect(mapLinks[0].rel).toBe('noopener noreferrer');
+    expect(mapLink?.href).toContain('mlat=-37.933&mlon=-71.317');
+    expect(mapLink?.rel).toBe('noopener noreferrer');
+    expect(mapLink?.getAttribute('aria-label')).toContain('se abre en otra pestaña');
   });
 
   it.each([
@@ -1724,7 +1732,7 @@ describe('RequestsComponent', () => {
       expect(element.querySelector('mat-paginator')).not.toBeNull();
       expect(element.querySelector('.requests__total')?.textContent).toContain('57 trámites');
       expect(
-        Array.from(element.querySelectorAll('td.mat-column-folio'), (cell) =>
+        Array.from(element.querySelectorAll('td.mat-column-tipo .requests__folio'), (cell) =>
           cell.textContent?.trim(),
         ),
       ).toEqual(['BD-2026-000123', 'Sin folio']);
@@ -1735,7 +1743,7 @@ describe('RequestsComponent', () => {
       await render(Role.Vecino, undefined, undefined, undefined, '/?page=2');
 
       element
-        .querySelector<HTMLElement>('th.mat-column-folio .mat-sort-header-container')
+        .querySelector<HTMLElement>('th.mat-column-tipo .mat-sort-header-container')
         ?.click();
       await settle();
 
@@ -1783,6 +1791,211 @@ describe('RequestsComponent', () => {
 
       expect(service.getRequests).toHaveBeenLastCalledWith({});
       expect(fixture.componentInstance['filters'].controls.status.value).toBe('');
+    });
+  });
+
+  describe('asignación y bandeja (EP3-47)', () => {
+    const settle = async () => {
+      await fixture.whenStable();
+      await new Promise((resolve) => setTimeout(resolve));
+      await fixture.whenStable();
+    };
+    const unassigned: Request = {
+      ...mine,
+      id: 'sin-responsable',
+      hasAssignee: false,
+      assigneeId: null,
+      assigneeName: null,
+    };
+    const ofColleague: Request = {
+      ...mine,
+      id: 'de-ana',
+      hasAssignee: true,
+      assigneeId: 'oid-ana',
+      assigneeName: 'Ana Huenchullán Rivas',
+    };
+    const actionTexts = () =>
+      Array.from(element.querySelectorAll('td.mat-column-acciones'), (cell) =>
+        cell.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+    const assigneeTexts = () =>
+      Array.from(element.querySelectorAll('td.mat-column-responsable .assignee__name'), (cell) =>
+        cell.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+    const queueLabels = () =>
+      Array.from(element.querySelectorAll('app-request-queue .mat-button-toggle-label-content'), (label) =>
+        label.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+
+    it('Funcionario: el responsable se ve en la fila y la acción depende de quién lo atiende', async () => {
+      service.take = vi.fn();
+      await render(Role.Funcionario, () => of(page([mine, unassigned, ofColleague])));
+
+      expect(assigneeTexts()).toEqual([
+        'Pedro Levi Manquepi Tú(tú)',
+        'Sin asignar',
+        'Ana Huenchullán Rivas',
+      ]);
+      const actions = actionTexts();
+      expect(actions[1]).toContain('Tomar');
+      expect(actions[2]).toContain('Solo lectura');
+      expect(actions[0]).not.toContain('Tomar');
+    });
+
+    it('Funcionario: tomar avisa con el folio, recarga y muestra el spinner solo en esa fila', async () => {
+      const response = new Subject<Request>();
+      await render(Role.Funcionario, () => of(page([{ ...unassigned, folio: 'BD-2026-000401' }])));
+      Object.assign(service, { take: vi.fn(() => response) });
+      const openSnackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open');
+      const calls = service.getRequests.mock.calls.length;
+
+      const takeButton = [...element.querySelectorAll<HTMLButtonElement>('td button')].find(
+        (button) => button.textContent?.includes('Tomar'),
+      )!;
+      takeButton.click();
+      await fixture.whenStable();
+      expect(takeButton.disabled).toBe(true);
+      expect(takeButton.getAttribute('aria-label')).toBe('Tomando el trámite BD-2026-000401');
+
+      response.next({ ...unassigned, ...mine, folio: 'BD-2026-000401' });
+      response.complete();
+      await settle();
+
+      expect(openSnackBar).toHaveBeenCalledWith(
+        'Tomaste el trámite BD-2026-000401. Ahora eres responsable.',
+        undefined,
+        { duration: 4000 },
+      );
+      expect(service.getRequests).toHaveBeenCalledTimes(calls + 1);
+    });
+
+    it('Funcionario: si otra persona tomó el trámite lo explica y recarga', async () => {
+      await render(Role.Funcionario, () => of(page([unassigned])));
+      Object.assign(service, {
+        take: vi.fn(() =>
+          throwError(
+            () =>
+              new HttpErrorResponse({
+                status: 409,
+                error: { message: 'El tramite ya tiene responsable' },
+              }),
+          ),
+        ),
+      });
+      const openSnackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open');
+      const calls = service.getRequests.mock.calls.length;
+
+      [...element.querySelectorAll<HTMLButtonElement>('td button')]
+        .find((button) => button.textContent?.includes('Tomar'))!
+        .click();
+      await settle();
+
+      expect(openSnackBar).toHaveBeenCalledWith(
+        'Otra persona tomó este trámite. Actualizamos la información.',
+        undefined,
+        { duration: 5000 },
+      );
+      expect(service.getRequests).toHaveBeenCalledTimes(calls + 1);
+    });
+
+    it('Funcionario: el responsable reasigna desde el menú de acciones', async () => {
+      await render(
+        Role.Funcionario,
+        () => of(page([mine])),
+        () =>
+          of({
+            INGRESADO: ['ADMITIDO', 'RECHAZADO'],
+            ADMITIDO: [],
+            EN_GESTION: [],
+            EN_TERRENO: [],
+            RESUELTO: [],
+            RECHAZADO: [],
+          }),
+      );
+      const open = vi.spyOn(TestBed.inject(MatDialog), 'open');
+
+      element
+        .querySelector<HTMLButtonElement>('td [aria-label="Más acciones para el trámite propio"]')!
+        .click();
+      await fixture.whenStable();
+      menuAction('Reasignar').click();
+      await fixture.whenStable();
+
+      expect(open).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          data: expect.objectContaining({ request: mine, currentUserId: 'funcionario-actual' }),
+        }),
+      );
+      TestBed.inject(MatDialog).closeAll();
+    });
+
+    it('Funcionario: la bandeja filtra por mis asignados y sin asignar, y queda en la URL', async () => {
+      await render(Role.Funcionario);
+
+      expect(queueLabels()).toEqual(['inbox Todos', 'person Mis asignados', 'person_off Sin asignar']);
+      [...element.querySelectorAll<HTMLButtonElement>('app-request-queue button')][1].click();
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({ assignee: 'me' });
+      expect(TestBed.inject(Router).url).toBe('/?assignee=me');
+    });
+
+    it('bandeja vacía de mis asignados invita a tomar uno sin asignar', async () => {
+      await render(Role.Funcionario, () => of(page([])), undefined, undefined, '/?assignee=me');
+
+      expect(text()).toContain('No tienes trámites asignados.');
+      [...element.querySelectorAll<HTMLButtonElement>('.requests__empty-state button')][0].click();
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({ assignee: 'none' });
+    });
+
+    it('Admin: asigna o reasigna desde la fila, sin "Mis asignados"', async () => {
+      await render(Role.Admin, () => of(page([unassigned, ofColleague])));
+
+      expect(queueLabels()).toEqual(['inbox Todos', 'person_off Sin asignar']);
+      const actions = actionTexts();
+      expect(actions[0]).toContain('Asignar');
+      expect(actions[1]).toContain('Reasignar');
+      expect(element.querySelector('.requests__card')).toBeNull();
+    });
+
+    it('Auditor: ve el responsable y la bandeja, sin columna de acciones', async () => {
+      await render(Role.Auditor, () => of(page([unassigned, ofColleague])));
+
+      expect(headers()).not.toContain('Acciones');
+      expect(headers()).toContain('Responsable');
+      expect(element.querySelector('app-request-actions')).toBeNull();
+      expect(queueLabels()).toEqual(['inbox Todos', 'person_off Sin asignar']);
+    });
+
+    it('Vecino: no ve responsable ni bandeja, y un assignee en la URL se ignora', async () => {
+      await render(Role.Vecino, undefined, undefined, undefined, '/?assignee=none');
+
+      expect(service.getRequests).toHaveBeenCalledWith({});
+      expect(element.querySelector('app-request-queue')).toBeNull();
+      expect(headers()).not.toContain('Responsable');
+      expect(text()).not.toContain('Pedro Levi Manquepi');
+    });
+
+    it('Ver más aparece solo para descripciones largas y abre el texto completo', async () => {
+      const long = { ...mine, description: 'Rama caída '.repeat(12).trim() };
+      await render(Role.Vecino, () => of(page([long, other])));
+
+      const buttons = [
+        ...element.querySelectorAll<HTMLButtonElement>('.requests__table .description__more'),
+      ];
+      expect(buttons).toHaveLength(1);
+      expect(buttons[0].getAttribute('aria-label')).toBe(
+        'Ver la descripción completa del trámite propio',
+      );
+      buttons[0].click();
+      await fixture.whenStable();
+      expect(TestBed.inject(OverlayContainer).getContainerElement().textContent).toContain(
+        long.description,
+      );
+      TestBed.inject(MatDialog).closeAll();
     });
   });
 });

@@ -61,6 +61,7 @@ export const CONTACT_RESULTS = [
 
 export const REJECTION_REASON_MAX_LENGTH = 500;
 export const INTERVENTION_REASON_MAX_LENGTH = 500;
+export const ASSIGNMENT_REASON_MAX_LENGTH = 500;
 
 export function actionLabel(status: RequestStatus): string {
   return Object.hasOwn(REQUEST_ACTION_LABELS, status)
