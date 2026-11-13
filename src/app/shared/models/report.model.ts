@@ -1,3 +1,4 @@
+import { Page } from './page.model';
 import { RequestStatus } from './request.model';
 
 /** Ventanas fijas de report (EP3-07, sección 3.3). */
@@ -58,4 +59,43 @@ export interface ReportTopProcedures {
   range: ReportRange;
   items: TopProcedure[];
   lastEventAt: string | null;
+}
+
+/** `slaStatus` de report (EP3-06, sección 4.1). */
+export type SlaStatus =
+  | 'DENTRO_DE_PLAZO'
+  | 'POR_VENCER'
+  | 'VENCIDO'
+  | 'CUMPLIDO'
+  | 'FUERA_DE_PLAZO'
+  | 'NO_APLICA'
+  | 'SIN_PLAZO';
+
+/** Los únicos estados que acepta el listado de plazos: los demás no son alertas. */
+export type SlaAlertStatus = Extract<SlaStatus, 'VENCIDO' | 'POR_VENCER'>;
+
+/** Ítem de `GET /api/report/sla` (EP3-07, sección 3.6). */
+export interface SlaAlert {
+  requestId: string;
+  folio: string | null;
+  procedureType: string;
+  procedureLabel: string | null;
+  assigneeId: string | null;
+  assigneeName: string | null;
+  /** Fecha civil YYYY-MM-DD en hora de Chile. */
+  dueDate: string;
+  slaStatus: SlaAlertStatus;
+}
+
+export interface SlaAlertPage extends Page<SlaAlert> {
+  lastEventAt: string | null;
+}
+
+export interface SlaAlertQuery {
+  /** Sin estados, report devuelve los dos. */
+  status?: readonly SlaAlertStatus[];
+  /** `me` para el Admin y el Auditor devuelve una lista vacía: nunca son responsables. */
+  assignee?: 'me' | 'none';
+  page: number;
+  size: number;
 }

@@ -170,6 +170,15 @@ describe('Ruta /inicio', () => {
     expect(TestBed.inject(Router).url).toBe('/inicio');
   });
 
+  it('con más de un rol tampoco hay inicio: va a la pantalla sin acceso', async () => {
+    ctx.auth.tokenRoles.set([Role.Vecino, Role.Funcionario]);
+    const harness = await RouterTestingHarness.create();
+
+    await harness.navigateByUrl('/inicio');
+
+    expect(TestBed.inject(Router).url).toBe('/no-access');
+  });
+
   it('sin rol no llega al layout vacío: va a la pantalla sin acceso', async () => {
     const harness = await RouterTestingHarness.create();
 

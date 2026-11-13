@@ -38,4 +38,38 @@ describe('ReportService', () => {
     call.flush({ range: 'last24h', items: [], lastEventAt: null });
     expect((await result).items).toEqual([]);
   });
+
+  it('pide los plazos del responsable con los dos estados por omisión', async () => {
+    const result = firstValueFrom(service.getSlaAlerts({ assignee: 'me', page: 1, size: 5 }));
+    const call = backend.expectOne((req) => req.url === `${url}/sla`);
+    expect(call.request.method).toBe('GET');
+    expect(call.request.params.get('assignee')).toBe('me');
+    expect(call.request.params.has('status')).toBe(false);
+    expect(call.request.params.get('page')).toBe('1');
+    expect(call.request.params.get('size')).toBe('5');
+    call.flush({
+      content: [],
+      page: 1,
+      size: 5,
+      totalElements: 0,
+      totalPages: 0,
+      lastEventAt: null,
+    });
+    expect((await result).totalElements).toBe(0);
+  });
+
+  it('pide solo los vencidos de la comuna sin filtro de responsable', () => {
+    service.getSlaAlerts({ status: ['VENCIDO'], page: 0, size: 5 }).subscribe();
+    const call = backend.expectOne((req) => req.url === `${url}/sla`);
+    expect(call.request.params.get('status')).toBe('VENCIDO');
+    expect(call.request.params.has('assignee')).toBe(false);
+    call.flush({
+      content: [],
+      page: 0,
+      size: 5,
+      totalElements: 0,
+      totalPages: 0,
+      lastEventAt: null,
+    });
+  });
 });

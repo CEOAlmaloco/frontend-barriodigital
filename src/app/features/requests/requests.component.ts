@@ -69,10 +69,12 @@ import {
   REQUEST_PAGE_SIZES,
   RequestListQuery,
   RequestQueue,
+  RequestSituation,
   RequestSortDirection,
   RequestSortField,
   SEARCH_DEBOUNCE_MS,
   activeFilterCount,
+  matchesSituation,
   parseDateKey,
   parseRequestListParams,
   serializeRequestListQuery,
@@ -108,7 +110,7 @@ import {
   RequestStatusDialogResult,
 } from './request-status-dialog/request-status-dialog.component';
 import { RequestStatusBadgeComponent } from './request-status-badge/request-status-badge.component';
-import { isClosedStatus } from './requests.constants';
+import { NEW_REQUEST_FRAGMENT, isClosedStatus } from './requests.constants';
 import { RequestsService } from './requests.service';
 import { RequestLocationMapComponent } from './request-location-map.component';
 import {
@@ -184,6 +186,7 @@ export class RequestsComponent {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly listTitle = viewChild.required<ElementRef<HTMLElement>>('listTitle');
+  private readonly newRequestTitle = viewChild<ElementRef<HTMLElement>>('newRequestTitle');
   private readonly descriptionDialogTemplate =
     viewChild.required<TemplateRef<{ $implicit: string }>>('descriptionDialog');
   private readonly attachmentPreviewTemplate =
@@ -315,6 +318,7 @@ export class RequestsComponent {
 
   protected readonly filters: RequestFiltersForm = this.formBuilder.group({
     status: this.formBuilder.control<RequestStatus | ''>(''),
+    open: this.formBuilder.control<RequestSituation>(''),
     procedureType: [''],
     sector: [''],
     from: this.formBuilder.control<Date | null>(null),
@@ -429,6 +433,10 @@ export class RequestsComponent {
       this.assignDialog?.close();
     });
     this.filters.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+      const { status, open } = this.filters.controls;
+      if (status.value && !matchesSituation(status.value, open.value)) {
+        status.setValue('', { emitEvent: false });
+      }
       const from = this.filters.controls.from.value;
       if (from && isBeforeDay(from, MUNICIPALITY_SINCE)) {
         this.filters.controls.from.setValue(null, { emitEvent: false });
@@ -470,6 +478,17 @@ export class RequestsComponent {
     this.createForm.controls.procedureType.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.selectionChanged.set(false));
+    // "Nuevo trámite" del inicio: el formulario queda a la vista y el lector de pantalla parte por su título
+    if (this.route.snapshot.fragment === NEW_REQUEST_FRAGMENT && !this.isStaff()) {
+      afterNextRender(
+        () => {
+          const title = this.newRequestTitle()?.nativeElement;
+          title?.scrollIntoView?.({ block: 'start', behavior: 'auto' });
+          title?.focus({ preventScroll: true });
+        },
+        { injector: this.injector },
+      );
+    }
     this.loadCatalog();
     this.loadRequests();
     if (this.isFuncionario()) {
@@ -1190,12 +1209,12 @@ export class RequestsComponent {
 
   protected clearFilters(): void {
     this.filters.reset(
-      { status: '', procedureType: '', sector: '', from: null, to: null },
+      { status: '', open: '', procedureType: '', sector: '', from: null, to: null },
       { emitEvent: false },
     );
     this.toMin.set(MUNICIPALITY_SINCE);
     this.listTitle().nativeElement.focus({ preventScroll: true });
-    this.applyQuery({ status: '', procedureType: '', sector: '', from: '', to: '' });
+    this.applyQuery({ status: '', open: '', procedureType: '', sector: '', from: '', to: '' });
   }
 
   protected clearSearchAndFilters(): void {
@@ -1238,12 +1257,13 @@ export class RequestsComponent {
   }
 
   private filtersFromForm(): Partial<RequestListQuery> {
-    const { status, procedureType, sector, from, to } = this.filters.getRawValue();
+    const { status, open, procedureType, sector, from, to } = this.filters.getRawValue();
     const fromOk = from && !isBeforeDay(from, MUNICIPALITY_SINCE) ? from : null;
     const floor = laterDay(fromOk, MUNICIPALITY_SINCE);
     const toOk = to && !isBeforeDay(to, floor) ? to : null;
     return {
       status,
+      open,
       procedureType,
       sector,
       from: fromOk ? toDateKey(fromOk) : '',
@@ -1256,6 +1276,7 @@ export class RequestsComponent {
     this.filters.setValue(
       {
         status: query.status,
+        open: query.open,
         procedureType: query.procedureType,
         sector: query.sector,
         from,

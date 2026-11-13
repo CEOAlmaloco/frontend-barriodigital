@@ -79,11 +79,7 @@
       <h2 id="reports-kpis-title" class="cdk-visually-hidden">Indicadores</h2>
       @switch (kpis().status) {
         @case ('loading') {
-          <div class="reports__tiles">
-            @for (tile of [1, 2, 3, 4]; track tile) {
-              <div class="reports__card reports__tile"><app-report-skeleton shape="tile" /></div>
-            }
-          </div>
+          <app-report-kpi-tiles [kpis]="null" [range]="range()" />
         }
         @case ('error') {
           <div class="reports__card reports__unavailable">
@@ -97,30 +93,20 @@
         }
         @case ('ready') {
           @if (kpis(); as view) {
-            @if (view.status === 'ready' && view.stale) {
-              <p class="reports__notice">
-                <mat-icon aria-hidden="true">warning</mat-icon>
-                <span>
-                  <strong>No se pudieron actualizar los indicadores.</strong>
-                  Se muestran los datos consultados a las {{ formatClock(view.fetchedAt) }}.
-                  {{ retryHint() }}
-                </span>
-              </p>
+            @if (view.status === 'ready') {
+              @if (view.stale) {
+                <p class="reports__notice">
+                  <mat-icon aria-hidden="true">warning</mat-icon>
+                  <span>
+                    <strong>No se pudieron actualizar los indicadores.</strong>
+                    Se muestran los datos consultados a las {{ formatClock(view.fetchedAt) }}.
+                    {{ retryHint() }}
+                  </span>
+                </p>
+              }
+              <app-report-kpi-tiles [kpis]="view.data" [range]="range()" />
             }
           }
-          <dl class="reports__tiles">
-            @for (tile of tiles(); track tile.label) {
-              <div class="reports__card reports__tile">
-                <dt>{{ tile.label }}</dt>
-                @if (tile.value !== null) {
-                  <dd class="reports__tile-value">{{ tile.value }}</dd>
-                } @else {
-                  <dd class="reports__tile-value reports__tile-value--empty">{{ tile.empty }}</dd>
-                }
-                <dd>{{ tile.meta }}</dd>
-              </div>
-            }
-          </dl>
         }
       }
     </section>

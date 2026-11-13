@@ -64,7 +64,7 @@ describe('ReportsComponent', () => {
     (element().querySelector(selector)?.textContent ?? '').replace(/\s+/g, ' ').trim();
   /** «valor | detalle» del indicador, leído por su término como lo recorre un lector de pantalla. */
   const tile = (label: string) => {
-    const card = Array.from(element().querySelectorAll('.reports__tile')).find(
+    const card = Array.from(element().querySelectorAll('.kpi-tile')).find(
       (node) => node.querySelector('dt')?.textContent?.trim() === label,
     );
     return Array.from(card?.querySelectorAll('dd') ?? [])
@@ -149,7 +149,7 @@ describe('ReportsComponent', () => {
 
     loadBoth();
 
-    expect(element().querySelector('dl.reports__tiles')).not.toBeNull();
+    expect(element().querySelector('dl.kpi-tiles')).not.toBeNull();
     expect(tile('Trámites abiertos')).toBe('26 | Ahora');
     expect(tile('Ingresados')).toBe('57 | Últimas 24 horas');
     expect(tile('Tiempo medio de resolución')).toBe('1 d 7 h | 8 trámites resueltos');
@@ -284,7 +284,7 @@ describe('ReportsComponent', () => {
     fail(kpiCalls.at(-1), 500);
     respond(topCalls.at(-1), top({ range: 'last7d', items: [] }));
 
-    expect(element().querySelector('.reports__tiles')).toBeNull();
+    expect(element().querySelector('.kpi-tiles')).toBeNull();
     expect(element().querySelector('app-report-trend-chart')).toBeNull();
     expect(text()).toContain('No se pudieron cargar los indicadores');
     expect(text()).toContain('Sin datos de los últimos 7 días');

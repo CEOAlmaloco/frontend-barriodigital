@@ -1,0 +1,74 @@
+<section class="cta" aria-labelledby="home-new-request">
+  <div class="cta__text">
+    <h2 id="home-new-request" class="cta__title">¿Necesitas reportar algo en tu barrio?</h2>
+    <p>Ingresa un trámite y sigue su estado desde aquí.</p>
+  </div>
+  <a matButton="filled" class="cta__action" routerLink="/tramites" [fragment]="newRequestFragment">
+    <mat-icon aria-hidden="true">add</mat-icon>
+    Nuevo trámite
+  </a>
+</section>
+
+<div class="layout">
+  <app-home-block
+    class="layout__list"
+    headingId="home-open-requests"
+    heading="Mis trámites abiertos"
+    description="Más recientes"
+    service="trámites"
+    [view]="recentView()"
+    [count]="openPage()?.totalElements ?? null"
+    [empty]="openPage()?.content?.length === 0"
+    (refresh)="refresh()"
+  >
+    <app-home-request-list [requests]="openPage()?.content ?? []" [citizen]="true" />
+    @if (firstTime()) {
+      <app-home-state
+        homeBlockEmpty
+        icon="inbox"
+        heading="Aún no tienes trámites"
+        message="Cuando ingreses uno, verás aquí su estado."
+      />
+    } @else {
+      <app-home-state
+        homeBlockEmpty
+        icon="task_alt"
+        tone="success"
+        heading="No tienes trámites abiertos"
+      />
+    }
+    <a homeBlockFooter class="home-link" routerLink="/tramites" [queryParams]="{ open: 'true' }">
+      Ver mis trámites abiertos<mat-icon aria-hidden="true">arrow_forward</mat-icon>
+    </a>
+  </app-home-block>
+
+  <ul class="stats" aria-label="Resumen de mis trámites">
+    @for (stat of stats(); track stat.open) {
+      <li>
+        @switch (stat.status) {
+          @case ('ready') {
+            <a class="stat stat--link" routerLink="/tramites" [queryParams]="{ open: stat.open }">
+              <span class="stat__label">
+                {{ stat.label }}<mat-icon aria-hidden="true">{{ stat.icon }}</mat-icon>
+              </span>
+              <span class="stat__value">{{ stat.value }}</span>
+            </a>
+          }
+          @case ('error') {
+            <div class="stat">
+              <span class="stat__label">{{ stat.label }}</span>
+              <span class="stat__value stat__value--empty" aria-hidden="true">—</span>
+              <span class="stat__meta">No disponible</span>
+            </div>
+          }
+          @default {
+            <div class="stat" aria-busy="true">
+              <span class="stat__label">{{ stat.label }}</span>
+              <span class="stat__bone" aria-hidden="true"></span>
+            </div>
+          }
+        }
+      </li>
+    }
+  </ul>
+</div>

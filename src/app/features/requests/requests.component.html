@@ -11,8 +11,10 @@
   </header>
 
   @if (!isStaff()) {
-    <section class="requests__card" aria-labelledby="new-request-title">
-      <h2 id="new-request-title" class="requests__section-title">Nuevo trámite</h2>
+    <section id="nuevo-tramite" class="requests__card" aria-labelledby="new-request-title">
+      <h2 id="new-request-title" class="requests__section-title" #newRequestTitle tabindex="-1">
+        Nuevo trámite
+      </h2>
 
       <form
         class="requests__form"

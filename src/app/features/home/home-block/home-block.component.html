@@ -1,0 +1,114 @@
+<section class="block" [attr.aria-labelledby]="headingId()" [attr.aria-busy]="busy()">
+  <div class="block__head">
+    <div class="block__titles">
+      <h2 class="block__title" [id]="headingId()">
+        {{ heading() }}
+        @if (ready() && countLabel(); as count) {
+          <span class="block__count" [class.block__count--alert]="alertCount() && count !== '0'"
+            ><span class="cdk-visually-hidden">: </span>{{ count }}</span
+          >
+        }
+      </h2>
+      @if (description()) {
+        <p class="block__meta">{{ description() }}</p>
+      }
+      @if (ready(); as ready) {
+        <p class="block__meta block__freshness">
+          @if (dataAt(); as dataAt) {
+            <span
+              >Datos al <strong>{{ dataAt | requestDate }}</strong></span
+            >
+          }
+          <span
+            >Consultado <strong>{{ formatClock(ready.fetchedAt) }}</strong></span
+          >
+        </p>
+      }
+    </div>
+    <button
+      mat-icon-button
+      type="button"
+      class="block__refresh"
+      [class.block__refresh--busy]="busy()"
+      [attr.aria-label]="'Actualizar ' + heading()"
+      [attr.aria-disabled]="busy()"
+      matTooltip="Actualizar"
+      (click)="requestRefresh()"
+    >
+      <mat-icon aria-hidden="true">refresh</mat-icon>
+    </button>
+  </div>
+
+  <div class="block__body">
+    @if (ready(); as ready) {
+      @if (ready.stale) {
+        <p class="block__notice">
+          <mat-icon aria-hidden="true">warning</mat-icon>
+          <span>
+            <strong>No se pudo actualizar.</strong>
+            Se muestran los datos consultados a las {{ formatClock(ready.fetchedAt) }}.
+          </span>
+        </p>
+      }
+      @if (empty()) {
+        <ng-content select="[homeBlockEmpty]" />
+      } @else {
+        <div class="block__content" [class.block__content--loading]="ready.loading">
+          <ng-content />
+        </div>
+      }
+    } @else if (failure(); as failure) {
+      @switch (failure.kind) {
+        @case ('unavailable') {
+          <app-home-state
+            icon="cloud_off"
+            tone="error"
+            heading="No disponible"
+            [message]="'El servicio de ' + service() + ' no responde.'"
+          >
+            <ng-container *ngTemplateOutlet="retry" />
+          </app-home-state>
+        }
+        @case ('forbidden') {
+          <app-home-state
+            icon="lock"
+            tone="error"
+            heading="Sin acceso"
+            message="Tu rol no permite consultar esta información."
+          />
+        }
+        @default {
+          <app-home-state
+            icon="wifi_off"
+            tone="error"
+            heading="No se pudo cargar"
+            message="Revisa tu conexión e inténtalo de nuevo."
+          >
+            <ng-container *ngTemplateOutlet="retry" />
+          </app-home-state>
+        }
+      }
+    } @else {
+      <app-report-skeleton class="block__skeleton" />
+    }
+  </div>
+
+  @if (ready() && !empty() && footer()) {
+    <div class="block__foot">
+      <ng-content select="[homeBlockFooter]" />
+    </div>
+  }
+</section>
+
+<ng-template #retry>
+  <button
+    matButton="outlined"
+    type="button"
+    class="block__retry"
+    [attr.aria-disabled]="busy()"
+    (click)="requestRefresh()"
+  >
+    <mat-icon aria-hidden="true">refresh</mat-icon>
+    Reintentar
+  </button>
+</ng-template>

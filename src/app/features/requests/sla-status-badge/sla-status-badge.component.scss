@@ -1,0 +1,55 @@
+@use 'tokens' as *;
+
+:host {
+  display: inline-flex;
+}
+
+.sla {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  padding: $space-1 $space-2;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  font-size: calc(#{$font-label} * var(--bd-text-scale, 1));
+  font-weight: $font-weight-medium;
+  line-height: 1.2;
+  white-space: nowrap;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.sla--neutral {
+  background-color: var(--bd-primary-container);
+  color: var(--bd-primary-dark);
+}
+
+.sla--secondary {
+  background-color: var(--bd-secondary-container);
+  color: var(--bd-secondary);
+}
+
+.sla--success {
+  background-color: var(--bd-success-container);
+  color: var(--bd-success);
+}
+
+.sla--warning {
+  background-color: var(--bd-accent-container);
+  color: var(--bd-accent-text);
+}
+
+.sla--error {
+  background-color: var(--bd-error-container);
+  color: var(--bd-error);
+}
+
+.sla--unknown {
+  padding-inline: $space-1;
+  color: var(--bd-text-muted);
+  cursor: help;
+}

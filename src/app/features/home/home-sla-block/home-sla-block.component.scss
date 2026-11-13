@@ -1,0 +1,15 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+// Compacto dentro del pie: sin fondo propio, alineado a la derecha
+.sla-paginator {
+  --mat-paginator-container-background-color: transparent;
+  --mat-paginator-container-size: #{$size-touch-target};
+  --mat-paginator-container-text-color: var(--bd-text-muted);
+
+  margin-inline: -$space-2;
+}

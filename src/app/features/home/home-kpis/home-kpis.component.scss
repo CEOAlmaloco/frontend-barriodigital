@@ -1,0 +1,114 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+}
+
+.kpis {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.kpis__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-2 $space-4;
+}
+
+// Más específico que la escala global de títulos
+.kpis .kpis__title {
+  margin: 0;
+  font-size: calc(#{$font-h3} * var(--bd-text-scale, 1));
+  font-weight: $font-weight-semibold;
+}
+
+.kpis__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-2 $space-4;
+  color: var(--bd-text-muted);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+}
+
+.kpis__freshness {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px $space-3;
+  margin: 0;
+
+  strong {
+    color: var(--bd-text);
+    font-weight: $font-weight-semibold;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.kpis__live {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  padding: 2px $space-2;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: 999px;
+  background-color: var(--bd-secondary-container);
+  color: var(--bd-secondary);
+  font-weight: $font-weight-semibold;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.kpis__live--paused {
+  background-color: var(--bd-accent-container);
+  color: var(--bd-accent-text);
+}
+
+.kpis__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-2 $space-4;
+}
+
+.kpis__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-2;
+  margin: 0;
+  padding: $space-2 $space-3;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-accent-container);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+
+  mat-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    color: var(--bd-accent-text);
+  }
+}
+
+.kpis__error {
+  padding: $space-2;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-surface);
+  box-shadow: $shadow-elevated;
+}
+
+.kpis__retry {
+  margin-block-start: $space-2;
+
+  &[aria-disabled='true'] {
+    cursor: progress;
+  }
+}

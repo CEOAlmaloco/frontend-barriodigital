@@ -28,16 +28,9 @@ import {
 import { FailureKind, failureKind } from '../../shared/utils/http-failure';
 import { PolledResource, polledResource } from '../../shared/utils/polled-resource';
 import { RequestDatePipe } from '../requests/request-date.pipe';
-import { formatDuration } from '../requests/duration';
 import { REQUEST_STATUS_VIEW } from '../requests/requests.constants';
-import {
-  RANGE_LABELS,
-  RANGE_PHRASES,
-  formatClock,
-  formatCount,
-  formatPercent,
-  plural,
-} from './report-format';
+import { RANGE_LABELS, RANGE_PHRASES, formatClock } from './report-format';
+import { ReportKpiTilesComponent } from './report-kpi-tiles/report-kpi-tiles.component';
 import { RankingItem, ReportRankingComponent } from './report-ranking/report-ranking.component';
 import { ReportSkeletonComponent } from './report-skeleton/report-skeleton.component';
 import { ReportTrendChartComponent } from './report-trend-chart/report-trend-chart.component';
@@ -50,13 +43,6 @@ type SourceView<T> =
   | { status: 'loading' }
   | { status: 'error'; kind: FailureKind; retrying: boolean }
   | { status: 'ready'; data: T; fetchedAt: Date; stale: boolean };
-
-interface Tile {
-  label: string;
-  value: string | null;
-  empty: string;
-  meta: string;
-}
 
 type Pending = 'refresh' | 'range' | null;
 
@@ -78,6 +64,7 @@ function sourceView<T>(resource: PolledResource<ReportRange, T>): SourceView<T> 
     MatButtonToggle,
     MatButtonToggleGroup,
     MatIcon,
+    ReportKpiTilesComponent,
     ReportRankingComponent,
     ReportSkeletonComponent,
     ReportTrendChartComponent,
@@ -157,50 +144,6 @@ export class ReportsComponent {
       ? 'Usa Actualizar para volver a intentarlo.'
       : 'Se volverá a intentar automáticamente.',
   );
-
-  protected readonly tiles = computed<Tile[]>(() => {
-    const view = this.kpis();
-    if (view.status !== 'ready') {
-      return [];
-    }
-    const { data } = view;
-    const period = this.periodPhrase();
-    const open = OPEN_REQUEST_STATUSES.reduce(
-      (sum, status) => sum + (data.activeByStatus[status] ?? 0),
-      0,
-    );
-    const created = data.requestsOverTime.points.reduce((sum, point) => sum + point.count, 0);
-    const { rate, onTime, late } = data.slaCompliance;
-    const hours = data.averageResolutionHours;
-    return [
-      { label: 'Trámites abiertos', value: formatCount(open), empty: '', meta: 'Ahora' },
-      {
-        label: 'Ingresados',
-        value: formatCount(created),
-        empty: '',
-        meta: RANGE_LABELS[this.range()],
-      },
-      {
-        label: 'Tiempo medio de resolución',
-        value: hours === null ? null : formatDuration(hours * 3600),
-        empty: 'Sin resueltos',
-        meta:
-          hours === null
-            ? `Ninguno en ${period}`
-            : plural(data.resolvedCount, 'trámite resuelto', 'trámites resueltos'),
-      },
-      {
-        // El denominador es el de report: cierres del período con plazo evaluable (onTime + late).
-        label: 'Cumplimiento de plazo',
-        value: rate === null ? null : formatPercent(rate),
-        empty: 'Sin cierres evaluables',
-        meta:
-          rate === null
-            ? `Ningún cierre con plazo en ${period}`
-            : `${formatCount(onTime)} de ${plural(onTime + late, 'cierre', 'cierres')} dentro de plazo`,
-      },
-    ];
-  });
 
   protected readonly activeItems = computed<RankingItem[]>(() => {
     const view = this.kpis();

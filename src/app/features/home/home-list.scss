@@ -1,0 +1,205 @@
+// Filas de las listas de /inicio: trámites, plazos y eventos comparten medidas y estados
+@use 'tokens' as *;
+
+$event-icon-size: 32px;
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  // En el li y no en la fila: el radio de la fila curvaría los extremos del separador
+  li + li {
+    border-block-start: $border-width solid var(--bd-border);
+  }
+}
+
+.list__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-2 $space-4;
+  min-height: $size-touch-target;
+  padding: $space-3 $space-2;
+  border-radius: $space-1 + 2px;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color $transition-base;
+
+  @media (min-width: $breakpoint-md) {
+    flex-wrap: nowrap;
+    padding-inline: $space-4;
+  }
+
+  &:hover:not(.list__row--static) {
+    background-color: var(--bd-row-hover);
+  }
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: -$border-width-strong;
+  }
+}
+
+.list__main {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 16rem;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.list__label {
+  font-weight: $font-weight-medium;
+  overflow-wrap: anywhere;
+}
+
+// Mismo tratamiento que el folio del listado de trámites
+.list__folio,
+.list__sub {
+  color: var(--bd-text-muted);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+  overflow-wrap: anywhere;
+}
+
+.list__folio {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.list__assignee {
+  margin-block-start: $space-1;
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+}
+
+.list__end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-1 $space-3;
+
+  @media (min-width: $breakpoint-md) {
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+    text-align: end;
+  }
+}
+
+.list__attention {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  color: var(--bd-secondary);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+  font-weight: $font-weight-medium;
+  white-space: nowrap;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.list__due {
+  color: var(--bd-accent-text);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+  font-weight: $font-weight-medium;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.list__due--late {
+  color: var(--bd-error);
+}
+
+// Eventos de auditoría: ícono a la izquierda y el detalle en columna
+.list__row--event {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: $space-3;
+}
+
+.event__icon {
+  display: grid;
+  flex-shrink: 0;
+  width: $event-icon-size;
+  height: $event-icon-size;
+  place-items: center;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: 50%;
+  background-color: var(--bd-primary-container);
+  color: var(--bd-primary-dark);
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.event__icon--secondary {
+  background-color: var(--bd-secondary-container);
+  color: var(--bd-secondary);
+}
+
+.event__icon--success {
+  background-color: var(--bd-success-container);
+  color: var(--bd-success);
+}
+
+.event__icon--error {
+  background-color: var(--bd-error-container);
+  color: var(--bd-error);
+}
+
+.event__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px $space-3;
+}
+
+.event__time {
+  color: var(--bd-text-muted);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.event__reason {
+  display: flex;
+  gap: $space-2;
+  margin-block-start: $space-2;
+  padding: $space-2 $space-3;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-accent-container);
+
+  mat-icon {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    color: var(--bd-accent-text);
+  }
+}
+
+// El motivo llega a 500 caracteres: tres líneas bastan para reconocerlo, el resto se lee en /audit
+.event__reason-text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow-wrap: anywhere;
+}
