@@ -53,16 +53,16 @@ npm test                      # modo watch
 npm test -- --watch=false     # una sola ejecución
 ```
 
-Las pruebas cubren `AppComponent`, `AuthService`, los guards, la configuración de MSAL (incluido el interceptor HTTP), la lectura de claims del token, `LoginComponent`, `DashboardComponent`, `HeaderComponent`, `RequestsService`, `CatalogService`, `RequestsComponent`, `RequestDetailComponent` (por rol, estados de carga, error y 404, estados terminales, privacidad y actualización tras cada acción) y las rutas protegidas por rol.
+Las pruebas cubren `AppComponent`, `AuthService`, los guards, la configuración de MSAL (incluido el interceptor HTTP), la lectura de claims del token, `LoginComponent`, `DashboardComponent`, `HeaderComponent`, `RequestsService`, `CatalogService`, `RequestsComponent`, `RequestDetailComponent` (por rol, estados de carga, error y 404, estados terminales, privacidad y actualización tras cada acción), `ReportService`, `polledResource` y `ReportsComponent` (ciclo de polling, pestaña oculta, pausa, respuestas lentas, fallos por fuente, cambio de período y 503) y las rutas protegidas por rol.
 
 ## Estructura
 
 ```
 src/
 ├── app/
-│   ├── core/          Servicios únicos de la app: auth/ (MSAL, sesión, roles y guards), catalog/ (catálogo vía BFF) y layout/ (contenedor de las rutas autenticadas)
-│   ├── shared/        Componentes, pipes y modelos compartidos entre features. Hoy: components/header y models/ (roles, trámites y tipos de trámite)
-│   └── features/      Una carpeta por dominio: login/, no-access/ (sesión sin un rol válido), dashboard/ (placeholder de /inicio) y requests/ (listado en /tramites y detalle en /tramites/:id)
+│   ├── core/          Servicios únicos de la app: auth/ (MSAL, sesión, roles y guards), catalog/ (catálogo vía BFF), report/ (indicadores vía BFF) y layout/ (contenedor de las rutas autenticadas)
+│   ├── shared/        Componentes, pipes y modelos compartidos entre features. Hoy: components/header, models/ (roles, trámites, tipos de trámite y reportes) y utils/ (entre ellas, el polling de polled-resource)
+│   └── features/      Una carpeta por dominio: login/, no-access/ (sesión sin un rol válido), dashboard/ (placeholder de /inicio), requests/ (listado en /tramites y detalle en /tramites/:id) y reports/ (indicadores en /reports)
 ├── styles/            _tokens.scss (paleta, tipografía, espaciado), _material-theme.scss y styles.scss global
 └── environments/      Configuración por entorno: Microsoft Entra ID y URL del BFF
 ```
@@ -111,13 +111,15 @@ Las rutas privadas van como hijas del layout de rutas autenticadas en `app.route
 
 ### Reportes y auditoría
 
-- `/reports`, para Admin y Auditor mediante `roleGuard`, con enlace «Reportes» en escritorio y móvil. Pantalla provisional con el título «Reportes» y un mensaje sobre los futuros indicadores comunales al implementar el procesamiento de eventos con Kafka; no realiza consultas HTTP ni depende de un servicio de reportes.
+- `/reports`, para Admin y Auditor mediante `roleGuard`, con enlace «Reportes» en escritorio y móvil. Muestra los indicadores de `ms-barriodigital-report` vía BFF (`/api/report/kpis` y `/api/report/top-procedures`): trámites abiertos, ingresados, tiempo medio de resolución y cumplimiento de plazo; altas por hora o por día en hora de Chile, con tabla alternativa; estados activos y los cinco tipos más demandados. El período (`last24h` o `last7d`) queda en la URL como `?range=`.
+- Se actualiza cada 5 s con `polledResource` (`shared/utils/polled-resource.ts`): la consulta siguiente se agenda al terminar la anterior, no corre con la pestaña oculta y se detiene al salir. Cada fuente tiene su propia hora de consulta y su espera creciente ante errores (hasta 60 s), y conserva sus últimos datos con un aviso si una actualización falla; los datos de otro período nunca se muestran como del elegido. «Pausar» detiene la actualización automática; «Actualizar» y el cambio de período consultan sin reanudarla. «Datos al» es el `lastEventAt` de report y «Consultado», la hora de la respuesta más antigua en pantalla.
 - `/audit`, para Admin y Auditor mediante `roleGuard`, con enlace «Auditoría» en escritorio y móvil. Pantalla provisional del futuro historial de eventos de los trámites al implementar la integración con Kafka; no realiza consultas HTTP ni depende de un servicio de auditoría.
 
 ### Accesibilidad
 
 - Los colores semánticos (primario, secundario, éxito, error, acento, sus fondos y el borde de los controles) son variables `--bd-*` de `styles/_accessibility.scss`, redefinidas en cada modo de contraste del widget. Los componentes del detalle del trámite los toman de esas variables y no de colores fijos, para que los modos oscuro, alto contraste y negativo se apliquen sin reglas por componente. En alto contraste y negativo, `--bd-container-border` dibuja el borde de avisos, chips y tarjetas que en el modo claro se distinguen solo por el fondo.
-- Los estados no dependen solo del color: el avance del trámite marca cada paso con ícono y texto para lectores de pantalla, y las animaciones se omiten con `prefers-reduced-motion` o con la opción de pausar animaciones.
+- Los estados no dependen solo del color: el avance del trámite marca cada paso con ícono y texto para lectores de pantalla, el tramo en curso de los reportes va rayado y las animaciones se omiten con `prefers-reduced-motion` o con la opción de pausar animaciones.
+- Los reportes que se actualizan solos no se anuncian en cada ciclo; el lector de pantalla recibe el resultado de Actualizar, del cambio de período y de la pausa, y cada paso entre fallo y recuperación. La escala de texto del widget se aplica también a los valores y ejes de los reportes.
 
 ## Mejoras futuras
 

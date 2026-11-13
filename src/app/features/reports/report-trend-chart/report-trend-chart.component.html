@@ -1,0 +1,65 @@
+@if (total() === 0) {
+  <div class="trend__empty">
+    <p class="trend__empty-title">Sin trámites ingresados</p>
+    <p class="trend__empty-text">No ingresaron trámites en {{ period() }}.</p>
+  </div>
+} @else {
+  <div class="trend">
+    <div class="trend__y" aria-hidden="true">
+      @for (tick of ticks(); track tick.bottom) {
+        <span class="trend__y-tick" [style.bottom.%]="tick.bottom">{{ formatCount(tick.value) }}</span>
+      }
+    </div>
+    <div class="trend__plot" role="img" [attr.aria-label]="summary()">
+      @for (bar of bars(); track bar.key) {
+        <span
+          class="trend__bar"
+          [class.trend__bar--current]="bar.current"
+          [style.height.%]="bar.height"
+          [attr.title]="bar.full + ': ' + formatCount(bar.count)"
+        ></span>
+      }
+    </div>
+    <div class="trend__x" aria-hidden="true">
+      @for (bar of bars(); track bar.key) {
+        <span class="trend__x-tick" [class.trend__x-tick--minor]="bar.minorTick">
+          {{ bar.tick ? bar.axis : '' }}
+        </span>
+      }
+    </div>
+  </div>
+
+  <ul class="trend__legend" aria-label="Leyenda">
+    <li>
+      <span class="trend__swatch" aria-hidden="true"></span>
+      {{ isHourly() ? 'Horas completas' : 'Días completos' }}
+    </li>
+    <li>
+      <span class="trend__swatch trend__swatch--current" aria-hidden="true"></span>
+      {{ isHourly() ? 'Hora en curso' : 'Día en curso' }}
+    </li>
+  </ul>
+
+  <details class="trend__table">
+    <summary>Ver como tabla</summary>
+    <div class="trend__table-scroll">
+      <table>
+        <caption class="cdk-visually-hidden">{{ summary() }}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{{ isHourly() ? 'Hora' : 'Día' }}</th>
+            <th scope="col">Trámites</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (bar of bars(); track bar.key) {
+            <tr>
+              <td>{{ bar.full }}{{ bar.current ? ' (en curso)' : '' }}</td>
+              <td>{{ formatCount(bar.count) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </details>
+}

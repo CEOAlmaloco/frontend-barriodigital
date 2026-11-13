@@ -1,7 +1,238 @@
 <main class="reports">
-  <h1>Reportes</h1>
-  <p class="reports__text">
-    Los indicadores comunales estarán disponibles cuando se implemente el procesamiento de eventos
-    con Kafka.
-  </p>
+  <header class="reports__head">
+    <h1>Reportes</h1>
+    <p class="reports__lead">Indicadores de trámites de la comuna.</p>
+  </header>
+
+  <div class="reports__card reports__toolbar">
+    <mat-button-toggle-group
+      class="reports__range"
+      aria-label="Período"
+      hideSingleSelectionIndicator
+      [value]="range()"
+      (change)="selectRange($event.value)"
+    >
+      @for (option of ranges; track option) {
+        <mat-button-toggle [value]="option">{{ rangeLabels[option] }}</mat-button-toggle>
+      }
+    </mat-button-toggle-group>
+
+    <div class="reports__freshness">
+      @if (freshness(); as freshness) {
+        @if (freshness.dataAt) {
+          <span>Datos al <strong>{{ freshness.dataAt | requestDate }}</strong></span>
+        } @else {
+          <span>Aún no hay eventos registrados</span>
+        }
+        <span>Consultado <strong>{{ freshness.consultedAt }}</strong></span>
+      }
+      <span class="reports__live" [class.reports__live--paused]="paused()">
+        <mat-icon aria-hidden="true">{{ paused() ? 'pause_circle' : 'autorenew' }}</mat-icon>
+        {{ paused() ? 'Actualización automática en pausa' : 'Se actualiza cada 5 s' }}
+      </span>
+    </div>
+
+    <div class="reports__actions">
+      <button matButton="outlined" type="button" (click)="togglePause()">
+        <mat-icon aria-hidden="true">{{ paused() ? 'play_arrow' : 'pause' }}</mat-icon>
+        {{ paused() ? 'Reanudar' : 'Pausar' }}
+      </button>
+      <button matButton="outlined" type="button" (click)="refresh()">
+        <mat-icon aria-hidden="true">refresh</mat-icon>
+        Actualizar
+      </button>
+    </div>
+  </div>
+
+  @if (pageFailure(); as failure) {
+    <section class="reports__card reports__state" role="alert" aria-labelledby="reports-failure">
+      <span class="reports__state-icon" aria-hidden="true">
+        <mat-icon>{{ failure === 'forbidden' ? 'lock' : 'cloud_off' }}</mat-icon>
+      </span>
+      @switch (failure) {
+        @case ('unavailable') {
+          <h2 id="reports-failure">Los reportes no están disponibles</h2>
+          <p>El servicio de reportes no responde. {{ retryHint() }}</p>
+        }
+        @case ('forbidden') {
+          <h2 id="reports-failure">No tienes acceso a los reportes</h2>
+          <p>Tu rol no permite consultar esta información.</p>
+        }
+        @default {
+          <h2 id="reports-failure">No pudimos cargar los reportes</h2>
+          <p>Revisa tu conexión e inténtalo de nuevo.</p>
+        }
+      }
+      @if (failure !== 'forbidden') {
+        <button matButton="filled" type="button" [disabled]="retrying()" (click)="retry()">
+          <mat-icon aria-hidden="true">refresh</mat-icon>
+          Reintentar
+        </button>
+      }
+    </section>
+  } @else {
+    <section
+      class="reports__kpis"
+      aria-labelledby="reports-kpis-title"
+      [attr.aria-busy]="kpis().status === 'loading'"
+    >
+      <h2 id="reports-kpis-title" class="cdk-visually-hidden">Indicadores</h2>
+      @switch (kpis().status) {
+        @case ('loading') {
+          <div class="reports__tiles">
+            @for (tile of [1, 2, 3, 4]; track tile) {
+              <div class="reports__card reports__tile"><app-report-skeleton shape="tile" /></div>
+            }
+          </div>
+        }
+        @case ('error') {
+          <div class="reports__card reports__unavailable">
+            <p><strong>No se pudieron cargar los indicadores</strong></p>
+            <p class="reports__muted">Sin datos de {{ periodPhrase() }}. {{ retryHint() }}</p>
+            <button matButton="outlined" type="button" [disabled]="retrying()" (click)="retryKpis()">
+              <mat-icon aria-hidden="true">refresh</mat-icon>
+              Reintentar
+            </button>
+          </div>
+        }
+        @case ('ready') {
+          @if (kpis(); as view) {
+            @if (view.status === 'ready' && view.stale) {
+              <p class="reports__notice">
+                <mat-icon aria-hidden="true">warning</mat-icon>
+                <span>
+                  <strong>No se pudieron actualizar los indicadores.</strong>
+                  Se muestran los datos consultados a las {{ formatClock(view.fetchedAt) }}.
+                  {{ retryHint() }}
+                </span>
+              </p>
+            }
+          }
+          <dl class="reports__tiles">
+            @for (tile of tiles(); track tile.label) {
+              <div class="reports__card reports__tile">
+                <dt>{{ tile.label }}</dt>
+                @if (tile.value !== null) {
+                  <dd class="reports__tile-value">{{ tile.value }}</dd>
+                } @else {
+                  <dd class="reports__tile-value reports__tile-value--empty">{{ tile.empty }}</dd>
+                }
+                <dd>{{ tile.meta }}</dd>
+              </div>
+            }
+          </dl>
+        }
+      }
+    </section>
+
+    <div class="reports__grid">
+      @if (kpis().status !== 'error') {
+        <section
+          class="reports__card reports__card--wide"
+          aria-labelledby="reports-trend-title"
+          [attr.aria-busy]="kpis().status === 'loading'"
+        >
+          @if (kpis(); as view) {
+            @if (view.status === 'ready') {
+              <div class="reports__card-head">
+                <h2 id="reports-trend-title">
+                  Trámites ingresados por
+                  {{ view.data.requestsOverTime.bucket === 'HOUR' ? 'hora' : 'día' }}
+                </h2>
+                <span class="reports__muted">Hora de Chile</span>
+              </div>
+              <app-report-trend-chart
+                [series]="view.data.requestsOverTime"
+                [period]="periodPhrase()"
+              />
+            } @else {
+              <h2 id="reports-trend-title" class="cdk-visually-hidden">Trámites ingresados</h2>
+              <app-report-skeleton shape="chart" />
+            }
+          }
+        </section>
+
+        <section
+          class="reports__card"
+          aria-labelledby="reports-active-title"
+          [attr.aria-busy]="kpis().status === 'loading'"
+        >
+          <div class="reports__card-head">
+            <h2 id="reports-active-title">Estados activos</h2>
+            <span class="reports__chip">Ahora</span>
+          </div>
+          @if (kpis().status === 'ready') {
+            @if (hasActive()) {
+              <app-report-ranking
+                tone="secondary"
+                labelledBy="reports-active-title"
+                [items]="activeItems()"
+              />
+            } @else {
+              <p class="reports__muted">No hay trámites abiertos en este momento.</p>
+            }
+          } @else {
+            <app-report-skeleton />
+          }
+        </section>
+      }
+
+      <section
+        class="reports__card"
+        [class.reports__card--wide]="kpis().status === 'error'"
+        aria-labelledby="reports-top-title"
+        [attr.aria-busy]="top().status === 'loading'"
+      >
+        <div class="reports__card-head">
+          <h2 id="reports-top-title">Tipos más demandados</h2>
+          <span class="reports__muted">{{ rangeLabels[range()] }}</span>
+        </div>
+        @if (top(); as view) {
+          @switch (view.status) {
+            @case ('loading') {
+              <app-report-skeleton />
+            }
+            @case ('error') {
+              <div class="reports__unavailable">
+                <p><strong>No disponible</strong></p>
+                <p class="reports__muted">
+                  No se pudieron cargar los tipos más demandados de {{ periodPhrase() }}.
+                  {{ retryHint() }}
+                </p>
+                <button
+                  matButton="outlined"
+                  type="button"
+                  [disabled]="retrying()"
+                  (click)="retryTop()"
+                >
+                  <mat-icon aria-hidden="true">refresh</mat-icon>
+                  Reintentar
+                </button>
+              </div>
+            }
+            @case ('ready') {
+              @if (view.stale) {
+                <p class="reports__notice">
+                  <mat-icon aria-hidden="true">warning</mat-icon>
+                  <span>
+                    <strong>No se pudieron actualizar.</strong>
+                    Datos consultados a las {{ formatClock(view.fetchedAt) }}. {{ retryHint() }}
+                  </span>
+                </p>
+              }
+              @if (topItems().length) {
+                <app-report-ranking
+                  [ordered]="true"
+                  labelledBy="reports-top-title"
+                  [items]="topItems()"
+                />
+              } @else {
+                <p class="reports__muted">No ingresaron trámites en {{ periodPhrase() }}.</p>
+              }
+            }
+          }
+        }
+      </section>
+    </div>
+  }
 </main>

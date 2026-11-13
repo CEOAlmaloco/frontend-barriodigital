@@ -1,0 +1,43 @@
+@use 'tokens' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.bone {
+  display: block;
+  width: 100%;
+  height: $space-4;
+  border-radius: $space-1;
+  background-color: var(--bd-border);
+  opacity: 0.6;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: bone-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+.bone--short {
+  width: 40%;
+}
+
+.bone--medium {
+  width: 60%;
+}
+
+.bone--value {
+  width: 50%;
+  height: $space-8;
+}
+
+.bone--chart {
+  height: 180px;
+}
+
+@keyframes bone-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
