@@ -31,7 +31,7 @@ import { Subject, catchError, combineLatest, map, of, startWith, switchMap } fro
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { Request, RequestStatus, RequestTransitions } from '../../../shared/models/request.model';
-import { Role } from '../../../shared/models/role';
+import { OVERSIGHT_ROLES, Role } from '../../../shared/models/role';
 import { assignmentFailure } from '../assignment-errors';
 import { formatDuration } from '../duration';
 import {
@@ -153,6 +153,13 @@ export class RequestDetailComponent {
     return request ? request.procedureLabel?.trim() || request.procedureType : '';
   });
   protected readonly folio = computed(() => this.request()?.folio?.trim() || null);
+  protected readonly auditLink = computed(() => {
+    const viewer = this.viewer();
+    const request = this.request();
+    if (!request || !viewer || !OVERSIGHT_ROLES.includes(viewer)) return null;
+    const folio = this.folio();
+    return folio ? { view: 'timeline', folio } : { view: 'timeline', requestId: request.id };
+  });
   protected readonly stages = computed(() => this.activity()?.tiempos.etapas ?? []);
   protected readonly sector = computed(() => sectorLabel(this.request()?.sector));
   protected readonly hasPoint = computed(() => {

@@ -1,0 +1,19 @@
+@use 'tokens' as *;
+
+:host {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-2 $space-3;
+}
+
+.refresh__time {
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+
+  strong {
+    color: var(--bd-text);
+    font-weight: $font-weight-semibold;
+    font-variant-numeric: tabular-nums;
+  }
+}

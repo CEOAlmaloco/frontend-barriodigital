@@ -1,7 +1,41 @@
 <main class="audit">
-  <h1>Auditoría</h1>
-  <p class="audit__text">
-    El historial de eventos de los trámites estará disponible cuando se implemente la integración
-    con Kafka.
-  </p>
+  <header class="audit__head">
+    <h1 #heading tabindex="-1">Auditoría</h1>
+    <p class="audit__lead">Operaciones sobre trámites y configuración, con su autor y fecha.</p>
+  </header>
+
+  <nav
+    mat-tab-nav-bar
+    class="audit__tabs"
+    aria-label="Vistas de auditoría"
+    mat-stretch-tabs="false"
+    [tabPanel]="panel"
+  >
+    <a
+      mat-tab-link
+      routerLink="/audit"
+      [queryParams]="links().events"
+      [active]="view() === 'events'"
+    >
+      <mat-icon aria-hidden="true">manage_search</mat-icon>
+      Eventos
+    </a>
+    <a
+      mat-tab-link
+      routerLink="/audit"
+      [queryParams]="links().timeline"
+      [active]="view() === 'timeline'"
+    >
+      <mat-icon aria-hidden="true">timeline</mat-icon>
+      Por trámite
+    </a>
+  </nav>
+
+  <mat-tab-nav-panel #panel class="audit__panel">
+    @if (view() === 'events') {
+      <app-audit-events />
+    } @else {
+      <app-audit-timeline />
+    }
+  </mat-tab-nav-panel>
 </main>

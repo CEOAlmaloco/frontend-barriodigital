@@ -25,15 +25,14 @@ import {
   ReportTopProcedures,
   isReportRange,
 } from '../../shared/models/report.model';
+import { FailureKind, failureKind } from '../../shared/utils/http-failure';
 import { PolledResource, polledResource } from '../../shared/utils/polled-resource';
 import { RequestDatePipe } from '../requests/request-date.pipe';
 import { formatDuration } from '../requests/duration';
 import { REQUEST_STATUS_VIEW } from '../requests/requests.constants';
 import {
-  FailureKind,
   RANGE_LABELS,
   RANGE_PHRASES,
-  failureKind,
   formatClock,
   formatCount,
   formatPercent,

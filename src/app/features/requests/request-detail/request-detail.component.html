@@ -91,6 +91,17 @@
               </span>
             }
           </div>
+          @if (auditLink(); as params) {
+            <a
+              matButton="outlined"
+              class="request-detail__audit"
+              routerLink="/audit"
+              [queryParams]="params"
+            >
+              <mat-icon aria-hidden="true">manage_search</mat-icon>
+              Ver en auditoría
+            </a>
+          }
         </header>
 
         <section
