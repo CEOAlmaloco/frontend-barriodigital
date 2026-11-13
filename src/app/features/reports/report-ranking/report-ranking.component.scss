@@ -1,0 +1,58 @@
+@use 'tokens' as *;
+
+:host {
+  --ranking-fill: var(--bd-primary);
+  display: block;
+}
+
+:host(.ranking--secondary) {
+  --ranking-fill: var(--bd-secondary);
+}
+
+.ranking {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ranking__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: $space-1 $space-3;
+}
+
+// Los nombres largos se ajustan en varias líneas: recortarlos ocultaría el tipo de trámite
+.ranking__label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ranking__rank {
+  margin-right: $space-1;
+  color: var(--bd-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ranking__value {
+  font-weight: $font-weight-semibold;
+  font-variant-numeric: tabular-nums;
+}
+
+.ranking__track {
+  grid-column: 1 / -1;
+  height: $space-2;
+  overflow: hidden;
+  border-radius: $space-1;
+  background-color: var(--bd-border);
+}
+
+.ranking__fill {
+  display: block;
+  height: 100%;
+  border-radius: $space-1;
+  background-color: var(--ranking-fill);
+}
