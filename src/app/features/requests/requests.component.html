@@ -438,6 +438,29 @@
             />
           </ng-template>
 
+          <ng-template #requestSla let-request>
+            @if (slaFor(request); as item) {
+              <app-sla-indicator
+                [status]="item.slaStatus"
+                [dueDate]="item.dueDate"
+                [now]="sla().fetchedAt"
+              />
+            } @else {
+              <app-sla-indicator [state]="sla().state" />
+            }
+          </ng-template>
+
+          @if (isStaff() && sla().state === 'unavailable') {
+            <p class="requests__sla-notice" role="status">
+              <mat-icon aria-hidden="true">cloud_off</mat-icon>
+              <span>No se pudo consultar el estado de los plazos. El resto del listado está disponible.</span>
+              <button matButton type="button" (click)="loadSla()">
+                <mat-icon aria-hidden="true">refresh</mat-icon>
+                Reintentar
+              </button>
+            </p>
+          }
+
           <div
             class="requests__table-wrapper"
             [class.requests__table-wrapper--staff]="isStaff()"
@@ -501,10 +524,16 @@
                   mat-sort-header="status"
                   sortActionDescription="Ordenar por estado"
                 >
-                  Estado
+                  {{ isStaff() ? 'Estado y plazo' : 'Estado' }}
                 </th>
                 <td mat-cell *matCellDef="let request">
                   <ng-container *ngTemplateOutlet="requestState; context: { $implicit: request }" />
+                  @if (isStaff()) {
+                    <div class="requests__sla">
+                      <span class="cdk-visually-hidden">Plazo:</span>
+                      <ng-container *ngTemplateOutlet="requestSla; context: { $implicit: request }" />
+                    </div>
+                  }
                 </td>
               </ng-container>
 
@@ -557,6 +586,12 @@
 
                 <dl class="requests__fields">
                   @if (isStaff()) {
+                    <div>
+                      <dt>Plazo</dt>
+                      <dd>
+                        <ng-container *ngTemplateOutlet="requestSla; context: { $implicit: request }" />
+                      </dd>
+                    </div>
                     <div>
                       <dt>Solicitante</dt>
                       <dd>{{ getSolicitanteNombre(request) }}</dd>

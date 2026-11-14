@@ -17,13 +17,21 @@ import {
 
 describe('AdminComponent', () => {
   const catalog: ProcedureType[] = [
-    { value: 'bache', label: 'Bache en calle', active: true, dailyQuota: 10, remainingQuota: 3 },
+    {
+      value: 'bache',
+      label: 'Bache en calle',
+      active: true,
+      dailyQuota: 10,
+      remainingQuota: 3,
+      slaBusinessDays: 10,
+    },
     {
       value: 'historico',
       label: 'Servicio histórico',
       active: false,
       dailyQuota: null,
       remainingQuota: null,
+      slaBusinessDays: null,
     },
   ];
   let fixture: ComponentFixture<AdminComponent>;
@@ -74,8 +82,8 @@ describe('AdminComponent', () => {
   };
 
   it.each([
-    ['create', 'Nuevo tipo'],
-    ['edit', 'Editar tipo'],
+    ['create', 'Nuevo tipo de trámite'],
+    ['edit', 'Editar tipo de trámite'],
   ] as const)('%s: el título del diálogo no tiene espacios alrededor', async (mode, title) => {
     await render();
     await open(mode);
@@ -144,7 +152,7 @@ describe('AdminComponent', () => {
     expect(button('Nuevo tipo').disabled).toBe(false);
   });
 
-  it('presenta tabla y tarjetas con código, nombre, estado y cupo en el orden recibido', async () => {
+  it('presenta tabla y tarjetas con código, nombre, estado, cupo y plazo en el orden recibido', async () => {
     await render();
     expect(Array.from(element.querySelectorAll('th'), (cell) => cell.textContent?.trim())).toEqual([
       'Código',
@@ -152,6 +160,7 @@ describe('AdminComponent', () => {
       'Estado',
       'Cupo diario',
       'Cupo disponible hoy',
+      'Plazo de atención',
       'Acciones',
     ]);
     for (const selector of ['.admin__table', '.admin__cards']) {
@@ -170,7 +179,9 @@ describe('AdminComponent', () => {
       ).toEqual(['Editar Bache en calle (bache)', 'Editar Servicio histórico (historico)']);
     }
     expect(quotas('td.mat-column-disponible')).toEqual(['3', 'Sin límite']);
-    expect(quotas('.admin__fields > div:last-child dd')).toEqual(['3', 'Sin límite']);
+    expect(quotas('.admin__fields > div:nth-child(4) dd')).toEqual(['3', 'Sin límite']);
+    expect(quotas('td.mat-column-plazo')).toEqual(['10 días hábiles', 'Sin plazo']);
+    expect(quotas('.admin__fields > div:last-child dd')).toEqual(['10 días hábiles', 'Sin plazo']);
     expect(element.querySelector('mat-checkbox')).toBeNull();
   });
 
@@ -217,7 +228,7 @@ describe('AdminComponent', () => {
     await render(() => of(received));
     const expected = cases.map(([, , label]) => label);
     expect(quotas('td.mat-column-disponible')).toEqual(expected);
-    expect(quotas('.admin__fields > div:last-child dd')).toEqual(expected);
+    expect(quotas('.admin__fields > div:nth-child(4) dd')).toEqual(expected);
     expect(quotas('.admin__badge').every((label) => label === 'Inactivo')).toBe(true);
     expect(
       Array.from(element.querySelectorAll<HTMLButtonElement>('button[aria-label^="Editar"]')).every(
@@ -249,12 +260,12 @@ describe('AdminComponent', () => {
     expect(service.getProcedures).toHaveBeenCalledTimes(2);
     expect(element.querySelectorAll('mat-progress-spinner')).toHaveLength(1);
     expect(quotas('td.mat-column-disponible')).toEqual(['3', 'Sin límite']);
-    expect(quotas('.admin__fields > div:last-child dd')).toEqual(['3', 'Sin límite']);
+    expect(quotas('.admin__fields > div:nth-child(4) dd')).toEqual(['3', 'Sin límite']);
     response.next([{ ...catalog[0], remainingQuota: 0 }]);
     response.complete();
     await fixture.whenStable();
     expect(quotas('td.mat-column-disponible')).toEqual(['Agotado']);
-    expect(quotas('.admin__fields > div:last-child dd')).toEqual(['Agotado']);
+    expect(quotas('.admin__fields > div:nth-child(4) dd')).toEqual(['Agotado']);
     expect(refreshButton()?.disabled).toBe(false);
     expect(trigger.querySelector('.admin__refresh-icon--spinning')).toBeNull();
     expect(element.querySelector('mat-progress-spinner')).toBeNull();
@@ -285,7 +296,7 @@ describe('AdminComponent', () => {
       ),
     ).toHaveLength(1);
     expect(quotas('td.mat-column-disponible')).toEqual(['3', 'Sin límite']);
-    expect(quotas('.admin__fields > div:last-child dd')).toEqual(['3', 'Sin límite']);
+    expect(quotas('.admin__fields > div:nth-child(4) dd')).toEqual(['3', 'Sin límite']);
     fixture.componentInstance['refresh']();
     expect(service.getProcedures).toHaveBeenCalledTimes(2);
     const response = new Subject<ProcedureType[]>();

@@ -52,6 +52,40 @@ html {
     filled-disabled-label-text-color: $color-text-primary,
   ));
 
+  // Interruptores con los tokens de cada modo de contraste. Deshabilitado conserva su forma (pista llena con
+  // ícono si está activo, pista con borde si no) y solo baja de intensidad, en vez del gris translúcido de M3.
+  @include mat.slide-toggle-overrides((
+    selected-track-color: var(--bd-primary),
+    selected-hover-track-color: var(--bd-primary-dark),
+    selected-focus-track-color: var(--bd-primary-dark),
+    selected-pressed-track-color: var(--bd-primary-dark),
+    selected-handle-color: var(--bd-on-primary),
+    selected-hover-handle-color: var(--bd-on-primary),
+    selected-focus-handle-color: var(--bd-on-primary),
+    selected-pressed-handle-color: var(--bd-on-primary),
+    selected-icon-color: var(--bd-primary),
+    unselected-track-color: var(--bd-surface),
+    unselected-hover-track-color: var(--bd-surface),
+    unselected-focus-track-color: var(--bd-surface),
+    unselected-pressed-track-color: var(--bd-surface),
+    track-outline-color: var(--bd-border-interactive),
+    unselected-handle-color: var(--bd-border-interactive),
+    unselected-hover-handle-color: var(--bd-text-muted),
+    unselected-focus-handle-color: var(--bd-text-muted),
+    unselected-pressed-handle-color: var(--bd-text-muted),
+    disabled-track-opacity: 0.38,
+    disabled-selected-track-color: var(--bd-primary),
+    disabled-selected-handle-color: var(--bd-on-primary),
+    disabled-selected-handle-opacity: 1,
+    disabled-selected-icon-color: var(--bd-primary),
+    disabled-selected-icon-opacity: 0.38,
+    disabled-unselected-track-color: var(--bd-surface),
+    disabled-unselected-track-outline-color: var(--bd-border-interactive),
+    disabled-unselected-handle-color: var(--bd-border-interactive),
+    disabled-unselected-handle-opacity: 0.38,
+    disabled-label-text-color: var(--bd-text-muted),
+  ));
+
   @include mat.form-field-overrides((
     filled-container-shape: $radius-base,
     outlined-container-shape: $radius-base,

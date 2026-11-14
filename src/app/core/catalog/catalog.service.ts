@@ -41,12 +41,13 @@ export class CatalogService {
   getProcedures(): Observable<ProcedureType[]> {
     return this.http.get<ProcedureType[]>(this.url).pipe(
       map((procedures) =>
-        procedures.map(({ value, label, active, dailyQuota, remainingQuota }) => ({
+        procedures.map(({ value, label, active, dailyQuota, remainingQuota, slaBusinessDays }) => ({
           value,
           label,
           active,
           dailyQuota,
           remainingQuota,
+          slaBusinessDays: slaBusinessDays ?? null,
         })),
       ),
       tap((procedures) => {
@@ -56,18 +57,24 @@ export class CatalogService {
     );
   }
 
-  createProcedure({ value, label, active }: CreateProcedureType): Observable<ProcedureType> {
-    return this.http.post<ProcedureType>(this.url, { value, label, active });
+  createProcedure({
+    value,
+    label,
+    active,
+    slaBusinessDays,
+  }: CreateProcedureType): Observable<ProcedureType> {
+    return this.http.post<ProcedureType>(this.url, { value, label, active, slaBusinessDays });
   }
 
   updateProcedure(
     value: string,
-    { label, active, dailyQuota }: UpdateProcedureType,
+    { label, active, dailyQuota, slaBusinessDays }: UpdateProcedureType,
   ): Observable<ProcedureType> {
     return this.http.put<ProcedureType>(`${this.url}/${encodeURIComponent(value)}`, {
       label,
       active,
       dailyQuota,
+      slaBusinessDays,
     });
   }
 }

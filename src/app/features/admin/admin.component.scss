@@ -204,3 +204,7 @@ $badge-tint: 0.12;
   color: $color-success;
   background-color: color.change($color-success, $alpha: $badge-tint);
 }
+
+.admin__muted {
+  color: var(--bd-text-muted);
+}

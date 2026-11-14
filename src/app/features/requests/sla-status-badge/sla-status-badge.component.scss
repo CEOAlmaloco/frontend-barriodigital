@@ -48,6 +48,13 @@
   color: var(--bd-error);
 }
 
+.sla--plain {
+  padding-inline: 0;
+  border-color: transparent;
+  color: var(--bd-text-muted);
+  font-weight: $font-weight-regular;
+}
+
 .sla--unknown {
   padding-inline: $space-1;
   color: var(--bd-text-muted);

@@ -4,9 +4,9 @@ import { RouterLink } from '@angular/router';
 import { CatalogService } from '../../../core/catalog/catalog.service';
 import { SlaAlert } from '../../../shared/models/report.model';
 import { procedureTypeLabel } from '../../requests/procedure-label';
+import { dueDateLabel } from '../../requests/sla-format';
 import { RequestAssigneeComponent } from '../../requests/request-assignee/request-assignee.component';
 import { SlaStatusBadgeComponent } from '../../requests/sla-status-badge/sla-status-badge.component';
-import { dueDateLabel } from '../home-format';
 
 interface SlaRow {
   alert: SlaAlert;

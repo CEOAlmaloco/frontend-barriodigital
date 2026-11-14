@@ -16,17 +16,23 @@ export const REQUEST_STATUS_VIEW: Record<RequestStatus, { label: string; tone: S
 
 export const REQUEST_STATUSES = Object.keys(REQUEST_STATUS_VIEW) as RequestStatus[];
 
-export type SlaTone = 'neutral' | 'secondary' | 'success' | 'warning' | 'error';
+export type SlaTone = 'neutral' | 'secondary' | 'success' | 'warning' | 'error' | 'plain';
 
-/** Texto de EP3-06, sección 4.1, y tono del indicador de plazo. */
-export const SLA_STATUS_VIEW: Record<SlaStatus, { label: string; tone: SlaTone; icon: string }> = {
+/**
+ * Texto de EP3-06, sección 4.1, y tono del indicador de plazo. Sin ícono, los estados que no son un aviso; "Sin
+ * plazo" va como texto neutro, no como estado (EP3-06, sección 6.2).
+ */
+export const SLA_STATUS_VIEW: Record<
+  SlaStatus,
+  { label: string; tone: SlaTone; icon: string | null }
+> = {
   DENTRO_DE_PLAZO: { label: 'Dentro de plazo', tone: 'secondary', icon: 'schedule' },
   POR_VENCER: { label: 'Por vencer', tone: 'warning', icon: 'hourglass_bottom' },
   VENCIDO: { label: 'Vencido', tone: 'error', icon: 'error' },
   CUMPLIDO: { label: 'Cumplido', tone: 'success', icon: 'task_alt' },
   FUERA_DE_PLAZO: { label: 'Fuera de plazo', tone: 'error', icon: 'event_busy' },
-  NO_APLICA: { label: 'No aplica', tone: 'neutral', icon: 'remove' },
-  SIN_PLAZO: { label: 'Sin plazo', tone: 'neutral', icon: 'remove' },
+  NO_APLICA: { label: 'No aplica', tone: 'neutral', icon: null },
+  SIN_PLAZO: { label: 'Sin plazo', tone: 'plain', icon: null },
 };
 
 /** Camino normal de atención. RECHAZADO y CANCELADO lo cortan. */

@@ -50,7 +50,9 @@ import { Subject, catchError, debounceTime, finalize, map, of, switchMap, tap } 
 
 import { AuthService } from '../../core/auth/auth.service';
 import { CatalogService } from '../../core/catalog/catalog.service';
+import { ReportService } from '../../core/report/report.service';
 import { ProcedureType } from '../../shared/models/procedure-type.model';
+import { SlaBatchItem } from '../../shared/models/report.model';
 import {
   CreateRequestPayload,
   Request,
@@ -110,6 +112,7 @@ import {
   RequestStatusDialogResult,
 } from './request-status-dialog/request-status-dialog.component';
 import { RequestStatusBadgeComponent } from './request-status-badge/request-status-badge.component';
+import { SlaIndicatorComponent, SlaIndicatorState } from './sla-indicator/sla-indicator.component';
 import { procedureTypeLabel } from './procedure-label';
 import { NEW_REQUEST_FRAGMENT, isClosedStatus } from './requests.constants';
 import { RequestsService } from './requests.service';
@@ -169,6 +172,7 @@ const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
     RequestLocationMapComponent,
     RequestStatusBadgeComponent,
     RouterLink,
+    SlaIndicatorComponent,
   ],
   providers: [provideNativeDateAdapter(), { provide: MAT_DATE_LOCALE, useValue: 'es-CL' }],
   templateUrl: './requests.component.html',
@@ -179,6 +183,7 @@ export class RequestsComponent {
   private readonly auth = inject(AuthService);
   private readonly requestsService = inject(RequestsService);
   private readonly catalogService = inject(CatalogService);
+  private readonly reportService = inject(ReportService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly formBuilder = inject(NonNullableFormBuilder);
   private readonly dialog = inject(MatDialog);
@@ -195,6 +200,7 @@ export class RequestsComponent {
   /** El ítem del menú se destruye al cerrarse. El foco vuelve a los tres puntos. */
   private detailsAnchor: HTMLButtonElement | null = null;
   private readonly reload$ = new Subject<void>();
+  private readonly slaReload$ = new Subject<readonly string[]>();
   private readonly transitionsReload$ = new Subject<void>();
   private readonly catalogReload$ = new Subject<void>();
   private statusDialog: MatDialogRef<
@@ -262,6 +268,15 @@ export class RequestsComponent {
   /** Tal como llegan del BFF: el servidor filtra al Vecino por su oid, ordena y pagina. */
   protected readonly requests = signal<Request[]>([]);
   protected readonly totalElements = signal(0);
+  /**
+   * Plazos de la página, de report (EP3-07, sección 4). Cargan y fallan aparte: si report no responde, el listado
+   * se muestra igual y solo el plazo queda "No disponible".
+   */
+  protected readonly sla = signal<{
+    state: SlaIndicatorState;
+    items: ReadonlyMap<string, SlaBatchItem>;
+    fetchedAt: Date;
+  }>({ state: 'loading', items: new Map(), fetchedAt: new Date() });
   /** Estado del listado; la URL es su copia para compartir o recargar la vista. */
   protected readonly query = signal<RequestListQuery>(DEFAULT_REQUEST_QUERY);
   protected readonly pageSizes = REQUEST_PAGE_SIZES;
@@ -398,6 +413,7 @@ export class RequestsComponent {
           }
           this.requests.set(page.content);
           this.totalElements.set(page.totalElements);
+          this.loadSla();
           this.hasLoaded.set(true);
           this.listState.set('ready');
           this.reloadAfterStatusChange = false;
@@ -407,6 +423,28 @@ export class RequestsComponent {
           this.statusChangeReloadFailed.set(this.reloadAfterStatusChange);
         }
       });
+
+    // switchMap: cambiar de página cancela el lote de la página anterior
+    this.slaReload$
+      .pipe(
+        tap(() => this.sla.update((current) => ({ ...current, state: 'loading' }))),
+        switchMap((ids) =>
+          ids.length === 0
+            ? of(new Map<string, SlaBatchItem>())
+            : this.reportService.getSlaBatch(ids).pipe(
+                map(({ items }) => new Map(items.map((item) => [item.requestId, item]))),
+                catchError(() => of(null)),
+              ),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe((items) =>
+        this.sla.set(
+          items
+            ? { state: 'ready', items, fetchedAt: new Date() }
+            : { state: 'unavailable', items: new Map(), fetchedAt: new Date() },
+        ),
+      );
 
     this.transitionsReload$
       .pipe(
@@ -527,6 +565,17 @@ export class RequestsComponent {
 
   private finishRecovery(query: LoadQuery): void {
     this.recoveryPending.update((pending) => pending.filter((item) => item !== query));
+  }
+
+  /** Solo el staff ve el plazo; el Vecino recibiría 403 de report. */
+  protected loadSla(): void {
+    if (this.isStaff()) {
+      this.slaReload$.next(this.requests().map((request) => request.id));
+    }
+  }
+
+  protected slaFor(request: Request): SlaBatchItem | null {
+    return this.sla().items.get(request.id) ?? null;
   }
 
   protected loadRequests(afterStatusChange = false): void {

@@ -62,12 +62,55 @@
   @if (deadline() || !isVecino()) {
     <dl class="panel__facts">
       <div>
-        <dt>Plazo de respuesta</dt>
-        <dd>
+        <dt class="panel__term">
+          Plazo de atención
+          @if (deadline()) {
+            <app-info-toggletip topic="cómo se cuenta el plazo" [text]="slaHelp()" />
+          }
+        </dt>
+        <dd class="panel__sla">
           @if (deadline(); as days) {
-            {{ days }}{{ isVecino() ? ' desde el ingreso' : '' }}
+            <span class="panel__days">{{ days }}</span>
+            @if (sla(); as sla) {
+              @switch (sla.state) {
+                @case ('unavailable') {
+                  <div class="panel__sla-state">
+                    <app-sla-indicator
+                      state="unavailable"
+                      unavailableLabel="Estado no disponible"
+                    />
+                    <button
+                      matButton
+                      type="button"
+                      class="panel__sla-retry"
+                      (click)="retrySla.emit()"
+                    >
+                      <mat-icon aria-hidden="true">refresh</mat-icon>
+                      Reintentar
+                    </button>
+                  </div>
+                }
+                @case ('loading') {
+                  <app-sla-indicator state="loading" />
+                }
+                @default {
+                  @if (sla.item?.slaStatus; as status) {
+                    @if (status !== 'SIN_PLAZO') {
+                      <app-sla-indicator
+                        layout="row"
+                        [status]="status"
+                        [dueDate]="sla.item?.dueDate ?? null"
+                        [now]="sla.fetchedAt"
+                      />
+                    }
+                  } @else {
+                    <span class="panel__muted">Sin información de estado</span>
+                  }
+                }
+              }
+            }
           } @else {
-            <span class="panel__muted">Sin plazo definido</span>
+            <span class="panel__muted">Sin plazo definido para este tipo</span>
           }
         </dd>
       </div>

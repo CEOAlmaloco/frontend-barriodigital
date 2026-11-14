@@ -137,11 +137,13 @@
               [allowedStatuses]="allowedStatuses()"
               [transitionsState]="transitionsState()"
               [taking]="taking()"
+              [sla]="isStaff() ? sla() : null"
               (take)="take()"
               (assign)="openAssignDialog($event)"
               (changeStatus)="openStatusDialog($event)"
               (registerGestion)="openGestionDialog($event)"
               (retryTransitions)="loadTransitions()"
+              (retrySla)="loadSla()"
             />
 
             @if (isStaff()) {

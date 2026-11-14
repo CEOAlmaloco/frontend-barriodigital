@@ -22,7 +22,7 @@ describe('CatalogService', () => {
 
   afterEach(() => backend.verify());
 
-  it('consulta el BFF con GET y conserva activos, inactivos y cupos', async () => {
+  it('consulta el BFF con GET y conserva activos, inactivos, cupos y plazos', async () => {
     const catalog = [
       {
         value: 'nuevo',
@@ -30,6 +30,7 @@ describe('CatalogService', () => {
         active: true,
         dailyQuota: 5,
         remainingQuota: 2,
+        slaBusinessDays: 10,
       },
       {
         value: 'agotado',
@@ -37,6 +38,7 @@ describe('CatalogService', () => {
         active: true,
         dailyQuota: 5,
         remainingQuota: 0,
+        slaBusinessDays: 1,
       },
       {
         value: 'anterior',
@@ -44,6 +46,7 @@ describe('CatalogService', () => {
         active: false,
         dailyQuota: null,
         remainingQuota: null,
+        slaBusinessDays: null,
       },
     ];
     const result = firstValueFrom(service.getProcedures());
@@ -52,6 +55,16 @@ describe('CatalogService', () => {
     expect(call.request.params.keys()).toEqual([]);
     call.flush(catalog);
     expect(await result).toEqual(catalog);
+  });
+
+  it('un tipo sin el campo de plazo, de un catalog anterior, queda sin plazo y no undefined', async () => {
+    const result = firstValueFrom(service.getProcedures());
+    backend
+      .expectOne(url)
+      .flush([
+        { value: 'bache', label: 'Bache', active: true, dailyQuota: null, remainingQuota: null },
+      ]);
+    expect((await result)[0].slaBusinessDays).toBeNull();
   });
 
   it('acepta un catálogo vacío', async () => {
@@ -66,22 +79,29 @@ describe('CatalogService', () => {
     active: false,
     dailyQuota: null,
     remainingQuota: null,
+    slaBusinessDays: 5,
   };
 
-  it('crea con POST y solo los tres campos de creación', async () => {
+  it('crea con POST, con el plazo y sin el cupo, que catalog crea sin límite', async () => {
     const result = firstValueFrom(service.createProcedure(procedure));
     const call = backend.expectOne(url);
     expect(call.request.method).toBe('POST');
-    expect(call.request.body).toEqual({ value: 'semaforo', label: 'Semáforo', active: false });
+    expect(call.request.body).toEqual({
+      value: 'semaforo',
+      label: 'Semáforo',
+      active: false,
+      slaBusinessDays: 5,
+    });
     call.flush(procedure, { status: 201, statusText: 'Created' });
     expect(await result).toEqual(procedure);
   });
 
+  // El PUT reemplaza el plazo: sin el campo, catalog dejaría el tipo sin plazo (EP3-06, sección 1.1)
   it.each([
-    { label: 'Otro nombre', active: true, dailyQuota: 10 },
-    { label: 'Semáforo', active: false, dailyQuota: 10 },
-    { label: 'Semáforo', active: true, dailyQuota: null },
-  ])('actualiza por PUT con cupo explícito: %j', async (body) => {
+    { label: 'Otro nombre', active: true, dailyQuota: 10, slaBusinessDays: 5 },
+    { label: 'Semáforo', active: false, dailyQuota: 10, slaBusinessDays: 120 },
+    { label: 'Semáforo', active: true, dailyQuota: null, slaBusinessDays: null },
+  ])('actualiza por PUT con cupo y plazo explícitos: %j', async (body) => {
     const responseFields = { ...body, remainingQuota: 2 };
     const result = firstValueFrom(service.updateProcedure('semaforo', responseFields));
     const call = backend.expectOne(`${url}/semaforo`);
@@ -98,6 +118,7 @@ describe('CatalogService', () => {
         label: 'Nombre',
         active: true,
         dailyQuota: null,
+        slaBusinessDays: null,
       }),
     );
     const call = backend.expectOne(`${url}/codigo%2Fajeno`);
