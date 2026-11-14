@@ -1,0 +1,243 @@
+@use 'tokens' as *;
+
+// Estilos globales de Leaflet: crea su propio DOM fuera del alcance de los estilos encapsulados.
+
+$map-control-size: 32px;
+
+// isolation contiene los z-index de Leaflet (400 a 1000) para que no pasen sobre el header
+.bd-map {
+  overflow: hidden;
+  border-radius: $radius-base;
+  background-color: var(--bd-background);
+  font-family: var(--bd-font);
+  isolation: isolate;
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: $border-width-strong;
+  }
+
+  &.leaflet-container .leaflet-control-zoom,
+  &.leaflet-container .bd-map__control {
+    overflow: hidden;
+    border: $border-width solid var(--bd-border);
+    border-radius: $radius-base;
+    box-shadow: $shadow-elevated;
+  }
+
+  &.leaflet-container .leaflet-control-zoom a,
+  &.leaflet-container .bd-map__control button {
+    display: grid;
+    width: $map-control-size;
+    height: $map-control-size;
+    place-items: center;
+    border: 0;
+    background-color: var(--bd-surface);
+    color: var(--bd-text);
+    font: $font-weight-medium 18px / #{$map-control-size} var(--bd-font);
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--bd-primary-container);
+    }
+
+    &:focus-visible {
+      outline: $border-width-strong solid var(--bd-primary-dark);
+      outline-offset: -$border-width-strong;
+    }
+
+    .mat-icon {
+      width: 20px;
+      height: 20px;
+      font-size: 20px;
+    }
+  }
+
+  &.leaflet-container .leaflet-control-zoom a + a {
+    border-top: $border-width solid var(--bd-border);
+  }
+
+  &.leaflet-container .leaflet-control-zoom .leaflet-disabled {
+    color: var(--bd-text-muted);
+    opacity: 0.6;
+  }
+
+  &.leaflet-container .leaflet-control-attribution {
+    background-color: var(--bd-surface);
+    color: var(--bd-text-muted);
+
+    a {
+      color: var(--bd-primary);
+    }
+  }
+}
+
+// Puntos de otro filtro mientras llega la respuesta
+.bd-map--busy .leaflet-marker-pane {
+  opacity: 0.35;
+  transition: opacity $transition-base;
+}
+
+// Los mosaicos de OpenStreetMap son claros; en los modos oscuros se oscurecen sin tocar puntos ni controles
+html[data-bd-contrast='dark'] .bd-map .leaflet-tile-pane,
+html[data-bd-contrast='negative'] .bd-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9);
+}
+
+// Símbolo de estado: relleno para los abiertos y hueco para los cerrados, con una forma por grupo. En alto
+// contraste y escala de grises el color se pierde y la forma sigue distinguiendo los cuatro grupos.
+.map-symbol {
+  display: block;
+  overflow: visible;
+}
+
+.map-symbol--open,
+.map-symbol--field {
+  stroke: var(--bd-surface);
+  stroke-width: 2;
+}
+
+.map-symbol--open {
+  fill: var(--bd-primary);
+}
+
+.map-symbol--field {
+  fill: var(--bd-secondary);
+}
+
+.map-symbol--resolved,
+.map-symbol--closed {
+  fill: var(--bd-surface);
+  stroke-width: 3;
+}
+
+.map-symbol--resolved {
+  stroke: var(--bd-success);
+}
+
+.map-symbol--closed {
+  stroke: var(--bd-text-muted);
+}
+
+.map-marker {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  filter: drop-shadow(0 1px 2px rgba($color-text-primary, 0.35));
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: $border-width-strong;
+  }
+}
+
+.map-cluster {
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--bd-surface);
+  border-radius: 50%;
+  background-color: var(--bd-primary);
+  box-shadow:
+    0 0 0 4px var(--bd-primary-container),
+    $shadow-elevated;
+  color: var(--bd-on-primary);
+  font: $font-weight-semibold 13px / 1 var(--bd-font);
+  font-variant-numeric: tabular-nums;
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: 4px;
+  }
+}
+
+.map-popup {
+  .leaflet-popup-content-wrapper {
+    border: $border-width solid var(--bd-container-border);
+    border-radius: $radius-base;
+    background-color: var(--bd-surface);
+    color: var(--bd-text);
+    box-shadow: 0 6px 20px rgba($color-text-primary, 0.22);
+  }
+
+  .leaflet-popup-tip {
+    background-color: var(--bd-surface);
+  }
+
+  .leaflet-popup-content {
+    width: min(260px, 70vw) !important;
+    margin: $space-4;
+    font-family: var(--bd-font);
+    font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+    line-height: $line-height-body;
+  }
+
+  a.leaflet-popup-close-button {
+    width: $map-control-size;
+    height: $map-control-size;
+    color: var(--bd-text-muted);
+    font: 20px / #{$map-control-size} var(--bd-font);
+
+    &:focus-visible {
+      outline: $border-width-strong solid var(--bd-primary-dark);
+      outline-offset: -$border-width-strong;
+    }
+  }
+}
+
+.map-popup__body {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.map-popup__folio {
+  padding-inline-end: $space-6;
+  font-size: calc(#{$font-body} * var(--bd-text-scale, 1));
+  font-weight: $font-weight-semibold;
+  font-variant-numeric: tabular-nums;
+}
+
+.map-popup__type {
+  overflow-wrap: anywhere;
+}
+
+.map-popup__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-1 $space-3;
+  color: var(--bd-text-muted);
+}
+
+.map-popup__status {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  color: var(--bd-text);
+  font-weight: $font-weight-medium;
+}
+
+.map-popup__link {
+  display: inline-flex;
+  min-height: $size-touch-target;
+  align-items: center;
+  gap: $space-1;
+  color: var(--bd-primary-dark) !important;
+  font-weight: $font-weight-semibold;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: $border-width-strong;
+    border-radius: $space-1;
+  }
+}
+
+// Patas del abanico de puntos con la misma coordenada: la clase gana al atributo stroke de Leaflet
+.map-spider-leg {
+  stroke: var(--bd-text-muted);
+}

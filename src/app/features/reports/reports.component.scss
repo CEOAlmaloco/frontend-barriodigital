@@ -1,22 +1,10 @@
 @use 'tokens' as *;
+@use 'report-card' as *;
 
-$content-max-width: 1200px;
-
-.reports {
+:host {
   display: flex;
   flex-direction: column;
   gap: $space-6;
-  max-width: $content-max-width;
-  margin-inline: auto;
-  padding: $space-6 $space-4;
-
-  @media (min-width: $breakpoint-md) {
-    padding: $space-8 $space-6;
-  }
-
-  @media (min-width: $breakpoint-lg) {
-    padding: $space-12;
-  }
 
   // Más específico que la escala global de títulos, que fijaría todos los h2 al tamaño de $font-h2
   h2 {
@@ -30,68 +18,14 @@ $content-max-width: 1200px;
   }
 }
 
-.reports__lead,
-.reports__muted,
-.reports__freshness {
+.reports__muted {
   color: var(--bd-text-muted);
 }
 
 .reports__card {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: $space-4;
-  padding: $space-4;
-  border: $border-width solid var(--bd-container-border);
-  border-radius: $radius-base;
-  background-color: var(--bd-surface);
-  box-shadow: $shadow-elevated;
-
-  @media (min-width: $breakpoint-md) {
-    padding: $space-6;
-  }
+  @include report-card;
 }
 
-.reports__toolbar {
-  flex-flow: row wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: $space-3 $space-4;
-}
-
-.reports__range {
-  --mat-button-toggle-background-color: var(--bd-surface);
-  --mat-button-toggle-text-color: var(--bd-text);
-  --mat-button-toggle-selected-state-background-color: var(--bd-primary);
-  --mat-button-toggle-selected-state-text-color: var(--bd-on-primary);
-  --mat-button-toggle-divider-color: var(--bd-border-interactive);
-  --mat-button-toggle-height: #{$size-touch-target};
-  --mat-button-toggle-shape: #{$radius-base};
-
-  @media (max-width: $breakpoint-sm) {
-    width: 100%;
-
-    .mat-button-toggle {
-      flex: 1;
-    }
-  }
-}
-
-.reports__freshness {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: $space-2 $space-4;
-  font-size: $font-body-sm;
-
-  strong {
-    color: var(--bd-text);
-    font-weight: $font-weight-semibold;
-    font-variant-numeric: tabular-nums;
-  }
-}
-
-.reports__live,
 .reports__chip {
   display: inline-flex;
   align-items: center;
@@ -99,56 +33,13 @@ $content-max-width: 1200px;
   padding: 2px $space-2;
   border: $border-width solid var(--bd-container-border);
   border-radius: 999px;
+  background-color: var(--bd-primary-container);
+  color: var(--bd-primary-dark);
   font-weight: $font-weight-semibold;
 }
 
-.reports__live {
-  background-color: var(--bd-secondary-container);
-  color: var(--bd-secondary);
-
-  mat-icon {
-    width: 16px;
-    height: 16px;
-    font-size: 16px;
-  }
-}
-
-.reports__live--paused {
-  background-color: var(--bd-accent-container);
-  color: var(--bd-accent-text);
-}
-
-.reports__chip {
-  background-color: var(--bd-primary-container);
-  color: var(--bd-primary-dark);
-}
-
-.reports__actions {
-  display: flex;
-  gap: $space-2;
-
-  @media (max-width: $breakpoint-sm) {
-    width: 100%;
-
-    button {
-      flex: 1;
-    }
-  }
-}
-
 .reports__notice {
-  display: flex;
-  align-items: flex-start;
-  gap: $space-3;
-  padding: $space-3 $space-4;
-  border: $border-width solid var(--bd-container-border);
-  border-radius: $radius-base;
-  background-color: var(--bd-accent-container);
-
-  mat-icon {
-    flex-shrink: 0;
-    color: var(--bd-accent-text);
-  }
+  @include report-notice;
 }
 
 .reports__kpis {
@@ -186,35 +77,10 @@ $content-max-width: 1200px;
   gap: $space-2;
 }
 
-// Mismo aviso centrado que el error del detalle del trámite
 .reports__state {
-  align-items: center;
-  padding-block: $space-12;
-  text-align: center;
-
-  p {
-    max-width: 46ch;
-    color: var(--bd-text-muted);
-  }
-
-  h2 {
-    font-size: calc(#{$font-h2} * var(--bd-text-scale, 1));
-  }
+  @include report-state;
 }
 
 .reports__state-icon {
-  display: grid;
-  width: $space-12 + $space-2;
-  height: $space-12 + $space-2;
-  place-items: center;
-  border: $border-width solid var(--bd-container-border);
-  border-radius: 50%;
-  background-color: var(--bd-error-container);
-  color: var(--bd-error);
-
-  mat-icon {
-    width: 28px;
-    height: 28px;
-    font-size: 28px;
-  }
+  @include report-state-icon;
 }

@@ -48,3 +48,6 @@ export const REQUESTS_ROLES: readonly Role[] = BARRIO_ROLES;
 
 /** Control interno: el Admin y el Auditor revisan reportes y auditoría (EP3-04, sección 2). */
 export const OVERSIGHT_ROLES: readonly Role[] = [Role.Admin, Role.Auditor];
+
+/** Reportería: el Funcionario entra solo al mapa de trámites, para organizar el trabajo en terreno (EP3-04, sección 2). */
+export const REPORTS_ROLES: readonly Role[] = [Role.Funcionario, Role.Admin, Role.Auditor];

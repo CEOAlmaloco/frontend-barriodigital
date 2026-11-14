@@ -1,0 +1,39 @@
+<div class="map-list__wrapper" [attr.aria-busy]="busy()">
+  <table class="map-list">
+    <caption class="cdk-visually-hidden">
+      Trámites con ubicación, del ingreso más reciente al más antiguo
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">Folio</th>
+        <th scope="col">Tipo</th>
+        <th scope="col">Estado</th>
+        <th scope="col">Sector</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.requestId) {
+        <tr>
+          <td class="map-list__folio">
+            <a [routerLink]="['/tramites', row.requestId]">{{ row.folio ?? 'Sin folio' }}</a>
+          </td>
+          <td class="map-list__type">{{ row.typeLabel }}</td>
+          <td class="map-list__status"><app-request-status-badge [status]="row.status" /></td>
+          <td class="map-list__sector">{{ row.sectorLabel }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+<mat-paginator
+  class="map-list__paginator"
+  aria-label="Páginas de la lista"
+  [length]="points().length"
+  [pageIndex]="pageIndex()"
+  [pageSize]="pageSize()"
+  [pageSizeOptions]="pageSizes"
+  [disabled]="busy()"
+  showFirstLastButtons
+  (page)="changePage($event)"
+/>

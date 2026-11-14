@@ -1,0 +1,54 @@
+<mat-form-field class="map-filters__field" subscriptSizing="dynamic" floatLabel="always">
+  <mat-label>Estado</mat-label>
+  <mat-select
+    multiple
+    placeholder="Todos"
+    [value]="query().status"
+    (selectionChange)="selectStatuses($event.value)"
+  >
+    <mat-select-trigger>{{ statusSummary() }}</mat-select-trigger>
+    @for (group of statusGroups; track group.label) {
+      <mat-optgroup [label]="group.label">
+        @for (status of group.statuses; track status) {
+          <mat-option [value]="status">{{ statusView[status].label }}</mat-option>
+        }
+      </mat-optgroup>
+    }
+  </mat-select>
+</mat-form-field>
+
+<mat-form-field class="map-filters__field" subscriptSizing="dynamic" floatLabel="always">
+  <mat-label>Tipo de trámite</mat-label>
+  <mat-select
+    placeholder="Todos"
+    [value]="query().procedureType"
+    [disabled]="catalogStatus() !== 'ready'"
+    (selectionChange)="typeChange.emit($event.value)"
+  >
+    <mat-option [value]="null">Todos</mat-option>
+    @for (type of types(); track type.value) {
+      <mat-option [value]="type.value">{{ type.label }}</mat-option>
+    }
+  </mat-select>
+  @switch (catalogStatus()) {
+    @case ('loading') {
+      <mat-hint>Cargando tipos…</mat-hint>
+    }
+    @case ('failed') {
+      <mat-hint class="map-filters__hint">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <span>No se pudieron cargar los tipos.</span>
+        <button type="button" class="map-filters__retry" (click)="retryCatalog.emit()">
+          Reintentar
+        </button>
+      </mat-hint>
+    }
+  }
+</mat-form-field>
+
+@if (active()) {
+  <button matButton type="button" class="map-filters__clear" (click)="clear.emit()">
+    <mat-icon aria-hidden="true">filter_alt_off</mat-icon>
+    Limpiar filtros
+  </button>
+}

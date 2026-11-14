@@ -197,6 +197,7 @@
   font: inherit;
   text-align: start;
   cursor: pointer;
+  transition: background-color $transition-base;
 
   @media (hover: hover) {
     &:hover {
@@ -242,6 +243,7 @@
   }
 
   .results__row,
+  .results__item-toggle,
   .results__expand mat-icon,
   .results__chevron {
     transition: none;

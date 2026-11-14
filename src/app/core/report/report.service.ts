@@ -4,7 +4,9 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import {
+  MapPointsQuery,
   ReportKpis,
+  ReportMapPoints,
   ReportRange,
   ReportTopProcedures,
   SlaAlertPage,
@@ -12,7 +14,7 @@ import {
   SlaAlertQuery,
 } from '../../shared/models/report.model';
 
-/** Lecturas de ms-barriodigital-report a través del BFF. Los plazos también los lee el Funcionario (EP3-07). */
+/** Lecturas de ms-barriodigital-report a través del BFF. Plazos y mapa también los lee el Funcionario (EP3-07). */
 @Injectable({ providedIn: 'root' })
 export class ReportService {
   private readonly http = inject(HttpClient);
@@ -47,5 +49,16 @@ export class ReportService {
     return this.http.get<SlaBatch>(`${this.url}/sla/batch`, {
       params: new HttpParams().set('requestIds', requestIds.join(',')),
     });
+  }
+
+  getMapPoints(query: MapPointsQuery): Observable<ReportMapPoints> {
+    let params = new HttpParams().set('range', query.range);
+    if (query.status.length) {
+      params = params.set('status', query.status.join(','));
+    }
+    if (query.procedureType) {
+      params = params.set('procedureType', query.procedureType);
+    }
+    return this.http.get<ReportMapPoints>(`${this.url}/map-points`, { params });
   }
 }

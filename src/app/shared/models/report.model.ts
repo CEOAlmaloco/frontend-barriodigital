@@ -115,3 +115,43 @@ export interface SlaBatch {
 
 /** report acepta hasta 50 ids por consulta, el `size` máximo del listado de requests. */
 export const SLA_BATCH_MAX = 50;
+
+/** Ítem de `GET /api/report/map-points`: solo trámites con latitud y longitud (EP3-07, sección 3.8). */
+export interface MapPoint {
+  requestId: string;
+  folio: string | null;
+  latitude: number;
+  longitude: number;
+  status: RequestStatus;
+  procedureType: string;
+  procedureLabel: string | null;
+  /** Código del sector de la comuna; null si el trámite no lo indicó. */
+  sector: string | null;
+}
+
+export interface SectorCount {
+  sector: string | null;
+  count: number;
+}
+
+/** `GET /api/report/map-points` (EP3-07, sección 3.8). Totales y sectores no dependen del tope de `items`. */
+export interface ReportMapPoints {
+  range: ReportRange;
+  items: MapPoint[];
+  locatedTotal: number;
+  withoutLocation: number;
+  /** Suma `locatedTotal + withoutLocation`; el ítem con `sector` null va al final. */
+  bySector: SectorCount[];
+  lastEventAt: string | null;
+}
+
+export interface MapPointsQuery {
+  range: ReportRange;
+  /** Sin estados, report devuelve todos. */
+  status: readonly RequestStatus[];
+  procedureType: string | null;
+}
+
+/** Tope de puntos por respuesta de report. */
+export const MAP_POINTS_MAX = 1000;
+export const DEFAULT_MAP_RANGE: ReportRange = 'last7d';

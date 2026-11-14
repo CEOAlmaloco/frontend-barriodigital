@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -11,19 +12,20 @@ import {
   output,
   viewChild,
 } from '@angular/core';
-import * as L from 'leaflet';
+import L from 'leaflet';
 
-import { COMMUNE_BOUNDS, MAP_CENTER, roundCoordinate } from './request-location';
+import { createCommuneMap, prefersReducedMotion } from './commune-map';
+import { roundCoordinate } from './request-location';
 
 const PIN_SIZE = 18;
 
-/** Sin encapsulación: Leaflet crea su propio DOM y los estilos de pin y controles deben alcanzarlo. */
+/** Sin encapsulación: Leaflet crea su propio DOM y el estilo del pin debe alcanzarlo. Controles en `_map.scss`. */
 @Component({
   selector: 'app-request-location-map',
   template: `
     <div
       #canvas
-      class="request-map"
+      class="request-map bd-map"
       role="region"
       aria-roledescription="mapa"
       [attr.aria-label]="
@@ -37,6 +39,7 @@ const PIN_SIZE = 18;
 })
 export class RequestLocationMapComponent {
   private readonly canvas = viewChild.required<ElementRef<HTMLElement>>('canvas');
+  private readonly document = inject(DOCUMENT);
 
   readonly latitude = input<number | null>(null);
   readonly longitude = input<number | null>(null);
@@ -69,19 +72,10 @@ export class RequestLocationMapComponent {
 
   private start(): void {
     const selectable = this.selectable();
-    const map = L.map(this.canvas().nativeElement, {
-      maxBounds: L.latLngBounds(
-        [COMMUNE_BOUNDS.south, COMMUNE_BOUNDS.west],
-        [COMMUNE_BOUNDS.north, COMMUNE_BOUNDS.east],
-      ),
-      maxBoundsViscosity: 1,
+    const map = createCommuneMap(this.canvas().nativeElement, {
       scrollWheelZoom: selectable,
+      animate: !prefersReducedMotion(this.document),
     });
-    map.setView([MAP_CENTER.latitude, MAP_CENTER.longitude], 12);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap',
-      maxZoom: 18,
-    }).addTo(map);
     if (selectable) {
       map.on('click', (event: L.LeafletMouseEvent) => {
         const latitude = roundCoordinate(event.latlng.lat);
@@ -97,7 +91,7 @@ export class RequestLocationMapComponent {
       this.moveMarker(latitude, longitude);
       map.setView([latitude, longitude], 15);
     }
-    requestAnimationFrame(() => map.invalidateSize());
+    requestAnimationFrame(() => this.map?.invalidateSize());
   }
 
   private moveMarker(latitude: number, longitude: number): void {

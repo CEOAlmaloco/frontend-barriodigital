@@ -1,0 +1,105 @@
+@use 'tokens' as *;
+
+$icon-box: 40px;
+
+:host {
+  display: block;
+}
+
+.summary {
+  display: grid;
+  margin: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: $space-3;
+
+  @media (min-width: $breakpoint-md) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: $space-4;
+  }
+}
+
+.summary__tile {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: $space-3;
+  padding: $space-4;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-surface);
+  box-shadow: $shadow-elevated;
+
+  @media (min-width: $breakpoint-md) {
+    padding: $space-6;
+  }
+
+  app-report-skeleton {
+    flex: 1;
+  }
+}
+
+.summary__icon {
+  display: grid;
+  width: $icon-box;
+  height: $icon-box;
+  flex-shrink: 0;
+  place-items: center;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: 50%;
+  background-color: var(--tile-container);
+  color: var(--tile-color);
+
+  mat-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+}
+
+.summary__text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+
+  // dt y dd están en la escala global de texto, que fijaría el valor al tamaño del cuerpo
+  dt,
+  dd {
+    margin: 0;
+    color: var(--bd-text-muted);
+    font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+    overflow-wrap: anywhere;
+  }
+
+  .summary__value {
+    color: var(--bd-text);
+    font-size: calc(#{$font-h2} * var(--bd-text-scale, 1));
+    font-weight: $font-weight-semibold;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+
+    @media (min-width: $breakpoint-md) {
+      font-size: calc(#{$font-h1} * var(--bd-text-scale, 1));
+    }
+  }
+}
+
+.summary__tile--primary {
+  --tile-color: var(--bd-primary);
+  --tile-container: var(--bd-primary-container);
+}
+
+.summary__tile--secondary {
+  --tile-color: var(--bd-secondary);
+  --tile-container: var(--bd-secondary-container);
+}
+
+.summary__tile--accent {
+  --tile-color: var(--bd-accent-text);
+  --tile-container: var(--bd-accent-container);
+}
+
+.summary__tile--neutral {
+  --tile-color: var(--bd-text-muted);
+  --tile-container: var(--bd-background);
+}

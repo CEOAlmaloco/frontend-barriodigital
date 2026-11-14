@@ -26,7 +26,7 @@ describe('HeaderComponent', () => {
       imports: [HeaderComponent],
       providers: [
         provideRouter([
-          { path: 'reports', children: [] },
+          { path: 'reports', children: [{ path: 'map', children: [] }] },
           { path: 'audit', children: [] },
         ]),
         { provide: AuthService, useValue: auth },
@@ -44,7 +44,7 @@ describe('HeaderComponent', () => {
 
   it.each([
     { role: Role.Vecino, links: ['Inicio', 'Trámites'] },
-    { role: Role.Funcionario, links: ['Inicio', 'Trámites'] },
+    { role: Role.Funcionario, links: ['Inicio', 'Trámites', 'Mapa de trámites'] },
     {
       role: Role.Admin,
       links: ['Inicio', 'Trámites', 'Administración', 'Reportes', 'Auditoría'],
@@ -62,6 +62,13 @@ describe('HeaderComponent', () => {
     expect(element.querySelector('a[href="/admin"]')).toBeNull();
     expect(element.querySelector('a[href="/reports"]')).not.toBeNull();
     expect(element.querySelector('a[href="/audit"]')).not.toBeNull();
+  });
+
+  it('el Funcionario llega al mapa sin ver los indicadores de reportería', async () => {
+    await render(Role.Funcionario);
+
+    expect(element.querySelector('a[href="/reports/map"]')).not.toBeNull();
+    expect(element.querySelector('a[href="/reports"]')).toBeNull();
   });
 
   it('sin un rol válido no ofrece navegación', async () => {
@@ -109,6 +116,7 @@ describe('HeaderComponent', () => {
   it.each([
     { label: 'Reportes', path: '/reports', role: Role.Admin },
     { label: 'Auditoría', path: '/audit', role: Role.Auditor },
+    { label: 'Mapa de trámites', path: '/reports/map', role: Role.Funcionario },
   ])('navegar a $label cierra el menú móvil y marca el enlace activo', async ({ path, role }) => {
     const fixture = await render(role);
     const toggle = element.querySelector<HTMLButtonElement>('.header__menu-toggle');
