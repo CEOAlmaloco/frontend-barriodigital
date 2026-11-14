@@ -92,6 +92,14 @@
               <th mat-header-cell *matHeaderCellDef>Cupo disponible hoy</th>
               <td mat-cell *matCellDef="let type">{{ availableQuota(type) }}</td>
             </ng-container>
+            <ng-container matColumnDef="plazo">
+              <th mat-header-cell *matHeaderCellDef>Plazo de atención</th>
+              <td mat-cell *matCellDef="let type">
+                <span [class.admin__muted]="type.slaBusinessDays == null">{{
+                  slaLabel(type)
+                }}</span>
+              </td>
+            </ng-container>
             <ng-container matColumnDef="acciones">
               <th mat-header-cell *matHeaderCellDef>Acciones</th>
               <td mat-cell *matCellDef="let type">
@@ -134,6 +142,10 @@
                 <div>
                   <dt>Cupo disponible hoy</dt>
                   <dd>{{ availableQuota(type) }}</dd>
+                </div>
+                <div>
+                  <dt>Plazo de atención</dt>
+                  <dd [class.admin__muted]="type.slaBusinessDays == null">{{ slaLabel(type) }}</dd>
                 </div>
               </dl>
               <button

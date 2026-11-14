@@ -14,8 +14,10 @@ import {
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
 
 import { CatalogService } from '../../../core/catalog/catalog.service';
+import { InfoToggletipComponent } from '../../../shared/components/info-toggletip/info-toggletip.component';
 import { ProcedureType, UpdateProcedureType } from '../../../shared/models/procedure-type.model';
 
 export type ProcedureTypeDialogData =
@@ -25,6 +27,10 @@ export type ProcedureTypeDialogResult =
   { kind: 'saved'; mode: 'create' | 'edit' } | { kind: 'reload' };
 
 const MAX_QUOTA = 2_147_483_647;
+/** Rango de catalog (EP3-06, sección 1.1). */
+export const MIN_SLA_DAYS = 1;
+export const MAX_SLA_DAYS = 120;
+const SLA_RANGE_MESSAGE = 'El plazo debe ser un entero entre 1 y 120 dias habiles';
 
 const codeValidator: ValidatorFn = (control) => {
   const value = typeof control.value === 'string' ? control.value.trim() : '';
@@ -49,9 +55,19 @@ const quotaValidator: ValidatorFn = (control) => {
   return value <= MAX_QUOTA ? null : { max: true };
 };
 
+const slaValidator: ValidatorFn = (control) => {
+  const value: unknown = control.value;
+  if (value === null || value === '') return { required: true };
+  if (typeof value !== 'number' || !Number.isFinite(value) || !Number.isInteger(value)) {
+    return { integer: true };
+  }
+  return value >= MIN_SLA_DAYS && value <= MAX_SLA_DAYS ? null : { range: true };
+};
+
 @Component({
   selector: 'app-procedure-type-dialog',
   imports: [
+    InfoToggletipComponent,
     MatButton,
     MatCheckbox,
     MatDialogActions,
@@ -60,6 +76,7 @@ const quotaValidator: ValidatorFn = (control) => {
     MatFormFieldModule,
     MatInputModule,
     MatProgressSpinner,
+    MatSlideToggle,
     ReactiveFormsModule,
   ],
   templateUrl: './procedure-type-dialog.component.html',
@@ -75,9 +92,12 @@ export class ProcedureTypeDialogComponent {
   private readonly formBuilder = inject(NonNullableFormBuilder);
   protected readonly data = inject<ProcedureTypeDialogData>(MAT_DIALOG_DATA);
   protected readonly isEdit = this.data.mode === 'edit';
-  protected readonly title = this.isEdit ? 'Editar tipo' : 'Nuevo tipo';
-  private readonly initial = this.data.mode === 'edit' ? { ...this.data.procedure } : null;
+  protected readonly title = this.isEdit ? 'Editar tipo de trámite' : 'Nuevo tipo de trámite';
+  protected readonly initial = this.data.mode === 'edit' ? { ...this.data.procedure } : null;
   private previousQuota: number | null = this.initial?.dailyQuota ?? null;
+  private previousSla: number | null = this.initial?.slaBusinessDays ?? null;
+  protected readonly minSla = MIN_SLA_DAYS;
+  protected readonly maxSla = MAX_SLA_DAYS;
 
   protected readonly isSubmitting = signal(false);
   // La pantalla también lo consulta si el cierre después de un 404 fue con Escape o clic fuera.
@@ -89,6 +109,9 @@ export class ProcedureTypeDialogComponent {
     active: [this.initial?.active ?? true],
     unlimited: [this.initial?.dailyQuota == null],
     dailyQuota: this.formBuilder.control<number | null>(this.previousQuota, quotaValidator),
+    // Igual que el cupo: quitar el plazo es una decisión explícita, no un campo que quedó vacío
+    noSla: [this.initial?.slaBusinessDays == null],
+    slaBusinessDays: this.formBuilder.control<number | null>(this.previousSla, slaValidator),
   });
 
   constructor() {
@@ -104,15 +127,28 @@ export class ProcedureTypeDialogComponent {
         quota.enable({ emitEvent: false });
       }
     });
+    this.form.controls.noSla.valueChanges.pipe(takeUntilDestroyed()).subscribe((noSla) => {
+      const sla = this.form.controls.slaBusinessDays;
+      if (noSla) {
+        this.previousSla = sla.value;
+        sla.setValue(null, { emitEvent: false });
+        sla.disable({ emitEvent: false });
+      } else {
+        sla.setValue(this.previousSla, { emitEvent: false });
+        sla.enable({ emitEvent: false });
+      }
+    });
   }
 
   protected hasChanges(): boolean {
     if (!this.initial) return true;
-    const { label, active, unlimited, dailyQuota } = this.form.getRawValue();
+    const { label, active, unlimited, dailyQuota, noSla, slaBusinessDays } =
+      this.form.getRawValue();
     return (
       label.trim() !== this.initial.label.trim() ||
       active !== this.initial.active ||
-      (unlimited ? null : dailyQuota) !== this.initial.dailyQuota
+      (unlimited ? null : dailyQuota) !== this.initial.dailyQuota ||
+      (noSla ? null : slaBusinessDays) !== this.initial.slaBusinessDays
     );
   }
 
@@ -130,11 +166,14 @@ export class ProcedureTypeDialogComponent {
     ) {
       return;
     }
-    const { value, label, active, unlimited, dailyQuota } = this.form.getRawValue();
+    const { value, label, active, unlimited, dailyQuota, noSla, slaBusinessDays } =
+      this.form.getRawValue();
     // También valida los valores crudos: deshabilitar un control no debe permitir un envío inválido.
     if (
       nameValidator(this.form.controls.label) ||
       typeof active !== 'boolean' ||
+      typeof noSla !== 'boolean' ||
+      (!noSla && slaValidator(this.form.controls.slaBusinessDays)) ||
       (this.data.mode === 'create' && codeValidator(this.form.controls.value)) ||
       (this.data.mode === 'edit' &&
         (typeof unlimited !== 'boolean' ||
@@ -145,14 +184,21 @@ export class ProcedureTypeDialogComponent {
     }
     if (this.data.mode === 'edit' && (!this.initial?.value || !this.hasChanges())) return;
 
+    // El PUT reemplaza el plazo completo: se envía siempre, y null es sin plazo (EP3-06, sección 1.1)
     const update: UpdateProcedureType = {
       label: label.trim(),
       active,
       dailyQuota: unlimited ? null : dailyQuota,
+      slaBusinessDays: noSla ? null : slaBusinessDays,
     };
     const request =
       this.data.mode === 'create'
-        ? this.catalogService.createProcedure({ value: value.trim(), label: update.label, active })
+        ? this.catalogService.createProcedure({
+            value: value.trim(),
+            label: update.label,
+            active,
+            slaBusinessDays: update.slaBusinessDays,
+          })
         : this.catalogService.updateProcedure(this.initial!.value, update);
 
     this.isSubmitting.set(true);
@@ -175,10 +221,17 @@ export class ProcedureTypeDialogComponent {
 
   private restoreControls(): void {
     if (this.requiresReload()) return;
-    const { value, label, active, unlimited, dailyQuota } = this.form.controls;
+    const { value, label, active, unlimited, dailyQuota, noSla, slaBusinessDays } =
+      this.form.controls;
     label.enable({ emitEvent: false });
     active.enable({ emitEvent: false });
     value.enable({ emitEvent: false });
+    noSla.enable({ emitEvent: false });
+    if (noSla.value) {
+      slaBusinessDays.disable({ emitEvent: false });
+    } else {
+      slaBusinessDays.enable({ emitEvent: false });
+    }
     if (this.isEdit) {
       value.setValue(this.initial!.value, { emitEvent: false });
       unlimited.enable({ emitEvent: false });
@@ -197,6 +250,9 @@ export class ProcedureTypeDialogComponent {
       return 'No pudimos guardar el tipo de trámite. Intenta nuevamente.';
     }
     const message = typeof error.error?.message === 'string' ? error.error.message : '';
+    if (error.status === 400 && message === SLA_RANGE_MESSAGE) {
+      return 'El plazo debe ser un número entero entre 1 y 120 días hábiles.';
+    }
     // Solo textos de validación conocidos: un mensaje no vacío puede contener SQL o una excepción.
     const validationMessages = [
       'El codigo value es obligatorio',

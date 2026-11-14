@@ -15,8 +15,10 @@ import { SLA_STATUS_VIEW } from '../requests.constants';
   template: `
     @if (view(); as view) {
       <span class="sla sla--{{ view.tone }}">
-        <mat-icon aria-hidden="true">{{ view.icon }}</mat-icon
-        >{{ view.label }}
+        @if (view.icon) {
+          <mat-icon aria-hidden="true">{{ view.icon }}</mat-icon>
+        }
+        {{ view.label }}
       </span>
     } @else {
       <span

@@ -11,7 +11,9 @@ import { Observable, Subject, Subscriber, firstValueFrom, of, throwError } from 
 
 import { AuthService } from '../../core/auth/auth.service';
 import { CatalogService } from '../../core/catalog/catalog.service';
+import { ReportService } from '../../core/report/report.service';
 import { ProcedureType } from '../../shared/models/procedure-type.model';
+import { SlaBatch } from '../../shared/models/report.model';
 import { Page } from '../../shared/models/page.model';
 import { Request, RequestStatus, RequestTransitions } from '../../shared/models/request.model';
 import { Role } from '../../shared/models/role';
@@ -22,6 +24,20 @@ import {
 import { RequestsComponent } from './requests.component';
 import { RequestsService } from './requests.service';
 
+/** Texto por nodo, como lo recorre un lector de pantalla: sin las ligaduras de los íconos. */
+const words = (node: Node | null | undefined): string => {
+  if (!node) return '';
+  const copy = node.cloneNode(true) as Element;
+  copy.querySelectorAll('mat-icon').forEach((icon) => icon.remove());
+  const walker = document.createTreeWalker(copy, NodeFilter.SHOW_TEXT);
+  const parts: string[] = [];
+  while (walker.nextNode()) {
+    const text = walker.currentNode.textContent?.trim();
+    if (text) parts.push(text);
+  }
+  return parts.join(' ');
+};
+
 describe('RequestsComponent', () => {
   const catalog: ProcedureType[] = [
     {
@@ -30,6 +46,7 @@ describe('RequestsComponent', () => {
       active: true,
       dailyQuota: 10,
       remainingQuota: 4,
+      slaBusinessDays: null,
     },
     {
       value: 'otro',
@@ -37,6 +54,7 @@ describe('RequestsComponent', () => {
       active: true,
       dailyQuota: null,
       remainingQuota: null,
+      slaBusinessDays: null,
     },
     {
       value: 'historico',
@@ -44,6 +62,7 @@ describe('RequestsComponent', () => {
       active: false,
       dailyQuota: 5,
       remainingQuota: 0,
+      slaBusinessDays: null,
     },
   ];
   const mine: Request = {
@@ -87,6 +106,20 @@ describe('RequestsComponent', () => {
   let fixture: ComponentFixture<RequestsComponent>;
   let element: HTMLElement;
   let catalogService: { getProcedures: ReturnType<typeof vi.fn> };
+  let reportService: { getSlaBatch: ReturnType<typeof vi.fn> };
+  /** Respuesta de report por omisión: un trámite vencido y otro sin plazo. */
+  const slaBatch = (ids: readonly string[]): SlaBatch => ({
+    items: ids.map((requestId) =>
+      requestId === 'propio'
+        ? { requestId, slaStatus: 'VENCIDO', dueDate: '2026-09-08' }
+        : { requestId, slaStatus: 'SIN_PLAZO', dueDate: null },
+    ),
+    lastEventAt: '2026-09-09T12:00:00Z',
+  });
+  let getSlaBatch: (ids: readonly string[]) => Observable<SlaBatch>;
+  beforeEach(() => {
+    getSlaBatch = (ids) => of(slaBatch(ids));
+  });
 
   const render = async (
     role: Role,
@@ -97,6 +130,7 @@ describe('RequestsComponent', () => {
     initialUrl?: string,
   ) => {
     catalogService = { getProcedures: vi.fn(getProcedures) };
+    reportService = { getSlaBatch: vi.fn((ids: readonly string[]) => getSlaBatch(ids)) };
     service = {
       getRequests: vi.fn(getRequests),
       createRequest: vi.fn(() => of(mine)),
@@ -116,6 +150,7 @@ describe('RequestsComponent', () => {
         { provide: RequestsService, useValue: service },
         { provide: AuthService, useValue: auth },
         { provide: CatalogService, useValue: catalogService },
+        { provide: ReportService, useValue: reportService },
         provideRouter([]),
       ],
     }).compileComponents();
@@ -178,6 +213,80 @@ describe('RequestsComponent', () => {
     expect(text()).not.toContain(other.solicitanteNombre);
   });
 
+  describe('estado del plazo (EP3-53)', () => {
+    const read = (node: Element) => words(node);
+    const slaCells = () =>
+      Array.from(element.querySelectorAll('td.mat-column-estado .requests__sla'), read);
+    const cardSla = () =>
+      Array.from(
+        element.querySelectorAll('.requests__item .requests__fields > div:first-child'),
+        read,
+      );
+
+    it('el staff consulta una sola vez por página y ve el estado junto al estado del trámite', async () => {
+      await render(Role.Funcionario);
+
+      expect(reportService.getSlaBatch).toHaveBeenCalledTimes(1);
+      expect(reportService.getSlaBatch).toHaveBeenCalledWith(['propio', 'ajeno']);
+      const [overdue, noSla] = slaCells();
+      expect(overdue).toMatch(/^Plazo: Vencido Venció el 8 sep/);
+      expect(noSla).toBe('Plazo: Sin plazo');
+      expect(cardSla()[0]).toMatch(/^Plazo Vencido Venció el 8 sep/);
+    });
+
+    it('el Auditor también lo ve, sin acciones', async () => {
+      await render(Role.Auditor);
+      expect(reportService.getSlaBatch).toHaveBeenCalledTimes(1);
+      expect(slaCells()).toHaveLength(2);
+    });
+
+    it('el Vecino no consulta report ni ve el plazo en el listado', async () => {
+      await render(Role.Vecino);
+      expect(reportService.getSlaBatch).not.toHaveBeenCalled();
+      expect(headers()).toContain('Estado');
+      expect(element.querySelector('.requests__sla, app-sla-indicator')).toBeNull();
+    });
+
+    it('un trámite que report no conoce muestra "—" con su nombre accesible', async () => {
+      getSlaBatch = (ids) =>
+        of({
+          items: ids.map((requestId) => ({ requestId, slaStatus: null, dueDate: null })),
+          lastEventAt: null,
+        });
+      await render(Role.Admin);
+      const unknown = element.querySelector(
+        'td.mat-column-estado [aria-label="Sin información de plazo"]',
+      );
+      expect(unknown?.textContent?.trim()).toBe('—');
+    });
+
+    it('report caído: el listado se muestra, el plazo dice "No disponible" y se reintenta solo el plazo', async () => {
+      getSlaBatch = () => throwError(() => new HttpErrorResponse({ status: 503 }));
+      await render(Role.Funcionario);
+
+      expect(text()).toContain('Bache de otro vecino');
+      expect(slaCells()).toEqual(['Plazo: No disponible', 'Plazo: No disponible']);
+      const notice = element.querySelector('.requests__sla-notice')!;
+      expect(notice.textContent).toContain('No se pudo consultar el estado de los plazos.');
+
+      getSlaBatch = (ids) => of(slaBatch(ids));
+      notice.querySelector('button')!.click();
+      await fixture.whenStable();
+      expect(service.getRequests).toHaveBeenCalledTimes(1);
+      expect(reportService.getSlaBatch).toHaveBeenCalledTimes(2);
+      expect(element.querySelector('.requests__sla-notice')).toBeNull();
+      expect(slaCells()[0]).toMatch(/^Plazo: Vencido/);
+    });
+
+    it('una página nueva pide los plazos de sus propios trámites', async () => {
+      await render(Role.Funcionario);
+      service.getRequests.mockReturnValue(of(page([{ ...other, id: 'tercero' }])));
+      fixture.componentInstance['changeQueue']('none');
+      await fixture.whenStable();
+      expect(reportService.getSlaBatch).toHaveBeenLastCalledWith(['tercero']);
+    });
+  });
+
   it('Funcionario: sin formulario, con filtros, Solicitante y Responsable en tabla y tarjetas', async () => {
     await render(Role.Funcionario);
 
@@ -192,7 +301,7 @@ describe('RequestsComponent', () => {
       'Descripción',
       'Solicitante',
       'Responsable',
-      'Estado',
+      'Estado y plazo',
       'Fecha',
       'Acciones',
     ]);
@@ -202,9 +311,9 @@ describe('RequestsComponent', () => {
     });
     expect(
       Array.from(element.querySelectorAll('.requests__fields dt'))
-        .slice(0, 3)
+        .slice(0, 4)
         .map((label) => label.textContent?.trim()),
-    ).toEqual(['Solicitante', 'Responsable', 'Fecha']);
+    ).toEqual(['Plazo', 'Solicitante', 'Responsable', 'Fecha']);
     expect(text()).not.toContain('otro-vecino');
   });
 

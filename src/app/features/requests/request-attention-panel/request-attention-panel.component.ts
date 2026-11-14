@@ -3,21 +3,46 @@ import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 
+import { InfoToggletipComponent } from '../../../shared/components/info-toggletip/info-toggletip.component';
+import { SlaBatchItem } from '../../../shared/models/report.model';
 import { Request, RequestStatus } from '../../../shared/models/request.model';
 import { Role } from '../../../shared/models/role';
 import { personInitials } from '../../../shared/utils/person-initials';
 import { RequestStatusBadgeComponent } from '../request-status-badge/request-status-badge.component';
 import { formatElapsed } from '../duration';
 import { actionLabel, isClosedStatus } from '../requests.constants';
+import { businessDaysLabel } from '../sla-format';
+import { SlaIndicatorComponent, SlaIndicatorState } from '../sla-indicator/sla-indicator.component';
 
 export interface AttentionAction {
   status: RequestStatus;
   trigger: HTMLButtonElement;
 }
 
+/** Estado del plazo que el detalle pide a report; `item` null es un trámite que report no conoce. */
+export interface AttentionSla {
+  state: SlaIndicatorState;
+  item: SlaBatchItem | null;
+  fetchedAt: Date;
+}
+
+/** Plantilla de EP3-06, sección 7: el compromiso con el vecino, sin la fecha ni el estado. */
+const CITIZEN_SLA_HELP =
+  'Se cuentan desde el día hábil siguiente al ingreso. Si ingresaste en sábado, domingo o festivo, el ingreso se considera hecho el día hábil siguiente.';
+/** El umbral de "Por vencer" es el de EP3-06, sección 4.2. */
+const STAFF_SLA_HELP =
+  'Se cuentan desde el día hábil siguiente al ingreso, sin fines de semana ni festivos. Pasa a «Por vencer» cuando quedan 2 días hábiles o menos.';
+
 @Component({
   selector: 'app-request-attention-panel',
-  imports: [MatButton, MatIcon, MatProgressSpinner, RequestStatusBadgeComponent],
+  imports: [
+    InfoToggletipComponent,
+    MatButton,
+    MatIcon,
+    MatProgressSpinner,
+    RequestStatusBadgeComponent,
+    SlaIndicatorComponent,
+  ],
   templateUrl: './request-attention-panel.component.html',
   styleUrl: './request-attention-panel.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -29,12 +54,15 @@ export class RequestAttentionPanelComponent {
   readonly allowedStatuses = input<readonly RequestStatus[]>([]);
   readonly transitionsState = input<'loading' | 'ready' | 'error'>('ready');
   readonly taking = input(false);
+  /** Solo el staff lo recibe. */
+  readonly sla = input<AttentionSla | null>(null);
 
   readonly take = output<void>();
   readonly assign = output<HTMLButtonElement>();
   readonly changeStatus = output<AttentionAction>();
   readonly registerGestion = output<HTMLButtonElement>();
   readonly retryTransitions = output<void>();
+  readonly retrySla = output<void>();
 
   protected readonly actionLabel = actionLabel;
   protected readonly isVecino = computed(() => this.viewer() === Role.Vecino);
@@ -80,11 +108,11 @@ export class RequestAttentionPanelComponent {
   protected readonly elapsed = computed(() => formatElapsed(this.request().createdAt));
   protected readonly deadline = computed(() => {
     const days = this.request().slaBusinessDays;
-    if (days == null || days <= 0) {
-      return null;
-    }
-    return days === 1 ? '1 día hábil' : `${days} días hábiles`;
+    return days == null || days <= 0 ? null : businessDaysLabel(days);
   });
+  protected readonly slaHelp = computed(() =>
+    this.isVecino() ? CITIZEN_SLA_HELP : STAFF_SLA_HELP,
+  );
 
   protected emitStatus(status: RequestStatus, event: Event): void {
     this.changeStatus.emit({ status, trigger: event.currentTarget as HTMLButtonElement });

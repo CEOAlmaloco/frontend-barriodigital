@@ -99,3 +99,19 @@ export interface SlaAlertQuery {
   page: number;
   size: number;
 }
+
+/** Ítem de `GET /api/report/sla/batch`: `slaStatus` null es un trámite que report no conoce o tiene parcial. */
+export interface SlaBatchItem {
+  requestId: string;
+  slaStatus: SlaStatus | null;
+  dueDate: string | null;
+}
+
+/** Un ítem por `requestId` pedido, en el mismo orden (EP3-07, sección 3.7). */
+export interface SlaBatch {
+  items: SlaBatchItem[];
+  lastEventAt: string | null;
+}
+
+/** report acepta hasta 50 ids por consulta, el `size` máximo del listado de requests. */
+export const SLA_BATCH_MAX = 50;

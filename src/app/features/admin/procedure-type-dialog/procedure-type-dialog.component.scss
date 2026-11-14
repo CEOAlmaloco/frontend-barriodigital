@@ -17,20 +17,28 @@ form {
   min-height: 0;
 }
 
+// Colores por variable: con valores fijos el texto quedaba oscuro sobre el fondo del modo oscuro
 .procedure-type-dialog__title {
-  padding: $space-6 $space-6 $space-4;
+  padding: $space-6 $space-6 0;
   font-size: $font-h2;
   font-weight: $font-weight-semibold;
-  color: $color-text-primary;
+  color: var(--bd-text);
+
+  @media (max-width: $breakpoint-sm) {
+    padding-inline: $space-4;
+  }
 }
 
 .procedure-type-dialog__content {
   display: flex;
   flex-direction: column;
-  gap: $space-4;
-  padding: $space-4 $space-6;
+  padding: $space-2 $space-6 $space-4;
   font-size: $font-body;
-  color: $color-text-primary;
+  color: var(--bd-text);
+
+  @media (max-width: $breakpoint-sm) {
+    padding-inline: $space-4;
+  }
 
   mat-form-field {
     width: 100%;
@@ -38,18 +46,114 @@ form {
   }
 }
 
+.procedure-type-dialog__code {
+  margin: 0 0 $space-2;
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+}
+
+.procedure-type-dialog__code-value {
+  margin-inline-start: $space-1;
+  padding: 1px $space-2;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $space-1;
+  background-color: var(--bd-primary-container);
+  color: var(--bd-text);
+  font-weight: $font-weight-medium;
+  font-variant-numeric: tabular-nums;
+}
+
+.procedure-type-dialog__section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: $space-3;
+  margin: 0;
+  padding: $space-4 0;
+  border: 0;
+
+  & + & {
+    border-block-start: $border-width solid var(--bd-border);
+  }
+}
+
+.procedure-type-dialog__legend {
+  // Flotante: así la legend no corta el borde superior del fieldset, que queda como separador completo
+  float: inline-start;
+  width: 100%;
+  margin-block-end: $space-1;
+  padding: 0;
+  color: var(--bd-text-muted);
+  font-size: $font-label;
+  font-weight: $font-weight-semibold;
+  letter-spacing: 0.02em;
+}
+
+.procedure-type-dialog__switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4;
+}
+
+.procedure-type-dialog__switch-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.procedure-type-dialog__switch-label {
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+}
+
+// Cupo y plazo lado a lado, con el mismo patrón: campo numérico y opción "Sin …"
+.procedure-type-dialog__limits {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: $space-4 $space-6;
+
+  @media (min-width: $breakpoint-sm) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.procedure-type-dialog__limits--single {
+  @media (min-width: $breakpoint-sm) {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 50%;
+  }
+}
+
+.procedure-type-dialog__limit {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.procedure-type-dialog__limit-title {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+  margin: 0;
+  font-weight: $font-weight-medium;
+}
+
 .procedure-type-dialog__secondary,
 .procedure-type-dialog__feedback {
+  margin: 0;
   font-size: $font-body-sm;
   overflow-wrap: anywhere;
 }
 
 .procedure-type-dialog__secondary {
-  color: $color-text-secondary;
+  color: var(--bd-text-muted);
 }
 
 .procedure-type-dialog__error {
-  color: $color-error;
+  color: var(--bd-error);
 }
 
 .procedure-type-dialog__actions {

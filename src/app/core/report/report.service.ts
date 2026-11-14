@@ -8,6 +8,7 @@ import {
   ReportRange,
   ReportTopProcedures,
   SlaAlertPage,
+  SlaBatch,
   SlaAlertQuery,
 } from '../../shared/models/report.model';
 
@@ -39,5 +40,12 @@ export class ReportService {
       params = params.set('assignee', query.assignee);
     }
     return this.http.get<SlaAlertPage>(`${this.url}/sla`, { params });
+  }
+
+  /** Estado del plazo de hasta 50 trámites en una consulta; uno desconocido vuelve con `slaStatus` null. */
+  getSlaBatch(requestIds: readonly string[]): Observable<SlaBatch> {
+    return this.http.get<SlaBatch>(`${this.url}/sla/batch`, {
+      params: new HttpParams().set('requestIds', requestIds.join(',')),
+    });
   }
 }

@@ -365,6 +365,11 @@ $column-actions: 212px;
     overflow: visible;
   }
 
+  // El plazo comparte celda con el estado: una columna más dejaría sin espacio a la descripción a 1280 px
+  .requests__sla {
+    margin-block-start: $space-2;
+  }
+
   .mat-column-estado {
     width: $column-state;
   }
@@ -487,6 +492,26 @@ $column-actions: 212px;
   gap: $space-2;
   padding-top: $space-3;
   border-top: $border-width solid var(--bd-border);
+}
+
+.requests__sla-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-1 $space-3;
+  margin: 0 0 $space-3;
+  padding: $space-1 $space-2 $space-1 $space-4;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-accent-container);
+
+  > mat-icon {
+    color: var(--bd-accent-text);
+  }
+
+  > span {
+    flex: 1 1 16rem;
+  }
 }
 
 .requests__fields {

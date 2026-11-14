@@ -20,6 +20,7 @@ import { Subject, catchError, of, switchMap, tap } from 'rxjs';
 
 import { CatalogService } from '../../core/catalog/catalog.service';
 import { ProcedureType } from '../../shared/models/procedure-type.model';
+import { businessDaysLabel } from '../requests/sla-format';
 import {
   ProcedureTypeDialogComponent,
   ProcedureTypeDialogData,
@@ -46,7 +47,15 @@ export class AdminComponent {
   > | null = null;
   private readonly savedOperation = signal<'create' | 'edit' | null>(null);
 
-  protected readonly columns = ['codigo', 'nombre', 'estado', 'cupo', 'disponible', 'acciones'];
+  protected readonly columns = [
+    'codigo',
+    'nombre',
+    'estado',
+    'cupo',
+    'disponible',
+    'plazo',
+    'acciones',
+  ];
   protected readonly catalog = signal<ProcedureType[]>([]);
   protected readonly hasCatalog = signal(false);
   protected readonly loadState = signal<'loading' | 'ready' | 'error'>('loading');
@@ -88,6 +97,10 @@ export class AdminComponent {
       });
     this.destroyRef.onDestroy(() => this.catalogDialog?.close());
     this.reload$.next();
+  }
+
+  protected slaLabel({ slaBusinessDays }: ProcedureType): string {
+    return slaBusinessDays == null ? 'Sin plazo' : businessDaysLabel(slaBusinessDays);
   }
 
   protected availableQuota({ dailyQuota, remainingQuota }: ProcedureType): number | string {

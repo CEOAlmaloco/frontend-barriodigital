@@ -3,86 +3,159 @@
 
 <form [formGroup]="form" (ngSubmit)="submit()" [attr.aria-busy]="isSubmitting()" novalidate>
   <mat-dialog-content class="procedure-type-dialog__content">
-    @if (isEdit) {
+    @if (initial) {
+      <!-- El código es inmutable: se muestra como dato y no como un campo que parece editable -->
+      <p class="procedure-type-dialog__code">
+        Código <span class="procedure-type-dialog__code-value">{{ initial.value }}</span>
+      </p>
+    }
+
+    <fieldset class="procedure-type-dialog__section">
+      <legend class="procedure-type-dialog__legend">Identificación</legend>
+
       <mat-form-field subscriptSizing="dynamic">
-        <mat-label>Código</mat-label>
-        <input matInput formControlName="value" readonly />
-        <mat-hint>El código no se puede modificar</mat-hint>
-      </mat-form-field>
-    } @else {
-      <mat-form-field subscriptSizing="dynamic">
-        <mat-label>Código</mat-label>
-        <input matInput formControlName="value" placeholder="semaforo" required />
-        <mat-hint
-          >Usa minúsculas, números, guion o guion bajo. No podrás modificarlo después</mat-hint
-        >
+        <mat-label>Nombre</mat-label>
+        <input matInput formControlName="label" required />
         <mat-error>
-          @if (form.controls.value.hasError('required')) {
-            Indica un código que no esté vacío.
-          } @else if (form.controls.value.hasError('maxlength')) {
-            El código no puede superar 40 caracteres.
+          @if (form.controls.label.hasError('maxlength')) {
+            El nombre no puede superar 120 caracteres después de recortar los extremos.
           } @else {
-            Usa solo minúsculas, números, guion o guion bajo.
+            Indica un nombre que no esté vacío.
           }
         </mat-error>
       </mat-form-field>
-    }
 
-    <mat-form-field subscriptSizing="dynamic">
-      <mat-label>Nombre</mat-label>
-      <input matInput formControlName="label" required />
-      <mat-error>
-        @if (form.controls.label.hasError('maxlength')) {
-          El nombre no puede superar 120 caracteres después de recortar los extremos.
-        } @else {
-          Indica un nombre que no esté vacío.
-        }
-      </mat-error>
-    </mat-form-field>
+      @if (!isEdit) {
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-label>Código</mat-label>
+          <input matInput formControlName="value" placeholder="semaforo" required />
+          <mat-hint
+            >Usa minúsculas, números, guion o guion bajo. No podrás modificarlo después</mat-hint
+          >
+          <mat-error>
+            @if (form.controls.value.hasError('required')) {
+              Indica un código que no esté vacío.
+            } @else if (form.controls.value.hasError('maxlength')) {
+              El código no puede superar 40 caracteres.
+            } @else {
+              Usa solo minúsculas, números, guion o guion bajo.
+            }
+          </mat-error>
+        </mat-form-field>
+      }
+    </fieldset>
 
-    <div>
-      <mat-checkbox formControlName="active" aria-describedby="procedure-type-active-help"
-        >Activo</mat-checkbox
-      >
-      <p id="procedure-type-active-help" class="procedure-type-dialog__secondary">
-        @if (isEdit) {
-          Los tipos inactivos no están disponibles para crear nuevos trámites. Los trámites
-          existentes se conservan.
-        } @else {
-          Disponible para crear nuevos trámites
-        }
-      </p>
-    </div>
-
-    @if (isEdit) {
-      <mat-checkbox formControlName="unlimited">Sin límite diario</mat-checkbox>
-      <mat-form-field subscriptSizing="dynamic">
-        <mat-label>Cupo diario</mat-label>
-        <input
-          matInput
-          type="number"
-          formControlName="dailyQuota"
-          min="1"
-          max="2147483647"
-          step="1"
-          [required]="!form.controls.unlimited.value"
+    <fieldset class="procedure-type-dialog__section">
+      <legend class="procedure-type-dialog__legend">Disponibilidad</legend>
+      <!-- Texto a la izquierda y el interruptor a la derecha: el nombre es la etiqueta y la ayuda, su descripción -->
+      <div class="procedure-type-dialog__switch">
+        <div class="procedure-type-dialog__switch-text">
+          <label
+            id="procedure-type-active-label"
+            class="procedure-type-dialog__switch-label"
+            for="procedure-type-active-button"
+            >Activo</label
+          >
+          <p id="procedure-type-active-help" class="procedure-type-dialog__secondary">
+            @if (isEdit) {
+              Si lo desactivas, no se podrá elegir en trámites nuevos. Los existentes se conservan.
+            } @else {
+              Los vecinos podrán elegirlo al ingresar un trámite.
+            }
+          </p>
+        </div>
+        <mat-slide-toggle
+          id="procedure-type-active"
+          formControlName="active"
+          aria-labelledby="procedure-type-active-label"
+          aria-describedby="procedure-type-active-help"
         />
-        <mat-hint>Introduce un número entero mayor o igual a 1</mat-hint>
-        <mat-error>
-          @if (form.controls.dailyQuota.hasError('max')) {
-            El cupo diario no puede superar 2.147.483.647.
-          } @else if (form.controls.dailyQuota.hasError('required')) {
-            Indica un cupo diario o selecciona «Sin límite diario».
-          } @else {
-            Introduce un número entero mayor o igual a 1.
-          }
-        </mat-error>
-      </mat-form-field>
-    } @else {
-      <p class="procedure-type-dialog__secondary">
-        El tipo se creará sin límite diario. Puedes configurar un cupo después desde “Editar”.
-      </p>
-    }
+      </div>
+    </fieldset>
+
+    <fieldset class="procedure-type-dialog__section">
+      <legend class="procedure-type-dialog__legend">Límites de atención</legend>
+      <div
+        class="procedure-type-dialog__limits"
+        [class.procedure-type-dialog__limits--single]="!isEdit"
+      >
+        @if (isEdit) {
+          <div
+            class="procedure-type-dialog__limit"
+            role="group"
+            aria-labelledby="procedure-type-quota"
+          >
+            <p id="procedure-type-quota" class="procedure-type-dialog__limit-title">
+              Cupo diario
+              <app-info-toggletip
+                topic="cupo diario"
+                text="Máximo de trámites de este tipo que se pueden admitir en un día. Se reinicia cada día."
+              />
+            </p>
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>Trámites por día</mat-label>
+              <input
+                matInput
+                type="number"
+                formControlName="dailyQuota"
+                min="1"
+                max="2147483647"
+                step="1"
+                [required]="!form.controls.unlimited.value"
+              />
+              <mat-hint>Número entero desde 1</mat-hint>
+              <mat-error>
+                @if (form.controls.dailyQuota.hasError('max')) {
+                  El cupo diario no puede superar 2.147.483.647.
+                } @else if (form.controls.dailyQuota.hasError('required')) {
+                  Indica un cupo diario o selecciona «Sin límite diario».
+                } @else {
+                  Introduce un número entero mayor o igual a 1.
+                }
+              </mat-error>
+            </mat-form-field>
+            <mat-checkbox formControlName="unlimited">Sin límite diario</mat-checkbox>
+          </div>
+        }
+
+        <div class="procedure-type-dialog__limit" role="group" aria-labelledby="procedure-type-sla">
+          <p id="procedure-type-sla" class="procedure-type-dialog__limit-title">
+            Plazo de atención
+            <app-info-toggletip
+              topic="plazo de atención"
+              text="Rige para los trámites que se ingresen desde que guardas. Los ya ingresados conservan el plazo con que se informaron al vecino."
+            />
+          </p>
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-label>Días hábiles</mat-label>
+            <input
+              matInput
+              type="number"
+              inputmode="numeric"
+              formControlName="slaBusinessDays"
+              [min]="minSla"
+              [max]="maxSla"
+              step="1"
+              [required]="!form.controls.noSla.value"
+            />
+            <mat-hint>Entre {{ minSla }} y {{ maxSla }}</mat-hint>
+            <mat-error>
+              @if (form.controls.slaBusinessDays.hasError('required')) {
+                Indica un plazo o selecciona «Sin plazo».
+              } @else {
+                Introduce un número entero entre {{ minSla }} y {{ maxSla }}.
+              }
+            </mat-error>
+          </mat-form-field>
+          <mat-checkbox formControlName="noSla">Sin plazo</mat-checkbox>
+        </div>
+      </div>
+      @if (!isEdit) {
+        <p class="procedure-type-dialog__secondary">
+          El tipo se creará sin límite diario. Puedes configurar un cupo después desde «Editar».
+        </p>
+      }
+    </fieldset>
 
     <div class="procedure-type-dialog__feedback" aria-live="polite" aria-atomic="true">
       @if (isSubmitting()) {

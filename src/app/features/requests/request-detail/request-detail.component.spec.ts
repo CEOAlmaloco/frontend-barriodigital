@@ -9,6 +9,8 @@ import { BehaviorSubject, Observable, firstValueFrom, of, throwError } from 'rxj
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { CatalogService } from '../../../core/catalog/catalog.service';
+import { ReportService } from '../../../core/report/report.service';
+import { SlaBatch } from '../../../shared/models/report.model';
 import { Request, RequestTransitions } from '../../../shared/models/request.model';
 import { Role } from '../../../shared/models/role';
 import { RequestLocationMapComponent } from '../request-location-map.component';
@@ -101,6 +103,20 @@ const activityOf = (eventos: RequestActivityEvent[]): RequestActivity => ({
   limites: [],
 });
 
+/** Texto por nodo, como lo recorre un lector de pantalla: sin las ligaduras de los íconos. */
+const words = (node: Node | null | undefined): string => {
+  if (!node) return '';
+  const copy = node.cloneNode(true) as Element;
+  copy.querySelectorAll('mat-icon').forEach((icon) => icon.remove());
+  const walker = document.createTreeWalker(copy, NodeFilter.SHOW_TEXT);
+  const parts: string[] = [];
+  while (walker.nextNode()) {
+    const text = walker.currentNode.textContent?.trim();
+    if (text) parts.push(text);
+  }
+  return parts.join(' ');
+};
+
 describe('RequestDetailComponent', () => {
   let fixture: ComponentFixture<RequestDetailComponent>;
   let element: HTMLElement;
@@ -118,6 +134,13 @@ describe('RequestDetailComponent', () => {
   /** Nombres del catálogo: vacío equivale a un catálogo que no respondió. */
   const catalogLabels = signal<ReadonlyMap<string, string>>(new Map());
   const loadLabels = vi.fn();
+  let reportService: { getSlaBatch: ReturnType<typeof vi.fn> };
+  let getSlaBatch: () => Observable<SlaBatch>;
+  const slaOf = (slaStatus: SlaBatch['items'][number]['slaStatus'], dueDate: string | null) => () =>
+    of({ items: [{ requestId: 'req-1', slaStatus, dueDate }], lastEventAt: null });
+  beforeEach(() => {
+    getSlaBatch = slaOf('POR_VENCER', '2099-01-05');
+  });
   let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
 
   const render = async (
@@ -135,6 +158,7 @@ describe('RequestDetailComponent', () => {
       registerGestion: vi.fn(),
     };
     snackBar = { open: vi.fn() };
+    reportService = { getSlaBatch: vi.fn(() => getSlaBatch()) };
     params = new BehaviorSubject(convertToParamMap({ id: 'req-1' }));
     const auth = { role: signal(role), hasRole: (value: Role) => value === role, userId: signal(ME) };
 
@@ -147,6 +171,7 @@ describe('RequestDetailComponent', () => {
         { provide: AuthService, useValue: auth },
         { provide: MatSnackBar, useValue: snackBar },
         { provide: CatalogService, useValue: { labels: catalogLabels, loadLabels } },
+        { provide: ReportService, useValue: reportService },
       ],
     });
     TestBed.overrideComponent(RequestDetailComponent, {
@@ -165,6 +190,72 @@ describe('RequestDetailComponent', () => {
     overlay?.replaceChildren();
     catalogLabels.set(new Map());
     loadLabels.mockClear();
+  });
+
+  /** Texto del bloque "Plazo de atención" del panel, sin el nombre del botón de ayuda. */
+  const plazo = () => {
+    const block = element.querySelector('.panel__facts')?.cloneNode(true) as Element | undefined;
+    block?.querySelectorAll('app-info-toggletip').forEach((tip) => tip.remove());
+    return words(block);
+  };
+  const openHelp = async () => {
+    element.querySelector<HTMLButtonElement>('.panel__facts app-info-toggletip button')!.click();
+    await fixture.whenStable();
+    return overlay.querySelector('.toggletip__bubble')?.textContent ?? '';
+  };
+
+  describe('plazo de atención (EP3-53)', () => {
+    it('el staff ve los días, el estado de report y el vencimiento, pedidos con el id de la ruta', async () => {
+      await render(Role.Funcionario);
+      expect(reportService.getSlaBatch).toHaveBeenCalledWith(['req-1']);
+      expect(plazo()).toBe('Plazo de atención 5 días hábiles Por vencer Vence el 5 ene 2099');
+      expect(await openHelp()).toContain(
+        'Pasa a «Por vencer» cuando quedan 2 días hábiles o menos.',
+      );
+    });
+
+    it('el Vecino ve la explicación del conteo, sin el umbral interno', async () => {
+      await render(Role.Vecino);
+      const help = await openHelp();
+      expect(help).toContain('Se cuentan desde el día hábil siguiente al ingreso.');
+      expect(help).not.toContain('Por vencer');
+      // El dato del encabezado se mantiene para todos los roles
+      expect(element.querySelector('.request-detail__meta')?.textContent).toContain(
+        'Plazo de 5 días hábiles',
+      );
+    });
+
+    it('un cerrado evaluado muestra la fecha comprometida', async () => {
+      getSlaBatch = slaOf('CUMPLIDO', '2026-11-06');
+      await render(Role.Auditor, () => of({ ...base, status: 'RESUELTO' }));
+      expect(plazo()).toContain('Cumplido Plazo al 6 nov');
+    });
+
+    it('report caído: el trámite se muestra y solo el estado queda "No disponible", con su reintento', async () => {
+      getSlaBatch = () => throwError(() => new HttpErrorResponse({ status: 503 }));
+      await render(Role.Admin);
+      expect(element.querySelector('h1')?.textContent).toContain('Alumbrado público');
+      expect(plazo()).toContain('5 días hábiles');
+      expect(plazo()).toContain('Estado no disponible');
+
+      getSlaBatch = slaOf('VENCIDO', '2026-11-03');
+      await click(button('Reintentar'));
+      expect(reportService.getSlaBatch).toHaveBeenCalledTimes(2);
+      expect(plazo()).toContain('Vencido');
+    });
+
+    it('un trámite que report no conoce muestra los días y "Sin información de estado"', async () => {
+      getSlaBatch = slaOf(null, null);
+      await render(Role.Funcionario);
+      expect(plazo()).toBe('Plazo de atención 5 días hábiles Sin información de estado');
+    });
+
+    it('un tipo sin plazo no ofrece ayuda ni estado', async () => {
+      getSlaBatch = slaOf('SIN_PLAZO', null);
+      await render(Role.Funcionario, () => of({ ...base, slaBusinessDays: null }));
+      expect(plazo()).toBe('Plazo de atención Sin plazo definido para este tipo');
+      expect(element.querySelector('.panel__facts app-info-toggletip')).toBeNull();
+    });
   });
 
   describe('nombre del tipo', () => {
@@ -375,7 +466,9 @@ describe('RequestDetailComponent', () => {
 
       expect(text()).toContain('Estado de tu solicitud');
       expect(text()).toContain('En atención');
-      expect(text()).toContain('5 días hábiles desde el ingreso');
+      expect(plazo()).toBe('Plazo de atención 5 días hábiles');
+      expect(reportService.getSlaBatch).not.toHaveBeenCalled();
+      expect(element.querySelector('app-sla-indicator')).toBeNull();
       expect(text()).not.toContain('Camila Huenchullán');
       expect(text()).not.toContain('Solicitante');
       expect(text()).not.toContain('No debería verse');

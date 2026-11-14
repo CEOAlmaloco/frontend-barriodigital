@@ -1,0 +1,68 @@
+@use 'tokens' as *;
+
+:host {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $space-1;
+}
+
+// La fecha pasa debajo del estado cuando no cabe al lado
+:host(.sla-indicator--row) {
+  flex-flow: row wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-1 $space-3;
+}
+
+.sla-indicator__due {
+  color: var(--bd-text-muted);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sla-indicator__due--late {
+  color: var(--bd-error);
+  font-weight: $font-weight-medium;
+}
+
+.sla-indicator__due--soon {
+  color: var(--bd-accent-text);
+  font-weight: $font-weight-medium;
+}
+
+.sla-indicator__down {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  color: var(--bd-text-muted);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+  white-space: nowrap;
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.sla-indicator__bone {
+  display: block;
+  width: 104px;
+  height: 22px;
+  border-radius: $space-1 + 2px;
+  background-color: var(--bd-border);
+  opacity: 0.6;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: sla-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes sla-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}

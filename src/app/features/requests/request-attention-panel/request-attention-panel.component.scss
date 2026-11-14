@@ -114,6 +114,31 @@ $avatar-size: 40px;
   }
 }
 
+.panel__term {
+  display: flex;
+  align-items: center;
+  gap: $space-1;
+}
+
+.panel__sla {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  margin-block-start: 2px;
+}
+
+.panel__sla-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-1 $space-2;
+}
+
+.panel__sla-retry {
+  margin-inline-end: -$space-3;
+}
+
 .panel__actions {
   display: flex;
   flex-direction: column;

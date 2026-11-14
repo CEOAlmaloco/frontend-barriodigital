@@ -27,15 +27,17 @@ import { MatIcon } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { Subject, catchError, combineLatest, map, of, startWith, switchMap } from 'rxjs';
+import { Subject, catchError, combineLatest, map, of, startWith, switchMap, tap } from 'rxjs';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { CatalogService } from '../../../core/catalog/catalog.service';
+import { ReportService } from '../../../core/report/report.service';
 import { Request, RequestStatus, RequestTransitions } from '../../../shared/models/request.model';
 import { OVERSIGHT_ROLES, Role } from '../../../shared/models/role';
 import { assignmentFailure } from '../assignment-errors';
 import { formatDuration } from '../duration';
 import { procedureTypeLabel } from '../procedure-label';
+import { businessDaysLabel } from '../sla-format';
 import {
   RequestAssignDialogComponent,
   RequestAssignDialogData,
@@ -43,6 +45,7 @@ import {
 } from '../request-assign-dialog/request-assign-dialog.component';
 import {
   AttentionAction,
+  AttentionSla,
   RequestAttentionPanelComponent,
 } from '../request-attention-panel/request-attention-panel.component';
 import {
@@ -104,6 +107,7 @@ export class RequestDetailComponent {
   private readonly auth = inject(AuthService);
   private readonly requestsService = inject(RequestsService);
   private readonly catalogService = inject(CatalogService);
+  private readonly reportService = inject(ReportService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly titleService = inject(Title);
@@ -116,6 +120,7 @@ export class RequestDetailComponent {
 
   private readonly reload$ = new Subject<void>();
   private readonly activityReload$ = new Subject<void>();
+  private readonly slaReload$ = new Subject<string>();
   private currentId: string | null = null;
   private openedDialog: MatDialogRef<unknown, unknown> | null = null;
   private attachmentFor: string | null = null;
@@ -181,10 +186,13 @@ export class RequestDetailComponent {
   });
   protected readonly deadline = computed(() => {
     const days = this.request()?.slaBusinessDays;
-    if (days == null || days <= 0) {
-      return null;
-    }
-    return days === 1 ? '1 día hábil' : `${days} días hábiles`;
+    return days == null || days <= 0 ? null : businessDaysLabel(days);
+  });
+  /** Estado del plazo de report, solo para el staff (EP3-07, sección 4). Carga y falla aparte del trámite. */
+  protected readonly sla = signal<AttentionSla>({
+    state: 'loading',
+    item: null,
+    fetchedAt: new Date(),
   });
   protected readonly times = computed(() => {
     const activity = this.activity();
@@ -213,6 +221,25 @@ export class RequestDetailComponent {
   constructor() {
     // Sin esperarlo: el trámite se muestra con el nombre guardado hasta que llegue el catálogo
     this.catalogService.loadLabels();
+    this.slaReload$
+      .pipe(
+        tap(() => this.sla.update((current) => ({ ...current, state: 'loading' }))),
+        switchMap((id) =>
+          this.reportService.getSlaBatch([id]).pipe(
+            map(({ items }) => items[0] ?? null),
+            catchError(() => of(undefined)),
+          ),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe((item) =>
+        this.sla.set(
+          item === undefined
+            ? { state: 'unavailable', item: null, fetchedAt: new Date() }
+            : { state: 'ready', item, fetchedAt: new Date() },
+        ),
+      );
+
     this.activityReload$
       .pipe(
         switchMap(() => {
@@ -280,6 +307,13 @@ export class RequestDetailComponent {
 
   protected loadActivity(): void {
     this.activityReload$.next();
+  }
+
+  /** El Vecino no ve el estado del plazo: report le respondería 403. */
+  protected loadSla(): void {
+    if (this.isStaff() && this.currentId) {
+      this.slaReload$.next(this.currentId);
+    }
   }
 
   protected loadTransitions(): void {
@@ -526,6 +560,8 @@ export class RequestDetailComponent {
     this.activityState.set('loading');
     this.revokeAttachment();
     this.attachmentState.set('loading');
+    // En paralelo con el trámite: basta el id de la ruta
+    this.loadSla();
   }
 
   private show(request: Request, firstLoad: boolean): void {
@@ -549,6 +585,7 @@ export class RequestDetailComponent {
     this.snackBar.open(message, undefined, { duration: 3500 });
     this.titleService.setTitle(`${this.folio() ?? 'Detalle del trámite'} | BarrioDigital`);
     this.loadActivity();
+    this.loadSla();
     if (this.canOperate() && this.transitionsState() !== 'ready') {
       this.loadTransitions();
     }
