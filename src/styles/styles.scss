@@ -2,6 +2,7 @@
 @use 'tokens' as *;
 @use 'accessibility';
 @use 'material-theme';
+@use 'map';
 
 // El CDK inyecta .cdk-visually-hidden solo al montar ciertos componentes; sin esto el texto para
 // lectores de pantalla se ve en las páginas que no abrieron antes un diálogo

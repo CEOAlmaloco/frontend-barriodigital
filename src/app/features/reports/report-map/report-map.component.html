@@ -1,0 +1,186 @@
+<app-report-toolbar
+  [range]="query().range"
+  [freshness]="freshness()"
+  [paused]="paused()"
+  [intervalSeconds]="intervalSeconds"
+  (rangeChange)="selectRange($event)"
+  (togglePause)="togglePause()"
+  (refresh)="refresh()"
+/>
+
+<section class="map-page__card" aria-label="Filtros del mapa">
+  <app-report-map-filters
+    [query]="query()"
+    [types]="typeOptions()"
+    [catalogStatus]="catalogStatus()"
+    (statusChange)="selectStatuses($event)"
+    (typeChange)="selectType($event)"
+    (clear)="clearFilters()"
+    (retryCatalog)="loadCatalog()"
+  />
+</section>
+
+@if (state(); as state) {
+  @if (state.status === 'error') {
+    <section class="map-page__card map-page__state" role="alert" aria-labelledby="map-failure">
+      <span class="map-page__state-icon" aria-hidden="true">
+        <mat-icon>{{ state.kind === 'forbidden' ? 'lock' : 'cloud_off' }}</mat-icon>
+      </span>
+      @switch (state.kind) {
+        @case ('unavailable') {
+          <h2 id="map-failure">El mapa no está disponible</h2>
+          <p>El servicio de reportes no responde. {{ retryHint() }}</p>
+        }
+        @case ('forbidden') {
+          <h2 id="map-failure">No tienes acceso al mapa</h2>
+          <p>Tu rol no permite consultar esta información.</p>
+        }
+        @default {
+          <h2 id="map-failure">No pudimos cargar el mapa</h2>
+          <p>Revisa tu conexión e inténtalo de nuevo.</p>
+        }
+      }
+      @if (state.kind !== 'forbidden') {
+        <button matButton="filled" type="button" [disabled]="state.retrying" (click)="retry()">
+          <mat-icon aria-hidden="true">refresh</mat-icon>
+          Reintentar
+        </button>
+      }
+    </section>
+  } @else {
+    <section aria-labelledby="map-summary-title" [attr.aria-busy]="state.status === 'loading'">
+      <h2 id="map-summary-title" class="cdk-visually-hidden">Totales</h2>
+      <app-report-map-summary [data]="data()" [range]="query().range" />
+    </section>
+
+    @if (state.status === 'ready') {
+      @if (state.stale) {
+        <p class="map-page__notice" role="status">
+          <mat-icon aria-hidden="true">warning</mat-icon>
+          <span>
+            <strong>No se pudo actualizar el mapa.</strong>
+            Se muestran los datos consultados a las {{ formatClock(state.fetchedAt) }}.
+            {{ retryHint() }}
+          </span>
+        </p>
+      }
+      @if (clipped()) {
+        <p class="map-page__notice">
+          <mat-icon aria-hidden="true">filter_alt</mat-icon>
+          <span>
+            <strong>
+              El mapa muestra los {{ formatCount(state.data.items.length) }} trámites más recientes
+              de {{ formatCount(state.data.locatedTotal) }} con ubicación.
+            </strong>
+            Acota el período, el estado o el tipo para ver el resto. Los totales y la concentración
+            por sector los consideran todos.
+          </span>
+        </p>
+      }
+    }
+
+    <div class="map-page__grid">
+      <section class="map-page__card" aria-labelledby="map-title">
+        <div class="map-page__card-head">
+          <h2 id="map-title">Ubicación de los trámites</h2>
+          <mat-button-toggle-group
+            class="map-page__view"
+            aria-label="Vista"
+            hideSingleSelectionIndicator
+            [value]="view()"
+            (change)="selectView($event.value)"
+          >
+            <mat-button-toggle value="map">
+              <mat-icon aria-hidden="true">map</mat-icon>
+              Mapa
+            </mat-button-toggle>
+            <mat-button-toggle value="list">
+              <mat-icon aria-hidden="true">view_list</mat-icon>
+              Lista
+            </mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+
+        <app-requests-map
+          [hidden]="view() !== 'map'"
+          [points]="points()"
+          [busy]="busy()"
+          [fitKey]="fitKey()"
+          [visible]="view() === 'map'"
+        >
+          @if (emptyReason(); as reason) {
+            <div class="map-page__overlay">
+              <div class="map-page__overlay-box" role="status">
+                <ng-container *ngTemplateOutlet="emptyMessage; context: { $implicit: reason }" />
+              </div>
+            </div>
+          }
+        </app-requests-map>
+
+        @if (view() === 'map') {
+          <app-report-map-legend />
+        } @else if (emptyReason(); as reason) {
+          <div class="map-page__empty" role="status">
+            <ng-container *ngTemplateOutlet="emptyMessage; context: { $implicit: reason }" />
+          </div>
+        } @else if (points().length) {
+          <app-report-map-list [points]="points()" [busy]="busy()" [resetKey]="fitKey()" />
+        } @else {
+          <app-report-skeleton />
+        }
+      </section>
+
+      <section
+        class="map-page__card"
+        aria-labelledby="map-sectors-title"
+        [attr.aria-busy]="state.status === 'loading'"
+      >
+        <h2 id="map-sectors-title">Concentración por sector</h2>
+        @if (state.status === 'ready') {
+          @if (sectors().length) {
+            <app-report-ranking
+              tone="secondary"
+              labelledBy="map-sectors-title"
+              [items]="sectors()"
+            />
+            <p class="map-page__muted map-page__foot">
+              Considera todos los trámites filtrados, también los que no aparecen en el mapa.
+            </p>
+          } @else {
+            <p class="map-page__muted">No hay trámites para estos filtros.</p>
+          }
+        } @else {
+          <app-report-skeleton />
+        }
+      </section>
+    </div>
+  }
+}
+
+<ng-template #emptyMessage let-reason>
+  @if (reason === 'unlocated') {
+    <mat-icon aria-hidden="true">location_off</mat-icon>
+    <p>
+      <strong>
+        @if (data()?.withoutLocation === 1) {
+          El trámite encontrado no tiene ubicación
+        } @else {
+          Ninguno de los {{ formatCount(data()?.withoutLocation ?? 0) }} trámites tiene ubicación
+        }
+      </strong>
+    </p>
+    <p class="map-page__muted">Se cuentan en la concentración por sector.</p>
+  } @else {
+    <mat-icon aria-hidden="true">search_off</mat-icon>
+    <p><strong>No hay trámites para estos filtros</strong></p>
+    @if (filtered()) {
+      <p class="map-page__muted">Prueba con otro estado o tipo.</p>
+      <button matButton="outlined" type="button" (click)="clearFilters()">
+        <mat-icon aria-hidden="true">filter_alt_off</mat-icon>
+        Limpiar filtros
+      </button>
+    } @else {
+      <p class="map-page__muted">No ingresaron trámites en {{ periodPhrase() }}.</p>
+    }
+  }
+</ng-template>

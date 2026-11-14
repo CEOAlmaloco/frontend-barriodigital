@@ -60,8 +60,10 @@ describe('ReportsComponent', () => {
   let visibility: DocumentVisibilityState;
 
   const element = () => harness.routeNativeElement as HTMLElement;
-  const text = (selector = 'main') =>
-    (element().querySelector(selector)?.textContent ?? '').replace(/\s+/g, ' ').trim();
+  const text = (selector?: string) =>
+    ((selector ? element().querySelector(selector) : element())?.textContent ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
   /** «valor | detalle» del indicador, leído por su término como lo recorre un lector de pantalla. */
   const tile = (label: string) => {
     const card = Array.from(element().querySelectorAll('.kpi-tile')).find(
@@ -166,7 +168,7 @@ describe('ReportsComponent', () => {
   it('muestra "datos al" con lastEventAt y la hora de la consulta', async () => {
     await open();
     loadBoth();
-    const freshness = text('.reports__freshness');
+    const freshness = text('.toolbar__freshness');
     expect(freshness).toContain('Datos al 13 nov 2026');
     expect(freshness).toContain(`Consultado ${formatClock(new Date())}`);
     expect(freshness).toContain('Se actualiza cada 5 s');
@@ -218,7 +220,7 @@ describe('ReportsComponent', () => {
     loadBoth();
     button('Pausar').click();
     render();
-    expect(text('.reports__freshness')).toContain('Actualización automática en pausa');
+    expect(text('.toolbar__freshness')).toContain('Actualización automática en pausa');
     expect(announce).toHaveBeenCalledWith('Actualización automática en pausa.');
     vi.advanceTimersByTime(60_000);
     expect(kpiCalls).toHaveLength(1);
@@ -304,7 +306,7 @@ describe('ReportsComponent', () => {
     expect(topCard).toContain('No se pudieron actualizar');
     expect(topCard).toContain(`Datos consultados a las ${firstConsult}`);
     expect(topCard).toContain('Bache en calle');
-    expect(text('.reports__freshness')).toContain(`Consultado ${firstConsult}`);
+    expect(text('.toolbar__freshness')).toContain(`Consultado ${firstConsult}`);
     expect(element().querySelector('.reports__kpis .reports__notice')).toBeNull();
     expect(announce).toHaveBeenCalledWith('No se pudieron actualizar los tipos más demandados.');
 
@@ -326,7 +328,7 @@ describe('ReportsComponent', () => {
     expect(text('.reports__state')).toContain('Los reportes no están disponibles');
     expect(text('.reports__state')).toContain('Se volverá a intentar automáticamente.');
     expect(text('.reports__state')).not.toMatch(/funcion|normalidad/i);
-    expect(element().querySelector('.reports__toolbar')).not.toBeNull();
+    expect(element().querySelector('app-report-toolbar')).not.toBeNull();
   });
 
   it('un error distinto de 503 en la primera carga ofrece reintentar', async () => {
@@ -353,7 +355,7 @@ describe('ReportsComponent', () => {
       }),
       top({ items: [], lastEventAt: null }),
     );
-    expect(text('.reports__freshness')).toContain('Aún no hay eventos registrados');
+    expect(text('.toolbar__freshness')).toContain('Aún no hay eventos registrados');
     expect(tile('Trámites abiertos')).toBe('0 | Ahora');
     expect(tile('Tiempo medio de resolución')).toBe('Sin resueltos | Ninguno en las últimas 24 horas');
     expect(text()).toContain('Sin trámites ingresados');

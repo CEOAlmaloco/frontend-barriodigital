@@ -11,7 +11,6 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButton } from '@angular/material/button';
-import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
 import { MatIcon } from '@angular/material/icon';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -19,20 +18,23 @@ import { ReportService } from '../../core/report/report.service';
 import {
   DEFAULT_REPORT_RANGE,
   OPEN_REQUEST_STATUSES,
-  REPORT_RANGES,
   ReportKpis,
   ReportRange,
   ReportTopProcedures,
   isReportRange,
 } from '../../shared/models/report.model';
 import { FailureKind, failureKind } from '../../shared/utils/http-failure';
-import { PolledResource, polledResource } from '../../shared/utils/polled-resource';
-import { RequestDatePipe } from '../requests/request-date.pipe';
+import {
+  POLL_INTERVAL_MS,
+  PolledResource,
+  polledResource,
+} from '../../shared/utils/polled-resource';
 import { REQUEST_STATUS_VIEW } from '../requests/requests.constants';
 import { RANGE_LABELS, RANGE_PHRASES, formatClock } from './report-format';
 import { ReportKpiTilesComponent } from './report-kpi-tiles/report-kpi-tiles.component';
 import { RankingItem, ReportRankingComponent } from './report-ranking/report-ranking.component';
 import { ReportSkeletonComponent } from './report-skeleton/report-skeleton.component';
+import { ReportFreshness, ReportToolbarComponent } from './report-toolbar/report-toolbar.component';
 import { ReportTrendChartComponent } from './report-trend-chart/report-trend-chart.component';
 
 /**
@@ -61,14 +63,12 @@ function sourceView<T>(resource: PolledResource<ReportRange, T>): SourceView<T> 
   selector: 'app-reports',
   imports: [
     MatButton,
-    MatButtonToggle,
-    MatButtonToggleGroup,
     MatIcon,
     ReportKpiTilesComponent,
     ReportRankingComponent,
     ReportSkeletonComponent,
+    ReportToolbarComponent,
     ReportTrendChartComponent,
-    RequestDatePipe,
   ],
   templateUrl: './reports.component.html',
   styleUrl: './reports.component.scss',
@@ -92,8 +92,8 @@ export class ReportsComponent {
   private readonly pending = signal<Pending>(null);
   private started = false;
 
-  protected readonly ranges = REPORT_RANGES;
   protected readonly rangeLabels = RANGE_LABELS;
+  protected readonly intervalSeconds = POLL_INTERVAL_MS / 1000;
   protected readonly range = this.kpisSource.key;
   protected readonly periodPhrase = computed(() => RANGE_PHRASES[this.range()]);
   protected readonly paused = this.kpisSource.paused;
@@ -124,7 +124,7 @@ export class ReportsComponent {
    * Frescura conservadora de lo que está en pantalla: el evento más antiguo y la consulta más antigua entre
    * las fuentes con datos del período, para que el éxito de una no oculte el atraso de la otra.
    */
-  protected readonly freshness = computed(() => {
+  protected readonly freshness = computed<ReportFreshness | null>(() => {
     const ready = [this.kpis(), this.top()].flatMap((view) =>
       view.status === 'ready' ? [view] : [],
     );

@@ -19,6 +19,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   { label: 'Trámites', path: '/tramites', roles: REQUESTS_ROLES },
   { label: 'Administración', path: '/admin', roles: [Role.Admin] },
   { label: 'Reportes', path: '/reports', roles: OVERSIGHT_ROLES },
+  { label: 'Mapa de trámites', path: '/reports/map', roles: [Role.Funcionario] },
   { label: 'Auditoría', path: '/audit', roles: OVERSIGHT_ROLES },
 ];
 

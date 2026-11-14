@@ -21,6 +21,31 @@ describe('ReportService', () => {
 
   afterEach(() => backend.verify());
 
+  it('pide los puntos del mapa con los estados separados por coma y sin filtros vacíos', async () => {
+    const all = firstValueFrom(
+      service.getMapPoints({ range: 'last7d', status: [], procedureType: null }),
+    );
+    const plain = backend.expectOne((req) => req.url === `${url}/map-points`);
+    expect(plain.request.method).toBe('GET');
+    expect(plain.request.params.keys()).toEqual(['range']);
+    plain.flush({ range: 'last7d', items: [] });
+    await all;
+
+    const filtered = firstValueFrom(
+      service.getMapPoints({
+        range: 'last24h',
+        status: ['INGRESADO', 'EN_TERRENO'],
+        procedureType: 'bache',
+      }),
+    );
+    const call = backend.expectOne((req) => req.url === `${url}/map-points`);
+    expect(call.request.params.get('range')).toBe('last24h');
+    expect(call.request.params.get('status')).toBe('INGRESADO,EN_TERRENO');
+    expect(call.request.params.get('procedureType')).toBe('bache');
+    call.flush({ range: 'last24h', items: [] });
+    await filtered;
+  });
+
   it('pide los KPIs del período con GET', async () => {
     const result = firstValueFrom(service.getKpis('last7d'));
     const call = backend.expectOne((req) => req.url === `${url}/kpis`);

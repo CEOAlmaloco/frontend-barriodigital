@@ -89,7 +89,6 @@ describe.each([
   { path: 'tramites', selector: 'app-requests', allowed: ALL_ROLES },
   { path: 'tramites/req-1', route: 'tramites/:id', selector: 'app-request-detail', allowed: ALL_ROLES },
   { path: 'admin', selector: 'app-admin', heading: 'Panel de administración', allowed: ADMIN_ONLY },
-  { path: 'reports', selector: 'app-reports', heading: 'Reportes', allowed: OVERSIGHT },
   { path: 'audit', selector: 'app-audit', heading: 'Auditoría', allowed: OVERSIGHT },
 ])('Ruta /$path', ({ path, route, selector, heading, allowed }) => {
   let ctx: ReturnType<typeof setup>;
@@ -154,6 +153,87 @@ describe.each([
 
     expect(TestBed.inject(Router).url).toBe('/');
     expect(ctx.msalGuard.canActivate).not.toHaveBeenCalled();
+  });
+});
+
+describe('Rutas /reports y /reports/map', () => {
+  let ctx: ReturnType<typeof setup>;
+  const reportsChild = (path: string) =>
+    childRoute('reports')?.children?.find((child) => child.path === path);
+
+  beforeEach(() => {
+    ctx = setup();
+  });
+
+  const open = async (role: Role, url: string) => {
+    ctx.auth.tokenRoles.set([role]);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl(url);
+    harness.detectChanges();
+    return harness.routeNativeElement as HTMLElement;
+  };
+
+  it('el Funcionario entra a reportería solo por el mapa (EP3-04, sección 2)', () => {
+    const parent = childRoute('reports');
+    const indicators = reportsChild('');
+
+    expect(parent?.canActivate).toEqual([roleGuard]);
+    expect([...(parent?.data?.['roles'] ?? [])].sort()).toEqual(
+      [Role.Admin, Role.Auditor, Role.Funcionario].sort(),
+    );
+    expect(indicators?.canActivate).toEqual([roleGuard]);
+    expect([...(indicators?.data?.['roles'] ?? [])].sort()).toEqual([...OVERSIGHT].sort());
+    expect(indicators?.data?.['deniedRedirect']).toBe('/reports/map');
+    expect(reportsChild('map')?.loadComponent).toBeTypeOf('function');
+    expect(reportsChild('map')?.title).toBe('Mapa de trámites | BarrioDigital');
+  });
+
+  it.each(OVERSIGHT)('%s ve Indicadores con las dos pestañas', async (role) => {
+    const element = await open(role, '/reports');
+
+    expect(TestBed.inject(Router).url).toBe('/reports');
+    expect(element.querySelector('app-reports-layout h1')?.textContent).toBe('Reportes');
+    expect(element.querySelector('app-reports')).not.toBeNull();
+    const tabs = Array.from(element.querySelectorAll('[mat-tab-link]'), (tab) =>
+      tab.textContent?.replace(/\s+/g, ' ').replace(/^\s*\S+\s/, '').trim(),
+    );
+    expect(tabs).toEqual(['Indicadores', 'Mapa de trámites']);
+  });
+
+  it.each(OVERSIGHT)('%s abre el mapa desde su pestaña', async (role) => {
+    const element = await open(role, '/reports/map');
+
+    expect(TestBed.inject(Router).url).toBe('/reports/map');
+    expect(element.querySelector('app-report-map')).not.toBeNull();
+    const active = Array.from(element.querySelectorAll('[mat-tab-link]')).filter(
+      (tab) => tab.getAttribute('aria-selected') === 'true',
+    );
+    expect(active.map((tab) => tab.textContent)).toEqual([expect.stringContaining('Mapa de trámites')]);
+  });
+
+  it('el Funcionario que entra a /reports va al mapa, sin pestañas ni indicadores', async () => {
+    const element = await open(Role.Funcionario, '/reports');
+
+    expect(TestBed.inject(Router).url).toBe('/reports/map');
+    expect(element.querySelector('app-reports-layout h1')?.textContent).toBe('Mapa de trámites');
+    expect(element.querySelector('app-report-map')).not.toBeNull();
+    expect(element.querySelector('app-reports')).toBeNull();
+    expect(element.querySelector('[mat-tab-nav-bar]')).toBeNull();
+  });
+
+  it.each(['/reports', '/reports/map'])('el Vecino que entra a %s vuelve al inicio', async (url) => {
+    await open(Role.Vecino, url);
+
+    expect(TestBed.inject(Router).url).toBe('/inicio');
+  });
+
+  it('sin rol lleva a la pantalla sin acceso', async () => {
+    ctx.auth.tokenRoles.set([]);
+    const harness = await RouterTestingHarness.create();
+
+    await harness.navigateByUrl('/reports/map');
+
+    expect(TestBed.inject(Router).url).toBe('/no-access');
   });
 });
 

@@ -43,10 +43,14 @@ export const noAccessGuard: CanActivateFn = () => {
     .pipe(map((access) => access.kind !== 'granted' || router.createUrlTree(['/inicio'])));
 };
 
-/** Deja pasar solo al rol de data.roles de la ruta; el resto vuelve al inicio. Va después de accessGuard. */
+/**
+ * Deja pasar solo al rol de data.roles de la ruta; el resto va a data.deniedRedirect o, sin ella, al inicio.
+ * Va después de accessGuard.
+ */
 export const roleGuard: CanActivateFn = (route) => {
   const router = inject(Router);
   const allowedRoles = (route.data['roles'] ?? []) as readonly Role[];
+  const deniedRedirect = (route.data['deniedRedirect'] as string | undefined) ?? '/inicio';
 
   return inject(AuthService)
     .whenAccessResolved()
@@ -55,7 +59,7 @@ export const roleGuard: CanActivateFn = (route) => {
         if (access.kind !== 'granted') {
           return router.createUrlTree([NO_ACCESS_PATH]);
         }
-        return allowedRoles.includes(access.role) || router.createUrlTree(['/inicio']);
+        return allowedRoles.includes(access.role) || router.parseUrl(deniedRedirect);
       }),
     );
 };

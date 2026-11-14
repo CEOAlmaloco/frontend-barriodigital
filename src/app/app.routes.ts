@@ -9,7 +9,7 @@ import {
 } from './core/auth/auth.guard';
 import { AuthenticatedLayoutComponent } from './core/layout/authenticated-layout.component';
 import { LoginComponent } from './features/login/login.component';
-import { OVERSIGHT_ROLES, REQUESTS_ROLES, Role } from './shared/models/role';
+import { OVERSIGHT_ROLES, REPORTS_ROLES, REQUESTS_ROLES, Role } from './shared/models/role';
 
 export const routes: Routes = [
   {
@@ -68,10 +68,30 @@ export const routes: Routes = [
       {
         path: 'reports',
         canActivate: [roleGuard],
-        data: { roles: OVERSIGHT_ROLES },
+        data: { roles: REPORTS_ROLES },
         loadComponent: () =>
-          import('./features/reports/reports.component').then((m) => m.ReportsComponent),
-        title: 'Reportes | BarrioDigital',
+          import('./features/reports/reports-layout/reports-layout.component').then(
+            (m) => m.ReportsLayoutComponent,
+          ),
+        children: [
+          {
+            path: '',
+            pathMatch: 'full',
+            canActivate: [roleGuard],
+            data: { roles: OVERSIGHT_ROLES, deniedRedirect: '/reports/map' },
+            loadComponent: () =>
+              import('./features/reports/reports.component').then((m) => m.ReportsComponent),
+            title: 'Reportes | BarrioDigital',
+          },
+          {
+            path: 'map',
+            loadComponent: () =>
+              import('./features/reports/report-map/report-map.component').then(
+                (m) => m.ReportMapComponent,
+              ),
+            title: 'Mapa de trámites | BarrioDigital',
+          },
+        ],
       },
       {
         path: 'audit',
