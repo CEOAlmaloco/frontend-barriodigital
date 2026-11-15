@@ -53,7 +53,7 @@ npm test                      # modo watch
 npm test -- --watch=false     # una sola ejecución
 ```
 
-Las pruebas cubren `AppComponent`, `AuthService`, los guards, la configuración de MSAL (incluido el interceptor HTTP), la lectura de claims del token, `LoginComponent`, `HomeComponent` (bloques por rol, fallo aislado de cada fuente, vacío distinto del error, paginación de plazos y polling de los KPIs del Admin), `HeaderComponent`, `RequestsService`, `CatalogService`, `RequestsComponent`, `RequestDetailComponent` (por rol, estados de carga, error y 404, estados terminales, privacidad y actualización tras cada acción), `ReportService`, `polledResource`, `loadedResource` y `ReportsComponent` (ciclo de polling, pestaña oculta, pausa, respuestas lentas, fallos por fuente, cambio de período y 503) y las rutas protegidas por rol.
+Las pruebas cubren `AppComponent`, `AuthService`, los guards, la configuración de MSAL (incluido el interceptor HTTP), la lectura de claims del token, `LoginComponent`, `HomeComponent` (bloques por rol, fallo aislado de cada fuente, vacío distinto del error, paginación de plazos y polling de los KPIs del Admin), `HeaderComponent`, `RequestsService`, `CatalogService`, `RequestsComponent` (incluido el alta con el aviso de privacidad y el selector de imagen: advertencia, vista previa, errores y foco), `RequestDetailComponent` (por rol, estados de carga, error y 404, estados terminales, privacidad y actualización tras cada acción), `ReportService`, `polledResource`, `loadedResource` y `ReportsComponent` (ciclo de polling, pestaña oculta, pausa, respuestas lentas, fallos por fuente, cambio de período y 503) y las rutas protegidas por rol.
 
 ## Estructura
 

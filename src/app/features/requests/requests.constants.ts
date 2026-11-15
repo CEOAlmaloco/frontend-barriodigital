@@ -85,6 +85,9 @@ export const CONTACT_RESULTS = [
 /** Ancla del formulario de alta en /tramites, enlazada desde el inicio del Vecino. */
 export const NEW_REQUEST_FRAGMENT = 'nuevo-tramite';
 
+/** WebP se convierte a PNG antes de enviarlo: el backend solo acepta JPEG y PNG. */
+export const ACCEPTED_IMAGE_TYPES: readonly string[] = ['image/jpeg', 'image/png', 'image/webp'];
+
 export const REJECTION_REASON_MAX_LENGTH = 500;
 export const INTERVENTION_REASON_MAX_LENGTH = 500;
 export const ASSIGNMENT_REASON_MAX_LENGTH = 500;

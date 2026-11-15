@@ -1,0 +1,201 @@
+@use 'tokens' as *;
+
+$icon-size: 20px;
+$thumb-width: 96px;
+$thumb-height: 72px;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $space-2;
+  min-width: 0;
+}
+
+.image-field__hint {
+  margin: 0;
+  color: var(--bd-text-muted);
+}
+
+// Advertencia en línea, sin caja: destaca por ícono y peso, sin competir con los errores ni con el envío
+.image-field__caution {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-2;
+  margin: 0;
+  color: var(--bd-text);
+  font-weight: $font-weight-medium;
+}
+
+.image-field__caution-icon {
+  flex: none;
+  width: $icon-size;
+  height: $icon-size;
+  font-size: $icon-size;
+  color: var(--bd-accent-text);
+}
+
+.image-field__choose {
+  margin-top: $space-1;
+  min-height: $size-touch-target;
+}
+
+.image-field__selected {
+  display: flex;
+  align-items: center;
+  gap: $space-3 $space-4;
+  width: 100%;
+  margin-top: $space-1;
+  min-width: 0;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: image-field-enter $transition-base;
+  }
+}
+
+@keyframes image-field-enter {
+  from {
+    opacity: 0;
+  }
+}
+
+// Mismo patrón que la imagen del detalle: botón con ícono de ampliar visible sin depender del hover
+.image-field__thumb {
+  position: relative;
+  flex: none;
+  width: $thumb-width;
+  height: $thumb-height;
+  overflow: hidden;
+  padding: 0;
+  border: $border-width solid var(--bd-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-background);
+  cursor: zoom-in;
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: $border-width-strong;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    img {
+      transition: transform $transition-entrance;
+    }
+
+    &:hover img {
+      transform: scale(1.05);
+    }
+  }
+}
+
+.image-field__zoom {
+  position: absolute;
+  right: $space-1;
+  bottom: $space-1;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: $space-1;
+  background-color: rgba($color-text-primary, 0.78);
+  color: $color-surface;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.image-field__preview {
+  display: grid;
+  min-height: 12rem;
+  max-height: 75vh;
+  place-items: center;
+  overflow: auto;
+
+  img {
+    display: block;
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+  }
+}
+
+.image-field__meta {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  min-width: 0;
+}
+
+.image-field__file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 $space-2;
+  margin: 0;
+  min-width: 0;
+}
+
+.image-field__name {
+  font-weight: $font-weight-medium;
+  overflow-wrap: anywhere;
+}
+
+.image-field__size {
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+// El padding de los botones de texto se compensa para alinear la primera acción con el nombre
+.image-field__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-1;
+  margin-inline-start: -$space-3;
+}
+
+.image-field__divider {
+  width: $border-width;
+  height: $space-4;
+  background-color: var(--bd-border);
+}
+
+.image-field__status:empty {
+  display: none;
+}
+
+.image-field__processing,
+.image-field__error {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  margin: 0;
+}
+
+.image-field__processing {
+  color: var(--bd-text-muted);
+}
+
+.image-field__error {
+  align-items: flex-start;
+  color: var(--bd-error);
+
+  mat-icon {
+    flex: none;
+    width: $icon-size;
+    height: $icon-size;
+    font-size: $icon-size;
+  }
+}

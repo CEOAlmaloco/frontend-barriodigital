@@ -101,7 +101,7 @@
 }
 
 .status-dialog__error {
-  color: $color-error;
+  color: var(--bd-error);
 }
 
 .status-dialog__actions {
