@@ -85,6 +85,17 @@ html[data-bd-scale] .cdk-overlay-container :is(
   font-size: calc(#{$font-body} * var(--bd-text-scale));
 }
 
+// Los diálogos replican la escala de .app-shell: título como h2 y texto como cuerpo
+html[data-bd-scale] .mat-mdc-dialog-container .mat-mdc-dialog-title {
+  font-size: calc(#{$font-h2} * var(--bd-text-scale));
+}
+
+html[data-bd-scale] .mat-mdc-dialog-container :is(
+  p, li, td, th, dd, dt, label, a, small, legend, .mdc-floating-label, .mat-mdc-select-min-line
+) {
+  font-size: calc(#{$font-body} * var(--bd-text-scale));
+}
+
 html[data-bd-contrast='high'] {
   --bd-background: #ffffff;
   --bd-surface: #ffffff;
@@ -410,13 +421,16 @@ html[data-bd-grayscale='on'] app-accessibility-widget {
   filter: grayscale(1);
 }
 
-html[data-bd-font='on'] .app-shell :not(.mat-icon):not(.material-icons) {
+// Menús y diálogos se montan en .cdk-overlay-container, fuera de .app-shell: cada opción los incluye
+html[data-bd-font='on'] .app-shell :not(.mat-icon):not(.material-icons),
+html[data-bd-font='on'] .cdk-overlay-container :not(.mat-icon):not(.material-icons) {
   font-family: 'Atkinson Hyperlegible', 'Inter', sans-serif !important;
 }
 
 // summary entra porque los desplegables se presentan como enlaces
 html[data-bd-links='on'] .app-shell a,
-html[data-bd-links='on'] .app-shell summary {
+html[data-bd-links='on'] .app-shell summary,
+html[data-bd-links='on'] .cdk-overlay-container a {
   text-decoration-line: underline !important;
   text-underline-offset: 0.15em;
 }
@@ -426,6 +440,16 @@ html[data-bd-motion='on'] .app-shell *::before,
 html[data-bd-motion='on'] .app-shell *::after {
   animation: none !important;
   transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+// Duración casi nula y no none: Material espera el fin de la animación para cerrar el diálogo y devolver el foco
+html[data-bd-motion='on'] .cdk-overlay-container *,
+html[data-bd-motion='on'] .cdk-overlay-container *::before,
+html[data-bd-motion='on'] .cdk-overlay-container *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
 }
 
