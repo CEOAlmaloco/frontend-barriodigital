@@ -90,14 +90,6 @@ $column-actions: 212px;
   min-inline-size: 0;
 }
 
-.requests__attachment-selected {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: $space-2;
-  overflow-wrap: anywhere;
-}
-
 .requests__attachment-preview {
   display: grid;
   min-height: 12rem;

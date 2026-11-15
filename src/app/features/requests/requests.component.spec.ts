@@ -213,6 +213,76 @@ describe('RequestsComponent', () => {
     expect(text()).not.toContain(other.solicitanteNombre);
   });
 
+  describe('privacidad en el alta', () => {
+    const imagePicker = () =>
+      element.querySelector<HTMLInputElement>('app-request-image-field input[type="file"]')!;
+    const pickImage = async (file: File) => {
+      Object.defineProperty(imagePicker(), 'files', { value: [file], configurable: true });
+      imagePicker().dispatchEvent(new Event('change'));
+      await fixture.whenStable();
+    };
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    it('Vecino: el aviso va justo antes de ingresar y la advertencia dentro del bloque de imagen', async () => {
+      await render(Role.Vecino);
+
+      const notice = element.querySelector('app-request-privacy-notice');
+      expect(notice?.nextElementSibling).toBe(submitButton());
+      const caution = element.querySelector('.requests__attachment .image-field__caution');
+      expect(caution?.textContent).toMatch(/rostros/i);
+      expect(caution?.textContent).toMatch(/patentes/i);
+    });
+
+    it('el personal no ve el formulario ni el aviso', async () => {
+      await render(Role.Funcionario);
+
+      expect(element.querySelector('app-request-privacy-notice')).toBeNull();
+      expect(element.querySelector('app-request-image-field')).toBeNull();
+    });
+
+    it('una imagen sobre 5 MB muestra el error y bloquea el ingreso', async () => {
+      await render(Role.Vecino);
+      const large = new File(['x'], 'grande.jpg', { type: 'image/jpeg' });
+      Object.defineProperty(large, 'size', { value: 6 * 1024 * 1024 });
+
+      await pickImage(large);
+
+      expect(element.querySelector('app-request-image-field [role="alert"]')?.textContent).toContain(
+        'La imagen no puede superar 5 MB.',
+      );
+      expect(submitButton()?.disabled).toBe(true);
+    });
+
+    it('una imagen válida queda con miniatura, y Quitar vuelve al estado inicial', async () => {
+      vi.stubGlobal(
+        'createImageBitmap',
+        vi.fn(async () => ({ width: 800, height: 600, close: vi.fn() })),
+      );
+      vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:miniatura');
+      const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+      await render(Role.Vecino);
+
+      await pickImage(new File(['x'], 'bache.jpg', { type: 'image/jpeg' }));
+      await fixture.whenStable();
+
+      expect(element.querySelector('.image-field__thumb img')?.getAttribute('src')).toBe(
+        'blob:miniatura',
+      );
+      expect(element.querySelector('.image-field__name')?.textContent).toBe('bache.jpg');
+      expect(submitButton()?.disabled).toBe(false);
+
+      element.querySelector<HTMLButtonElement>('button[aria-label="Quitar imagen"]')!.click();
+      await fixture.whenStable();
+
+      expect(element.querySelector('.image-field__thumb')).toBeNull();
+      expect(revoke).toHaveBeenCalledWith('blob:miniatura');
+    });
+  });
+
   describe('estado del plazo (EP3-53)', () => {
     const read = (node: Element) => words(node);
     const slaCells = () =>

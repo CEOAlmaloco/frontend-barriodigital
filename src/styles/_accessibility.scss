@@ -414,7 +414,9 @@ html[data-bd-font='on'] .app-shell :not(.mat-icon):not(.material-icons) {
   font-family: 'Atkinson Hyperlegible', 'Inter', sans-serif !important;
 }
 
-html[data-bd-links='on'] .app-shell a {
+// summary entra porque los desplegables se presentan como enlaces
+html[data-bd-links='on'] .app-shell a,
+html[data-bd-links='on'] .app-shell summary {
   text-decoration-line: underline !important;
   text-underline-offset: 0.15em;
 }

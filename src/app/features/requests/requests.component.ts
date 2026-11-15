@@ -114,7 +114,9 @@ import {
 import { RequestStatusBadgeComponent } from './request-status-badge/request-status-badge.component';
 import { SlaIndicatorComponent, SlaIndicatorState } from './sla-indicator/sla-indicator.component';
 import { procedureTypeLabel } from './procedure-label';
-import { NEW_REQUEST_FRAGMENT, isClosedStatus } from './requests.constants';
+import { RequestImageFieldComponent } from './request-image-field/request-image-field.component';
+import { RequestPrivacyNoticeComponent } from './request-privacy-notice/request-privacy-notice.component';
+import { ACCEPTED_IMAGE_TYPES, NEW_REQUEST_FRAGMENT, isClosedStatus } from './requests.constants';
 import { RequestsService } from './requests.service';
 import { RequestLocationMapComponent } from './request-location-map.component';
 import {
@@ -135,7 +137,6 @@ const STAFF_COLUMNS = ['tipo', 'descripcion', 'solicitante', 'responsable', 'est
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 const MAX_IMAGE_PIXELS = 12_000_000;
 const MAX_IMAGE_DIMENSION = 6000;
-const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 @Component({
   selector: 'app-requests',
@@ -167,7 +168,9 @@ const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
     RequestActionsComponent,
     RequestAssigneeComponent,
     RequestDescriptionComponent,
+    RequestImageFieldComponent,
     RequestListFiltersComponent,
+    RequestPrivacyNoticeComponent,
     RequestQueueComponent,
     RequestLocationMapComponent,
     RequestStatusBadgeComponent,
@@ -1030,23 +1033,16 @@ export class RequestsComponent {
     return mapUrl(request) ?? '';
   }
 
-  protected async selectAttachment(event: Event): Promise<void> {
-    const input = event.currentTarget as HTMLInputElement;
-    const file = input.files?.[0];
+  protected async selectAttachment(file: File): Promise<void> {
     const selection = ++this.attachmentSelection;
     this.selectedAttachment.set(null);
     this.attachmentError.set(null);
-    if (!file) {
-      return;
-    }
     if (file.size > MAX_ATTACHMENT_BYTES) {
       this.attachmentError.set('La imagen no puede superar 5 MB.');
-      input.value = '';
       return;
     }
     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
       this.attachmentError.set('Adjunta una imagen JPEG, PNG o WebP.');
-      input.value = '';
       return;
     }
 
@@ -1085,7 +1081,6 @@ export class RequestsComponent {
         );
       }
     } finally {
-      input.value = '';
       if (selection === this.attachmentSelection) {
         this.isProcessingAttachment.set(false);
       }

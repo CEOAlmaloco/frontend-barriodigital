@@ -158,31 +158,17 @@
 
         <fieldset class="requests__attachment">
           <legend class="requests__location-title">Imagen del problema (opcional)</legend>
-          <p class="requests__location-help">
-            Adjunta una imagen JPEG, PNG o WebP de hasta 5 MB. Se acepta un archivo por trámite.
-          </p>
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            aria-label="Adjuntar una imagen del problema"
-            [disabled]="isSubmitting() || isProcessingAttachment()"
-            (change)="selectAttachment($event)"
+          <app-request-image-field
+            [file]="selectedAttachment()"
+            [processing]="isProcessingAttachment()"
+            [error]="attachmentError()"
+            [disabled]="isSubmitting()"
+            (fileSelected)="selectAttachment($event)"
+            (removed)="removeAttachment()"
           />
-          @if (isProcessingAttachment()) {
-            <p aria-live="polite">Procesando imagen…</p>
-          }
-          @if (selectedAttachment(); as attachment) {
-            <div class="requests__attachment-selected">
-              <span
-                >{{ attachment.name }} ({{ (attachment.size / 1024 / 1024).toFixed(2) }} MB)</span
-              >
-              <button matButton type="button" (click)="removeAttachment()">Quitar imagen</button>
-            </div>
-          }
-          @if (attachmentError(); as error) {
-            <p class="requests__error" role="alert">{{ error }}</p>
-          }
         </fieldset>
+
+        <app-request-privacy-notice />
 
         <button
           matButton="filled"
