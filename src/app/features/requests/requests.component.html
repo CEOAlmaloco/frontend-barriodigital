@@ -240,6 +240,14 @@
           (valueChange)="changeQueue($event)"
         />
       }
+
+      @if (showResults() && totalElements() > 0) {
+        <app-request-export
+          [query]="query()"
+          [total]="totalElements()"
+          [loading]="listState() === 'loading'"
+        />
+      }
     </div>
 
     <app-request-list-filters

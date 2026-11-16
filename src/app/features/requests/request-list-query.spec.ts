@@ -5,6 +5,7 @@ import {
   parseDateKey,
   parseRequestListParams,
   sameRequestListQuery,
+  toRequestExportParams,
   toRequestListParams,
 } from './request-list-query';
 
@@ -41,6 +42,29 @@ describe('request-list-query', () => {
       page: '2',
       size: '50',
     });
+  });
+
+  it('la exportación lleva búsqueda, filtros, bandeja y orden, sin página ni tamaño', () => {
+    expect(
+      toRequestExportParams({
+        ...DEFAULT_REQUEST_QUERY,
+        q: ' luminaria ',
+        open: 'true',
+        sector: 'villa-ralco',
+        assignee: 'none',
+        sort: 'status',
+        direction: 'asc',
+        page: 4,
+        size: 50,
+      }),
+    ).toEqual({
+      q: 'luminaria',
+      open: 'true',
+      sector: 'villa-ralco',
+      assignee: 'none',
+      sort: 'status,asc',
+    });
+    expect(toRequestExportParams(DEFAULT_REQUEST_QUERY)).toEqual({});
   });
 
   it('lee la URL y vuelve a serializarla igual', () => {

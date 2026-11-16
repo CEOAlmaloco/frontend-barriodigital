@@ -1,0 +1,55 @@
+@use '@angular/material' as mat;
+@use 'tokens' as *;
+
+// El botón y la nota se acomodan como hijos directos del encabezado del listado
+:host {
+  display: contents;
+}
+
+// Misma altura que la bandeja que tiene al lado
+.request-export__button {
+  @include mat.button-overrides(
+    (
+      outlined-container-height: $size-touch-target,
+    )
+  );
+  position: relative;
+  flex: none;
+
+  @media (max-width: $breakpoint-sm - 1px) {
+    width: 100%;
+  }
+}
+
+// Conserva el ancho del botón mientras exporta
+.request-export__label--hidden {
+  visibility: hidden;
+}
+
+.request-export__spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+.request-export__note {
+  display: flex;
+  flex-basis: 100%;
+  align-items: flex-start;
+  gap: $space-2;
+  margin: 0;
+  padding: $space-2 $space-3;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-accent-container);
+  color: var(--bd-text);
+  font-size: $font-body-sm;
+
+  mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--bd-accent-text);
+    font-size: 18px;
+  }
+}

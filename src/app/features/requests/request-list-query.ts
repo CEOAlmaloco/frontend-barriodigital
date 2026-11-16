@@ -27,6 +27,8 @@ export interface RequestListQuery {
 }
 
 export const REQUEST_PAGE_SIZES: readonly number[] = [10, 20, 50];
+/** Sobre este total requests responde 400 sin filas (EP3-63). */
+export const REQUEST_EXPORT_MAX_ROWS = 5000;
 export const SEARCH_MAX_LENGTH = 100;
 export const SEARCH_DEBOUNCE_MS = 350;
 
@@ -83,6 +85,12 @@ export function toRequestListParams(query: RequestListQuery): Record<string, str
   }
   if (query.page > 0) params['page'] = String(query.page);
   if (query.size !== DEFAULT_REQUEST_QUERY.size) params['size'] = String(query.size);
+  return params;
+}
+
+/** Los filtros y el orden del listado, sin paginación: el archivo trae todas las coincidencias. */
+export function toRequestExportParams(query: RequestListQuery): Record<string, string> {
+  const { page, size, ...params } = toRequestListParams(query);
   return params;
 }
 

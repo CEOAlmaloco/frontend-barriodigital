@@ -60,6 +60,7 @@ import {
   RequestTransitions,
 } from '../../shared/models/request.model';
 import { Role } from '../../shared/models/role';
+import { saveFile } from '../../shared/utils/download-file';
 import { assignmentFailure } from './assignment-errors';
 import { MUNICIPALITY_SINCE, toDateKey } from './date-key';
 import {
@@ -94,6 +95,7 @@ import {
 } from './request-assign-dialog/request-assign-dialog.component';
 import { RequestAssigneeComponent } from './request-assignee/request-assignee.component';
 import { RequestDescriptionComponent } from './request-description/request-description.component';
+import { RequestExportComponent } from './request-export/request-export.component';
 import {
   RequestQueueComponent,
   RequestQueueOption,
@@ -168,6 +170,7 @@ const MAX_IMAGE_DIMENSION = 6000;
     RequestActionsComponent,
     RequestAssigneeComponent,
     RequestDescriptionComponent,
+    RequestExportComponent,
     RequestImageFieldComponent,
     RequestListFiltersComponent,
     RequestPrivacyNoticeComponent,
@@ -1122,15 +1125,8 @@ export class RequestsComponent {
       .getAttachment(request.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (image) => {
-          const extension = image.type === 'image/jpeg' ? 'jpg' : 'png';
-          const url = URL.createObjectURL(image);
-          const anchor = document.createElement('a');
-          anchor.href = url;
-          anchor.download = `evidencia.${extension}`;
-          anchor.click();
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-        },
+        next: (image) =>
+          saveFile(image, `evidencia.${image.type === 'image/jpeg' ? 'jpg' : 'png'}`),
         error: () =>
           this.snackBar.open('No se pudo descargar la imagen del trámite.', undefined, {
             duration: 3000,

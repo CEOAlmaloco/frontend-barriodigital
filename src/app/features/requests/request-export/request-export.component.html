@@ -1,0 +1,29 @@
+<button
+  matButton="outlined"
+  type="button"
+  class="request-export__button"
+  disabledInteractive
+  [disabled]="unavailable()"
+  [attr.aria-busy]="busy()"
+  [attr.aria-describedby]="overLimit() ? noteId : null"
+  (click)="export()"
+>
+  <mat-icon aria-hidden="true" [class.request-export__label--hidden]="busy()">download</mat-icon>
+  <span [class.request-export__label--hidden]="busy()">Exportar CSV</span>
+  @if (busy()) {
+    <span class="cdk-visually-hidden">Exportando</span>
+    <mat-progress-spinner
+      class="request-export__spinner"
+      mode="indeterminate"
+      [diameter]="20"
+      aria-hidden="true"
+    />
+  }
+</button>
+
+@if (overLimit()) {
+  <p [id]="noteId" class="request-export__note">
+    <mat-icon aria-hidden="true">info</mat-icon>
+    <span>Son más de {{ maxRows }} trámites. Filtra por fecha o estado para exportar.</span>
+  </p>
+}
