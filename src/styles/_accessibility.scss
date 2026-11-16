@@ -24,6 +24,15 @@
   --bd-border-interactive: #{$color-border-interactive};
   --bd-field: #{$color-surface};
   --bd-font: #{$font-family-base};
+  // Logo: apuntan a la paleta para seguir cada modo sin atar el verde de la marca al de "éxito".
+  // Se resuelven en el mismo elemento que redefine la paleta, así que toman el valor del modo activo.
+  --bd-brand-primary: var(--bd-primary);
+  --bd-brand-deep: var(--bd-primary-dark);
+  --bd-brand-soft: #{$color-primary-light};
+  --bd-brand-secondary: var(--bd-secondary);
+  --bd-brand-green: var(--bd-success);
+  --bd-brand-muted: var(--bd-border-interactive);
+  --bd-brand-paper: var(--bd-surface);
 }
 
 .app-shell {
@@ -117,6 +126,7 @@ html[data-bd-contrast='high'] {
   --bd-accent-container: #ffffff;
   --bd-container-border: #000000;
   --bd-border-interactive: #000000;
+  --bd-brand-soft: #000000;
   --mat-sys-background: #ffffff;
   --mat-sys-on-background: #000000;
   --mat-sys-surface: #ffffff;
@@ -147,6 +157,7 @@ html[data-bd-contrast='dark'] {
   --bd-error-container: rgba(240, 180, 179, 0.14);
   --bd-accent-container: rgba(241, 212, 155, 0.14);
   --bd-border-interactive: #b7a4c2;
+  --bd-brand-soft: #b7a4c2;
   --mat-sys-background: #17141c;
   --mat-sys-on-background: #f6f1f8;
   --mat-sys-surface: #241f2b;
@@ -241,6 +252,7 @@ html[data-bd-contrast='negative'] {
   --bd-accent-container: #000000;
   --bd-container-border: #ffffff;
   --bd-border-interactive: #ffffff;
+  --bd-brand-soft: #ffffff;
   --mat-sys-background: #000000;
   --mat-sys-on-background: #ffffff;
   --mat-sys-surface: #111111;

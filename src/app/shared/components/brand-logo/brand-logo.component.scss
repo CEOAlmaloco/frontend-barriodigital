@@ -1,0 +1,74 @@
+// Grosores en unidades del dibujo original (1254 px), por eso no salen de los tokens de espaciado
+$roof-width: 44;
+$line-width: 10;
+$separator-width: 18;
+
+:host {
+  display: inline-block;
+  height: 100%;
+  line-height: 0;
+}
+
+svg {
+  display: block;
+  width: auto;
+  height: 100%;
+}
+
+.bl-primary {
+  fill: var(--bd-brand-primary);
+}
+
+.bl-deep {
+  fill: var(--bd-brand-deep);
+}
+
+.bl-soft {
+  fill: var(--bd-brand-soft);
+}
+
+.bl-secondary {
+  fill: var(--bd-brand-secondary);
+}
+
+.bl-green {
+  fill: var(--bd-brand-green);
+}
+
+.bl-muted {
+  fill: var(--bd-brand-muted);
+}
+
+.bl-paper {
+  fill: var(--bd-brand-paper);
+}
+
+.bl-primary-line,
+.bl-paper-line,
+.bl-paper-band {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bl-primary-line {
+  stroke: var(--bd-brand-primary);
+  stroke-width: $roof-width;
+}
+
+.bl-paper-line {
+  stroke: var(--bd-brand-paper);
+  stroke-width: $line-width;
+}
+
+.bl-paper-band {
+  stroke: var(--bd-brand-paper);
+  stroke-width: $separator-width;
+}
+
+// Borde del color del fondo que separa cada pieza de lo que tiene detrás, como en el logo original
+.bl-sep {
+  stroke: var(--bd-brand-paper);
+  stroke-width: $separator-width;
+  paint-order: stroke;
+}

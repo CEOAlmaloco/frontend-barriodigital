@@ -26,6 +26,7 @@ describe('HeaderComponent', () => {
       imports: [HeaderComponent],
       providers: [
         provideRouter([
+          { path: 'inicio', children: [] },
           { path: 'reports', children: [{ path: 'map', children: [] }] },
           { path: 'audit', children: [] },
         ]),
@@ -133,5 +134,28 @@ describe('HeaderComponent', () => {
     expect(element.querySelector('.header__nav--open')).toBeNull();
     expect(link?.classList.contains('header__link--active')).toBe(true);
     expect(link?.getAttribute('aria-current')).toBe('page');
+  });
+
+  it('el logo es un enlace al inicio que nombra la marca, con ambas versiones decorativas', async () => {
+    await render(Role.Vecino);
+    const brand = element.querySelector<HTMLAnchorElement>('.header__brand')!;
+
+    expect(brand.getAttribute('href')).toBe('/inicio');
+    expect(brand.getAttribute('aria-label')).toBe('BarrioDigital, ir al inicio');
+    const logos = Array.from(brand.querySelectorAll('svg'));
+    expect(logos).toHaveLength(2);
+    expect(logos.every((logo) => logo.getAttribute('aria-hidden') === 'true')).toBe(true);
+  });
+
+  it('el logo cierra el menú móvil al volver al inicio', async () => {
+    const fixture = await render(Role.Vecino);
+    const toggle = element.querySelector<HTMLButtonElement>('.header__menu-toggle')!;
+
+    toggle.click();
+    await fixture.whenStable();
+    element.querySelector<HTMLAnchorElement>('.header__brand')!.click();
+    await fixture.whenStable();
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
   });
 });

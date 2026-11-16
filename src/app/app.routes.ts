@@ -8,14 +8,13 @@ import {
   roleGuard,
 } from './core/auth/auth.guard';
 import { AuthenticatedLayoutComponent } from './core/layout/authenticated-layout.component';
-import { LoginComponent } from './features/login/login.component';
 import { OVERSIGHT_ROLES, REPORTS_ROLES, REQUESTS_ROLES, Role } from './shared/models/role';
 
 export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    component: LoginComponent,
+    loadComponent: () => import('./features/login/login.component').then((m) => m.LoginComponent),
     canActivate: [redirectAuthenticatedGuard],
     title: 'Iniciar sesión | BarrioDigital',
   },
