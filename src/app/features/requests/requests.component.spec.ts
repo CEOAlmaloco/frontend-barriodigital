@@ -101,6 +101,7 @@ describe('RequestsComponent', () => {
     getAttachment: ReturnType<typeof vi.fn>;
     getTransitions: ReturnType<typeof vi.fn>;
     changeStatus: ReturnType<typeof vi.fn>;
+    exportRequests: ReturnType<typeof vi.fn>;
     take?: ReturnType<typeof vi.fn>;
   };
   let fixture: ComponentFixture<RequestsComponent>;
@@ -137,6 +138,7 @@ describe('RequestsComponent', () => {
       getAttachment: vi.fn(() => of(new Blob(['image'], { type: 'image/png' }))),
       getTransitions: vi.fn(getTransitions),
       changeStatus: vi.fn(),
+      exportRequests: vi.fn(() => of(new Blob(['csv'], { type: 'text/csv' }))),
     };
     const auth = {
       role: () => role,
@@ -1990,6 +1992,85 @@ describe('RequestsComponent', () => {
 
       expect(service.getRequests).toHaveBeenLastCalledWith({});
       expect(fixture.componentInstance['filters'].controls.status.value).toBe('');
+    });
+  });
+
+  describe('exportación CSV (EP3-70)', () => {
+    const exportButton = () =>
+      Array.from(element.querySelectorAll<HTMLButtonElement>('app-request-export button')).find(
+        (button) => button.textContent?.includes('Exportar CSV'),
+      );
+
+    let spies: { mockRestore: () => void }[] = [];
+
+    beforeEach(() => {
+      spies = [
+        vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:csv'),
+        vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined),
+      ];
+    });
+
+    afterEach(() => spies.forEach((spy) => spy.mockRestore()));
+
+    it.each([Role.Vecino, Role.Funcionario, Role.Admin, Role.Auditor])(
+      '%s: exporta con los filtros de la URL, sin página ni tamaño',
+      async (role) => {
+        await render(
+          role,
+          undefined,
+          undefined,
+          undefined,
+          '/?q=poste&status=EN_GESTION&sort=folio,asc&page=1&size=10',
+        );
+
+        exportButton()!.click();
+        await fixture.whenStable();
+
+        expect(service.exportRequests).toHaveBeenCalledWith({
+          q: 'poste',
+          status: 'EN_GESTION',
+          sort: 'folio,asc',
+        });
+      },
+    );
+
+    it('al Vecino no le envía la bandeja aunque venga en la URL', async () => {
+      await render(Role.Vecino, undefined, undefined, undefined, '/?assignee=me&sector=ralco');
+
+      exportButton()!.click();
+      await fixture.whenStable();
+
+      expect(service.exportRequests).toHaveBeenCalledWith({ sector: 'ralco' });
+    });
+
+    it('el Funcionario exporta su bandeja', async () => {
+      await render(Role.Funcionario, undefined, undefined, undefined, '/?assignee=me');
+
+      exportButton()!.click();
+      await fixture.whenStable();
+
+      expect(service.exportRequests).toHaveBeenCalledWith({ assignee: 'me' });
+    });
+
+    it('sin resultados no ofrece exportar', async () => {
+      await render(Role.Funcionario, () => of(page([])));
+
+      expect(exportButton()).toBeUndefined();
+    });
+
+    it('mientras carga por primera vez no ofrece exportar', async () => {
+      await render(Role.Funcionario, () => new Subject<Page<Request>>());
+
+      expect(exportButton()).toBeUndefined();
+    });
+
+    it('sobre 5.000 trámites lo bloquea con el motivo', async () => {
+      await render(Role.Admin, () => of({ ...page([mine]), totalElements: 6412, totalPages: 321 }));
+
+      expect(exportButton()!.getAttribute('aria-disabled')).toBe('true');
+      expect(text()).toContain(
+        'Son más de 5.000 trámites. Filtra por fecha o estado para exportar.',
+      );
     });
   });
 

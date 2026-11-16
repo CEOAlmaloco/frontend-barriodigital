@@ -172,6 +172,8 @@ $column-actions: 212px;
   flex-wrap: wrap;
   align-items: baseline;
   gap: $space-1 $space-3;
+  // La bandeja y la exportación quedan juntas a la derecha
+  margin-inline-end: auto;
 
   .requests__section-title {
     margin-bottom: 0;

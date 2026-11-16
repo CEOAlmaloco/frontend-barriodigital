@@ -34,16 +34,17 @@ export class RequestsService {
    * buscar y filtrar. Un parámetro vacío no se envía.
    */
   getRequests(params: Record<string, string> = {}): Observable<Page<Request>> {
-    let httpParams = new HttpParams();
-    for (const [key, value] of Object.entries(params)) {
-      if (value) {
-        httpParams = httpParams.set(key, value);
-      }
-    }
-
     return this.http
-      .get<Page<RequestResponse>>(this.url, { params: httpParams })
+      .get<Page<RequestResponse>>(this.url, { params: toHttpParams(params) })
       .pipe(map((page) => ({ ...page, content: page.content.map(toRequest) })));
+  }
+
+  /** CSV del listado (EP3-63), con la misma visibilidad por rol que el GET paginado. */
+  exportRequests(params: Record<string, string> = {}): Observable<Blob> {
+    return this.http.get(`${this.url}/export`, {
+      params: toHttpParams(params),
+      responseType: 'blob',
+    });
   }
 
   /** Un trámite ajeno para el Vecino responde 404, igual que uno inexistente. */
@@ -162,6 +163,16 @@ export interface RegisterGestionPayload {
   note?: string;
   nextAttemptAt?: string;
   interventionReason?: string;
+}
+
+function toHttpParams(params: Record<string, string>): HttpParams {
+  let httpParams = new HttpParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value) {
+      httpParams = httpParams.set(key, value);
+    }
+  }
+  return httpParams;
 }
 
 function toRequest({

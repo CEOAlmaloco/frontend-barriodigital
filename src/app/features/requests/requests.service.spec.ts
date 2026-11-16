@@ -138,6 +138,22 @@ describe('RequestsService', () => {
     expect(await result).toBe(image);
   });
 
+  it('exporta el CSV por la ruta literal, con los filtros y como archivo', async () => {
+    const result = firstValueFrom(
+      service.exportRequests({ status: 'EN_GESTION', assignee: 'me', q: '' }),
+    );
+
+    const call = backend.expectOne((req) => req.url === `${url}/export`);
+    expect(call.request.method).toBe('GET');
+    expect(call.request.responseType).toBe('blob');
+    expect(call.request.params.keys()).toEqual(['status', 'assignee']);
+    expect(call.request.params.get('assignee')).toBe('me');
+    const csv = new Blob(['﻿"Folio"\r\n'], { type: 'text/csv' });
+    call.flush(csv);
+
+    expect(await result).toBe(csv);
+  });
+
   it('propaga el error del BFF para que la vista muestre su estado de error', async () => {
     const result = firstValueFrom(service.getRequests());
 
