@@ -1,0 +1,506 @@
+<main class="profile">
+  <header class="profile__head">
+    <h1>Mi perfil</h1>
+    <p class="profile__lead">Cuenta, preferencias y privacidad.</p>
+  </header>
+
+  <section class="profile__identity" aria-label="Identidad de la cuenta">
+    <div class="profile__avatar-wrap">
+      @if (photoUrl(); as photo) {
+        <img class="profile__avatar-img" [src]="photo" [alt]="'Foto de ' + accountName()" />
+      } @else {
+        <div class="profile__avatar" aria-hidden="true">
+          @if (initials()) {
+            {{ initials() }}
+          } @else {
+            <mat-icon>person</mat-icon>
+          }
+        </div>
+      }
+      <label class="profile__avatar-edit" title="Cambiar imagen">
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          class="cdk-visually-hidden"
+          (change)="onPhotoSelected($event)"
+        />
+        <mat-icon aria-hidden="true">photo_camera</mat-icon>
+        <span class="cdk-visually-hidden">Cambiar imagen de perfil</span>
+      </label>
+    </div>
+
+    <div class="profile__identity-copy">
+      <p class="profile__name">{{ accountName() }}</p>
+      @if (accountEmail(); as email) {
+        <p class="profile__meta">{{ email }}</p>
+      }
+      <p class="profile__badges">
+        <span class="profile__badge profile__badge--ok">Cuenta activa</span>
+        @if (roleLabel(); as label) {
+          <span class="profile__badge">{{ label }}</span>
+        }
+      </p>
+      @if (lastSignIn(); as when) {
+        <p class="profile__meta">Último acceso: {{ when | date: 'dd/MM/yyyy HH:mm' }}</p>
+      }
+    </div>
+
+    <div class="profile__identity-actions">
+      @if (photoUrl()) {
+        <button matButton type="button" (click)="clearPhoto()">Quitar imagen</button>
+      }
+      <button matButton type="button" class="profile__sign-out" (click)="signOut()">
+        <mat-icon aria-hidden="true">logout</mat-icon>
+        Cerrar sesión
+      </button>
+    </div>
+  </section>
+
+  <div class="profile__layout" [class.profile__layout--detail]="!mobileHub()">
+    <nav class="profile__nav" aria-label="Secciones del perfil">
+      <ul>
+        @for (item of navItems(); track item.id) {
+          <li>
+            <button
+              type="button"
+              class="profile__nav-btn"
+              [attr.aria-current]="section() === item.id ? 'page' : null"
+              (click)="selectSection(item.id)"
+            >
+              <mat-icon class="profile__nav-icon" aria-hidden="true">{{ item.icon }}</mat-icon>
+              <span class="profile__nav-copy">
+                <span class="profile__nav-label">{{ item.label }}</span>
+                <span class="profile__nav-hint">{{ item.hint }}</span>
+              </span>
+              <mat-icon class="profile__nav-chevron" aria-hidden="true">chevron_right</mat-icon>
+            </button>
+          </li>
+        }
+      </ul>
+    </nav>
+
+    <div class="profile__panels" id="profile-panel" tabindex="-1">
+      <button matButton type="button" class="profile__back" (click)="backToHub()">
+        <mat-icon aria-hidden="true">arrow_back</mat-icon>
+        Volver al perfil
+      </button>
+      @switch (section()) {
+        @case ('cuenta') {
+          <section class="profile__card" aria-labelledby="profile-account-title">
+            <div class="profile__section-head">
+              <h2 id="profile-account-title">Información de cuenta</h2>
+              <p>
+                Nombre y correo provienen de Microsoft Entra ID. Para corregirlos, solicita el cambio
+                a soporte municipal.
+              </p>
+            </div>
+            <dl class="profile__facts">
+              <div>
+                <dt>Nombre</dt>
+                <dd>{{ accountName() }}</dd>
+              </div>
+              <div>
+                <dt>Correo</dt>
+                <dd>{{ accountEmail() || 'No indicado' }}</dd>
+              </div>
+              <div>
+                <dt>Rol</dt>
+                <dd>{{ roleLabel() || 'Sin rol asignado' }}</dd>
+              </div>
+              <div>
+                <dt>Identificador</dt>
+                <dd class="profile__mono">{{ userId() || 'No disponible' }}</dd>
+              </div>
+              <div>
+                <dt>Estado</dt>
+                <dd>Activa</dd>
+              </div>
+            </dl>
+            <div class="profile__actions">
+              <a matButton [href]="correctionHref()">Solicitar corrección de datos</a>
+            </div>
+            @if (shortcuts().length) {
+              <div class="profile__shortcuts-block">
+                <h3>Accesos frecuentes</h3>
+                <ul class="profile__shortcuts">
+                  @for (item of shortcuts(); track item.path) {
+                    <li>
+                      <a class="profile__shortcut" [routerLink]="item.path">
+                        <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+                        <span>
+                          <span class="profile__shortcut-label">{{ item.label }}</span>
+                          <span class="profile__shortcut-desc">{{ item.description }}</span>
+                        </span>
+                      </a>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          </section>
+        }
+
+        @case ('notificaciones') {
+          <section class="profile__card" aria-labelledby="profile-alerts-title">
+            <div class="profile__section-head">
+              <h2 id="profile-alerts-title">Notificaciones</h2>
+              <p>Elige qué avisos recibir por correo sobre tus trámites.</p>
+            </div>
+
+            @if (prefsLoading()) {
+              <div class="profile__loading" role="status">
+                <mat-spinner diameter="28" />
+                <span>Cargando preferencia…</span>
+              </div>
+            } @else if (prefsError(); as error) {
+              <div class="profile__error" role="alert">
+                <p>
+                  @switch (error) {
+                    @case ('unavailable') {
+                      El servicio de preferencias no responde. Inténtalo de nuevo en unos minutos.
+                    }
+                    @case ('forbidden') {
+                      No tienes permiso para consultar esta preferencia.
+                    }
+                    @case ('unauthorized') {
+                      No pudimos validar tu sesión para esta preferencia. Vuelve a iniciar sesión.
+                    }
+                    @default {
+                      No se pudo cargar la preferencia de avisos.
+                    }
+                  }
+                </p>
+                <button matButton type="button" (click)="retryPreferences()">Reintentar</button>
+              </div>
+            }
+
+            @if (!prefsLoading()) {
+              <ul class="profile__settings-list">
+                <li class="profile__settings-item">
+                  <div>
+                    <p class="profile__toggle-label" id="email-alerts-label">Avisos por correo</p>
+                    <p class="profile__toggle-hint">
+                      Cambios de estado, comentarios y resoluciones de tus solicitudes.
+                    </p>
+                  </div>
+                  <mat-slide-toggle
+                    [checked]="emailEnabled()"
+                    [disabled]="prefsSaving() || !!prefsError()"
+                    aria-labelledby="email-alerts-label"
+                    (change)="onEmailToggle($event)"
+                  >
+                    {{ emailEnabled() ? 'Activados' : 'Pausados' }}
+                  </mat-slide-toggle>
+                </li>
+                @for (channel of emailChannels; track channel.title) {
+                  <li class="profile__settings-item">
+                    <div>
+                      <p class="profile__toggle-label">{{ channel.title }}</p>
+                      <p class="profile__toggle-hint">{{ channel.detail }}</p>
+                    </div>
+                    <span class="profile__settings-meta">Siempre activo</span>
+                  </li>
+                }
+              </ul>
+            }
+          </section>
+        }
+
+        @case ('accesibilidad') {
+          <section class="profile__card" aria-labelledby="profile-a11y-title">
+            <div class="profile__section-head">
+              <h2 id="profile-a11y-title">Accesibilidad</h2>
+              <p>
+                Por defecto se usa la preferencia del navegador o del sistema. También está el botón
+                flotante.
+              </p>
+            </div>
+
+            <div class="profile__preview" aria-live="polite">
+              <p class="profile__preview-label">Vista previa</p>
+              <p class="profile__preview-sample">
+                Texto al {{ textLabel() }}: “Tu trámite de alumbrado público está en gestión.”
+              </p>
+            </div>
+
+            <div class="profile__a11y-block">
+              <div class="profile__a11y-row">
+                <p class="profile__toggle-label">Tamaño del texto</p>
+                <div class="profile__a11y-actions">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Reducir texto"
+                    [disabled]="preferences().textStep === -1"
+                    (click)="decreaseText()"
+                  >
+                    <mat-icon>remove</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Aumentar texto"
+                    [disabled]="preferences().textStep === 4"
+                    (click)="increaseText()"
+                  >
+                    <mat-icon>add</mat-icon>
+                  </button>
+                </div>
+              </div>
+
+              <fieldset class="profile__fieldset">
+                <legend>Apariencia</legend>
+                <p class="profile__toggle-hint">
+                  “Según el sistema” adopta el modo claro u oscuro del dispositivo.
+                </p>
+                <div class="profile__chip-row">
+                  <button
+                    type="button"
+                    class="profile__chip"
+                    [attr.aria-pressed]="isContrastFollowSystem()"
+                    (click)="followSystemContrast()"
+                  >
+                    Según el sistema
+                  </button>
+                  <button
+                    type="button"
+                    class="profile__chip"
+                    [attr.aria-pressed]="isContrast('light')"
+                    (click)="setContrast('light')"
+                  >
+                    Fondo claro
+                  </button>
+                  <button
+                    type="button"
+                    class="profile__chip"
+                    [attr.aria-pressed]="isContrast('dark')"
+                    (click)="setContrast('dark')"
+                  >
+                    Modo oscuro
+                  </button>
+                  <button
+                    type="button"
+                    class="profile__chip"
+                    [attr.aria-pressed]="isContrast('high')"
+                    (click)="setContrast('high')"
+                  >
+                    Alto contraste
+                  </button>
+                  <button
+                    type="button"
+                    class="profile__chip"
+                    [attr.aria-pressed]="isContrast('negative')"
+                    (click)="setContrast('negative')"
+                  >
+                    Contraste negativo
+                  </button>
+                </div>
+              </fieldset>
+
+              <fieldset class="profile__fieldset">
+                <legend>Movimiento</legend>
+                <p class="profile__toggle-hint">
+                  “Según el sistema” respeta la opción de reducir movimiento del dispositivo.
+                </p>
+                <div class="profile__chip-row">
+                  <button
+                    type="button"
+                    class="profile__chip"
+                    [attr.aria-pressed]="isMotionFollowSystem()"
+                    (click)="followSystemMotion()"
+                  >
+                    Según el sistema
+                  </button>
+                  <button
+                    type="button"
+                    class="profile__chip"
+                    [attr.aria-pressed]="!isMotionFollowSystem() && !preferences().pauseMotion"
+                    (click)="setMotionPaused(false)"
+                  >
+                    Animaciones activas
+                  </button>
+                  <button
+                    type="button"
+                    class="profile__chip"
+                    [attr.aria-pressed]="!isMotionFollowSystem() && preferences().pauseMotion"
+                    (click)="setMotionPaused(true)"
+                  >
+                    Pausar animaciones
+                  </button>
+                </div>
+              </fieldset>
+
+              <div
+                class="profile__chip-row"
+                role="group"
+                aria-label="Opciones adicionales de accesibilidad"
+              >
+                <button
+                  type="button"
+                  class="profile__chip"
+                  [attr.aria-pressed]="preferences().grayscale"
+                  (click)="toggleGrayscale()"
+                >
+                  Daltonismo
+                </button>
+                <button
+                  type="button"
+                  class="profile__chip"
+                  [attr.aria-pressed]="preferences().readableFont"
+                  (click)="toggleReadableFont()"
+                >
+                  Fuente legible
+                </button>
+                <button
+                  type="button"
+                  class="profile__chip"
+                  [attr.aria-pressed]="preferences().underlineLinks"
+                  (click)="toggleUnderlineLinks()"
+                >
+                  Subrayar enlaces
+                </button>
+              </div>
+
+              <button matButton type="button" (click)="resetAccessibility()">
+                Restablecer preferencias
+              </button>
+            </div>
+          </section>
+        }
+
+        @case ('actividad') {
+          <section class="profile__card" aria-labelledby="profile-activity-title">
+            <div class="profile__section-head">
+              <h2 id="profile-activity-title">Mi actividad</h2>
+              <p>Trámites recientes asociados a tu cuenta.</p>
+            </div>
+
+            @if (lastSignIn(); as when) {
+              <p class="profile__meta">Último acceso: {{ when | date: 'dd/MM/yyyy HH:mm' }}</p>
+            }
+
+            @if (activityLoading()) {
+              <div class="profile__loading" role="status">
+                <mat-spinner diameter="28" />
+                <span>Cargando actividad…</span>
+              </div>
+            } @else if (activityError()) {
+              <div class="profile__error" role="alert">
+                <p>No se pudo cargar la actividad reciente.</p>
+                <button matButton type="button" (click)="retryActivity()">Reintentar</button>
+              </div>
+            } @else if (activity().length === 0) {
+              <p class="profile__empty">Aún no hay trámites para mostrar.</p>
+            } @else {
+              <ol class="profile__timeline">
+                @for (item of activity(); track item.id) {
+                  <li>
+                    <a class="profile__timeline-item" [routerLink]="item.path">
+                      <span class="profile__timeline-title">{{ item.title }}</span>
+                      <span class="profile__timeline-detail">{{ item.detail }}</span>
+                      <time class="profile__timeline-when" [attr.datetime]="item.at">
+                        {{ item.at | date: 'dd/MM/yyyy HH:mm' }}
+                      </time>
+                    </a>
+                  </li>
+                }
+              </ol>
+              <a matButton routerLink="/tramites">Ver mis trámites</a>
+            }
+          </section>
+        }
+
+        @case ('privacidad') {
+          <section class="profile__card" aria-labelledby="profile-privacy-title">
+            <div class="profile__section-head">
+              <h2 id="profile-privacy-title">Privacidad y seguridad</h2>
+              <p>
+                Tratamos tus datos conforme a la Ley N° 19.628. Los antecedentes de trámites pueden
+                conservarse por obligación municipal.
+              </p>
+            </div>
+            <ul class="profile__bullets">
+              <li>
+                Usamos los datos de tu cuenta y la información del trámite (tipo, descripción,
+                ubicación e imagen adjunta, si corresponde).
+              </li>
+              <li>El personal municipal atiende el caso; otros vecinos no ven tus solicitudes.</li>
+              <li>
+                Contraseña y verificación en dos pasos se administran en Microsoft Entra ID, no en
+                esta aplicación.
+              </li>
+            </ul>
+            <div class="profile__actions">
+              <a matButton [href]="correctionHref()">Solicitar rectificación</a>
+              <a matButton routerLink="/tramites">Revisar mis trámites</a>
+              <a matButton [href]="supportHref()">Contactar soporte</a>
+            </div>
+          </section>
+        }
+
+        @case ('trabajo') {
+          @if (showWorkPrefs()) {
+            <section class="profile__card" aria-labelledby="profile-work-title">
+              <div class="profile__section-head">
+                <h2 id="profile-work-title">Preferencias de trabajo</h2>
+                <p>Opciones personales de esta estación. No cambian permisos ni la configuración del sistema.</p>
+              </div>
+              <div class="profile__toggle-row">
+                <div>
+                  <p class="profile__toggle-label" id="work-assigned-label">
+                    Preferir trámites asignados a mí
+                  </p>
+                  <p class="profile__toggle-hint">Se recuerda en este equipo al abrir la bandeja.</p>
+                </div>
+                <mat-slide-toggle
+                  [checked]="workPrefs().preferAssignedOnly"
+                  aria-labelledby="work-assigned-label"
+                  (change)="onWorkToggle('preferAssignedOnly', $event)"
+                />
+              </div>
+              <div class="profile__toggle-row">
+                <div>
+                  <p class="profile__toggle-label" id="work-start-label">Abrir Trámites al iniciar</p>
+                  <p class="profile__toggle-hint">Preferencia de acceso rápido en este equipo.</p>
+                </div>
+                <mat-slide-toggle
+                  [checked]="workPrefs().openTramitesOnStart"
+                  aria-labelledby="work-start-label"
+                  (change)="onWorkToggle('openTramitesOnStart', $event)"
+                />
+              </div>
+              @if (role() === Role.Admin) {
+                <a matButton routerLink="/admin">Ir a Administración</a>
+              }
+            </section>
+          }
+        }
+
+        @case ('sesion') {
+          <section class="profile__card" aria-labelledby="profile-session-title">
+            <div class="profile__section-head">
+              <h2 id="profile-session-title">Sesión</h2>
+              <p>Inicio de sesión con Microsoft Entra ID.</p>
+            </div>
+            <dl class="profile__facts">
+              <div>
+                <dt>Proveedor</dt>
+                <dd>Microsoft Entra ID</dd>
+              </div>
+              <div>
+                <dt>Cuenta</dt>
+                <dd>{{ accountEmail() || accountName() }}</dd>
+              </div>
+            </dl>
+            <div class="profile__actions">
+              <button matButton type="button" class="profile__sign-out" (click)="signOut()">
+                <mat-icon aria-hidden="true">logout</mat-icon>
+                Cerrar sesión
+              </button>
+            </div>
+          </section>
+        }
+      }
+    </div>
+  </div>
+</main>

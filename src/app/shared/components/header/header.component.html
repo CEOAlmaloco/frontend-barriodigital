@@ -40,14 +40,30 @@
   </nav>
 
   <div class="header__account">
-    <p class="header__account-identity">
-      <span class="header__account-name">{{ accountName() }}</span>
-      @if (roleLabel(); as label) {
-        <span class="header__account-role">
-          <span class="cdk-visually-hidden">Rol: </span>{{ label }}
-        </span>
-      }
-    </p>
+    <a
+      class="header__account-identity"
+      routerLink="/perfil"
+      routerLinkActive="header__account-identity--active"
+      ariaCurrentWhenActive="page"
+      (click)="closeMenu()"
+    >
+      <span class="header__account-avatar" aria-hidden="true">
+        @if (accountInitials()) {
+          {{ accountInitials() }}
+        } @else {
+          <mat-icon>person</mat-icon>
+        }
+      </span>
+      <span class="header__account-copy">
+        <span class="header__account-name">{{ accountName() }}</span>
+        @if (roleLabel(); as label) {
+          <span class="header__account-role">
+            <span class="cdk-visually-hidden">Rol: </span>{{ label }}
+          </span>
+        }
+      </span>
+      <span class="cdk-visually-hidden"> — Mi perfil</span>
+    </a>
     <button matButton type="button" class="header__sign-out" (click)="signOut()">Cerrar sesión</button>
   </div>
 </header>

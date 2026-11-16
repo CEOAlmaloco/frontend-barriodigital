@@ -5,6 +5,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { OVERSIGHT_ROLES, REQUESTS_ROLES, ROLE_LABELS, Role } from '../../models/role';
+import { personInitials } from '../../utils/person-initials';
 import { BrandLogoComponent } from '../brand-logo/brand-logo.component';
 
 interface NavItem {
@@ -40,6 +41,8 @@ export class HeaderComponent {
     const account = this.auth.account();
     return account?.name ?? account?.username ?? '';
   });
+
+  protected readonly accountInitials = computed(() => personInitials(this.accountName()));
 
   protected readonly roleLabel = computed(() => {
     const role = this.auth.role();

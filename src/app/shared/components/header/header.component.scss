@@ -147,11 +147,72 @@ $symbol-height: 36px;
 
 .header__account-identity {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
+  gap: $space-2;
   min-width: 0;
+  max-width: 12rem;
   margin: 0;
+  padding: $space-1;
   line-height: 1.3;
+  color: inherit;
+  text-decoration: none;
+  border-radius: $radius-base;
+
+  @media (min-width: $breakpoint-md) {
+    max-width: 16rem;
+  }
+
+  &:hover .header__account-name,
+  &:focus-visible .header__account-name {
+    color: var(--bd-primary);
+  }
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary);
+    outline-offset: 2px;
+  }
+}
+
+.header__account-identity--active {
+  .header__account-name {
+    color: var(--bd-primary);
+    font-weight: $font-weight-medium;
+  }
+
+  .header__account-avatar {
+    border-color: var(--bd-primary);
+  }
+}
+
+.header__account-avatar {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  font-size: $font-label;
+  font-weight: $font-weight-semibold;
+  color: var(--bd-primary);
+  background-color: var(--bd-primary-container);
+  border: $border-width solid var(--bd-container-border);
+  border-radius: 50%;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.header__account-copy {
+  display: none;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+
+  @media (min-width: $breakpoint-sm) {
+    display: flex;
+  }
 }
 
 .header__account-name,

@@ -208,4 +208,19 @@ describe('RequestsService', () => {
 
     expect(await result).toEqual([{ id: 'oid-ana', name: 'Ana' }]);
   });
+
+  it('lee y guarda preferencias de aviso en /me/notification-preferences', async () => {
+    const getResult = firstValueFrom(service.getNotificationPreferences());
+    const getCall = backend.expectOne(`${url}/me/notification-preferences`);
+    expect(getCall.request.method).toBe('GET');
+    getCall.flush({ emailEnabled: true });
+    expect(await getResult).toEqual({ emailEnabled: true });
+
+    const putResult = firstValueFrom(service.updateNotificationPreferences(false));
+    const putCall = backend.expectOne(`${url}/me/notification-preferences`);
+    expect(putCall.request.method).toBe('PUT');
+    expect(putCall.request.body).toEqual({ emailEnabled: false });
+    putCall.flush({ emailEnabled: false });
+    expect(await putResult).toEqual({ emailEnabled: false });
+  });
 });

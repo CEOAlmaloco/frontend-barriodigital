@@ -103,6 +103,23 @@ export class RequestsService {
   registerGestion(id: string, payload: RegisterGestionPayload): Observable<RequestActivity> {
     return this.http.post<RequestActivity>(`${this.url}/${id}/gestiones`, payload);
   }
+
+  /** Preferencia de avisos por correo del usuario autenticado (EP3-65). */
+  getNotificationPreferences(): Observable<NotificationPreferences> {
+    return this.http.get<NotificationPreferences>(`${this.url}/me/notification-preferences`);
+  }
+
+  /** Guarda si el usuario recibe avisos por correo (EP3-65). */
+  updateNotificationPreferences(emailEnabled: boolean): Observable<NotificationPreferences> {
+    return this.http.put<NotificationPreferences>(`${this.url}/me/notification-preferences`, {
+      emailEnabled,
+    });
+  }
+}
+
+/** Preferencia de aviso del caller (EP3-65). Sin fila en requests → emailEnabled true. */
+export interface NotificationPreferences {
+  emailEnabled: boolean;
 }
 
 export interface RequestActivity {
