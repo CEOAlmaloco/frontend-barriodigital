@@ -5,6 +5,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { OVERSIGHT_ROLES, REQUESTS_ROLES, ROLE_LABELS, Role } from '../../models/role';
+import { BrandLogoComponent } from '../brand-logo/brand-logo.component';
 
 interface NavItem {
   label: string;
@@ -25,7 +26,7 @@ const NAV_ITEMS: readonly NavItem[] = [
 
 @Component({
   selector: 'app-header',
-  imports: [MatButton, MatIconButton, MatIcon, RouterLink, RouterLinkActive],
+  imports: [BrandLogoComponent, MatButton, MatIconButton, MatIcon, RouterLink, RouterLinkActive],
   templateUrl: './header.component.html',
   styleUrl: './header.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

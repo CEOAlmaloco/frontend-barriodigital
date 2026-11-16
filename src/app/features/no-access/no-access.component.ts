@@ -15,6 +15,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { BrandLogoVerticalComponent } from '../../shared/components/brand-logo/brand-logo-vertical.component';
 import { ROLE_LABELS, RoleAccess } from '../../shared/models/role';
 import { environment } from '../../../environments/environment';
 
@@ -49,7 +50,7 @@ const roleList = new Intl.ListFormat('es', { style: 'long', type: 'conjunction' 
 /** Destino de una sesión sin un rol válido (EP3-04, sección 4): explica el motivo y cómo salir de ahí. */
 @Component({
   selector: 'app-no-access',
-  imports: [MatButton, MatIcon, MatProgressSpinner],
+  imports: [BrandLogoVerticalComponent, MatButton, MatIcon, MatProgressSpinner],
   templateUrl: './no-access.component.html',
   styleUrl: './no-access.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

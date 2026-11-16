@@ -33,14 +33,20 @@ $panel-max-width: 400px;
   margin-bottom: $space-8;
 }
 
+$logo-height: 152px;
+
 .login__title {
-  font-size: $font-h1;
-  font-weight: $font-weight-semibold;
-  color: var(--bd-text);
+  display: flex;
+  justify-content: center;
+  margin: 0;
+}
+
+.login__logo {
+  height: $logo-height;
 }
 
 .login__subtitle {
-  margin-top: $space-2;
+  margin-top: $space-3;
   font-size: $font-body;
   color: var(--bd-text-muted);
 }

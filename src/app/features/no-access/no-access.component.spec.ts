@@ -56,6 +56,9 @@ describe('NoAccessComponent', () => {
 
     expect(element.querySelector('h1')?.textContent).toBe('No puedes ingresar a BarrioDigital');
     expect(element.querySelector('main')?.getAttribute('aria-labelledby')).toBe('no-access-title');
+    expect(element.querySelector('.no-access__logo svg')?.getAttribute('aria-label')).toBe(
+      'BarrioDigital',
+    );
     expect(text()).toContain('Tu cuenta no tiene un rol asignado en BarrioDigital.');
     expect(buttons()).toEqual(['Ingresar con otra cuenta']);
 

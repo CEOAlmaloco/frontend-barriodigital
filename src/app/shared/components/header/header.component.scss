@@ -25,12 +25,45 @@ $header-layer: 10;
   }
 }
 
-.header__wordmark {
+$logo-height: 32px;
+$symbol-height: 36px;
+
+.header__brand {
+  display: flex;
   flex-shrink: 0;
-  font-size: $font-h3;
-  font-weight: $font-weight-semibold;
-  color: var(--bd-primary);
-  white-space: nowrap;
+  align-items: center;
+  // Área de clic más amplia que el dibujo sin mover el logo
+  padding: $space-1;
+  margin: -$space-1;
+  border-radius: $radius-base;
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: 2px;
+  }
+}
+
+.header__logo {
+  height: $symbol-height;
+}
+
+// Solo el símbolo donde el nombre no cabe: bajo 480 px junto al menú y la cuenta, y entre 768 y 1023 px,
+// cuando la navegación del Admin ya va completa en la barra
+.header__logo--full {
+  display: none;
+  height: $logo-height;
+
+  @media (min-width: $breakpoint-sm) and (max-width: #{$breakpoint-md - 1px}),
+    (min-width: $breakpoint-lg) {
+    display: inline-block;
+  }
+}
+
+.header__logo--symbol {
+  @media (min-width: $breakpoint-sm) and (max-width: #{$breakpoint-md - 1px}),
+    (min-width: $breakpoint-lg) {
+    display: none;
+  }
 }
 
 .header__nav {

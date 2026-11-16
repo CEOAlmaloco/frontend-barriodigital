@@ -53,7 +53,7 @@ npm test                      # modo watch
 npm test -- --watch=false     # una sola ejecución
 ```
 
-Las pruebas cubren `AppComponent`, `AuthService`, los guards, la configuración de MSAL (incluido el interceptor HTTP), la lectura de claims del token, `LoginComponent`, `HomeComponent` (bloques por rol, fallo aislado de cada fuente, vacío distinto del error, paginación de plazos y polling de los KPIs del Admin), `HeaderComponent`, `RequestsService`, `CatalogService`, `RequestsComponent` (incluido el alta con el aviso de privacidad y el selector de imagen: advertencia, vista previa, errores y foco), `RequestDetailComponent` (por rol, estados de carga, error y 404, estados terminales, privacidad y actualización tras cada acción), `ReportService`, `polledResource`, `loadedResource` y `ReportsComponent` (ciclo de polling, pestaña oculta, pausa, respuestas lentas, fallos por fuente, cambio de período y 503) y las rutas protegidas por rol.
+Las pruebas cubren `AppComponent`, `AuthService`, los guards, la configuración de MSAL (incluido el interceptor HTTP), la lectura de claims del token, `LoginComponent`, el logo (cada versión, nombre accesible y colores por clase), `HomeComponent` (bloques por rol, fallo aislado de cada fuente, vacío distinto del error, paginación de plazos y polling de los KPIs del Admin), `HeaderComponent`, `RequestsService`, `CatalogService`, `RequestsComponent` (incluido el alta con el aviso de privacidad y el selector de imagen: advertencia, vista previa, errores y foco), `RequestDetailComponent` (por rol, estados de carga, error y 404, estados terminales, privacidad y actualización tras cada acción), `ReportService`, `polledResource`, `loadedResource` y `ReportsComponent` (ciclo de polling, pestaña oculta, pausa, respuestas lentas, fallos por fuente, cambio de período y 503) y las rutas protegidas por rol.
 
 ## Estructura
 
@@ -61,13 +61,25 @@ Las pruebas cubren `AppComponent`, `AuthService`, los guards, la configuración 
 src/
 ├── app/
 │   ├── core/          Servicios únicos de la app: auth/ (MSAL, sesión, roles y guards), catalog/ (catálogo vía BFF), report/ (indicadores vía BFF) y layout/ (contenedor de las rutas autenticadas)
-│   ├── shared/        Componentes, pipes y modelos compartidos entre features. Hoy: components/header, components/info-toggletip (ayuda breve que se abre con clic o teclado), models/ (roles, trámites, tipos de trámite y reportes) y utils/ (entre ellas, el polling de polled-resource y la carga única de loaded-resource)
+│   ├── shared/        Componentes, pipes y modelos compartidos entre features. Hoy: components/header, components/brand-logo (logo oficial), components/info-toggletip (ayuda breve que se abre con clic o teclado), models/ (roles, trámites, tipos de trámite y reportes) y utils/ (entre ellas, el polling de polled-resource y la carga única de loaded-resource)
 │   └── features/      Una carpeta por dominio: login/, no-access/ (sesión sin un rol válido), home/ (inicio por rol en /inicio), requests/ (listado en /tramites y detalle en /tramites/:id) y reports/ (indicadores en /reports y mapa de trámites en /reports/map)
 ├── styles/            _tokens.scss (paleta, tipografía, espaciado), _material-theme.scss y styles.scss global
 └── environments/      Configuración por entorno: Microsoft Entra ID y URL del BFF
 ```
 
 Los componentes importan los tokens con `@use 'tokens' as *;`, sin colores ni tamaños escritos a mano.
+
+### Logo
+
+El logo oficial está en SVG dentro de la app, no como imagen: así sus colores salen de los tokens `--bd-brand-*` (en `_accessibility.scss`), que apuntan a la paleta y cambian con cada modo de contraste.
+
+- `<app-brand-logo variant="horizontal">` en el header desde 1024 px y entre 480 y 767 px; `variant="symbol"` en el resto de los anchos.
+- `<app-brand-logo-vertical>` en el login y la pantalla sin acceso. Va en un componente aparte para que su dibujo no entre al bundle inicial.
+- La altura la fija quien lo usa (`height` en la clase del host); el ancho sigue la proporción. Con `decorative` queda fuera del árbol de accesibilidad, para cuando un enlace o un título ya nombran la marca.
+- `public/favicon.svg` (claro u oscuro según el navegador), `favicon.ico` de 16, 32 y 48 px y `apple-touch-icon.png` de 180 px usan el símbolo.
+- No se deforma, no se le cambian los colores fuera de los tokens y no va sobre fotos. Tamaño mínimo: 16 px de alto el símbolo y 24 px la versión horizontal.
+
+El original (`bd_logo.png`) queda como referencia en `barriodigita-info/imagenes`.
 
 Las rutas privadas van como hijas del layout de rutas autenticadas en `app.routes.ts`: ese layout monta el header y aplica `authGuard` y `accessGuard`, así que una ruta nueva queda protegida solo por estar ahí. Si además es solo para ciertos roles, se le agrega `canActivate: [roleGuard]` y `data: { roles: [...] }`, como `/audit` con `OVERSIGHT_ROLES`, y el ítem del header con los mismos roles. Con `data.deniedRedirect`, el rol sin acceso va a esa ruta en vez de a `/inicio`: así el Funcionario que abre `/reports` llega a `/reports/map`.
 

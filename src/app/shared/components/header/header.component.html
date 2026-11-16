@@ -1,5 +1,13 @@
 <header class="header">
-  <span class="header__wordmark">BarrioDigital</span>
+  <a
+    class="header__brand"
+    routerLink="/inicio"
+    aria-label="BarrioDigital, ir al inicio"
+    (click)="closeMenu()"
+  >
+    <app-brand-logo class="header__logo header__logo--full" variant="horizontal" decorative />
+    <app-brand-logo class="header__logo header__logo--symbol" variant="symbol" decorative />
+  </a>
 
   <nav class="header__nav" [class.header__nav--open]="isMenuOpen()" aria-label="Navegación principal">
     <button
