@@ -332,6 +332,13 @@
               </section>
             }
 
+            @if (canReviewDuplicates()) {
+              <app-request-duplicate-panel
+                [requestId]="request.id"
+                [searchable]="hasPoint() || hasComparableSector()"
+              />
+            }
+
             <section class="request-detail__card" aria-labelledby="history-title">
               @if (activityState() !== 'ready') {
                 <h2 id="history-title" class="request-detail__card-title">Historial</h2>

@@ -100,6 +100,26 @@ describe('RequestDuplicateListComponent', () => {
     expect(link.textContent).toContain('(se abre en otra pestaña)');
   });
 
+  it('al personal le muestra si tiene responsable y abre el detalle en la misma pestaña', () => {
+    render([
+      candidate({ id: 'req-2', hasAssignee: false, mine: null }),
+      candidate({ id: 'req-3', folio: 'BD-2026-000124', hasAssignee: true, mine: null }),
+    ]);
+    const link = items()[0].querySelector<HTMLAnchorElement>('a')!;
+
+    expect(items()[0].textContent).toContain('Sin responsable');
+    expect(items()[1].textContent).toContain('Con responsable');
+    expect(link.getAttribute('href')).toBe('/tramites/req-2');
+    expect(link.target).toBe('');
+    expect(link.textContent?.replace(/\s+/g, ' ')).toContain('Ver trámite BD-2026-000123');
+    expect(items()[0].textContent).not.toContain('Tuyo');
+  });
+
+  it('al Vecino no le muestra el responsable', () => {
+    render([candidate()]);
+    expect(items()[0].textContent).not.toMatch(/responsable/);
+  });
+
   it('hasta 3 se muestran todos y no hay botón para desplegar', () => {
     render(many(3));
     expect(items()).toHaveLength(3);

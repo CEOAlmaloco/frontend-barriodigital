@@ -132,6 +132,7 @@ describe('RequestDetailComponent', () => {
     registerGestion: ReturnType<typeof vi.fn>;
     addComment: ReturnType<typeof vi.fn>;
     getCommentAttachment: ReturnType<typeof vi.fn>;
+    findRequestDuplicates: ReturnType<typeof vi.fn>;
   };
   let snackBar: { open: ReturnType<typeof vi.fn> };
   /** Nombres del catálogo: vacío equivale a un catálogo que no respondió. */
@@ -162,6 +163,7 @@ describe('RequestDetailComponent', () => {
       registerGestion: vi.fn(),
       addComment: vi.fn(),
       getCommentAttachment: vi.fn(() => of(new Blob(['jpg'], { type: 'image/jpeg' }))),
+      findRequestDuplicates: vi.fn(() => of([])),
     };
     snackBar = { open: vi.fn() };
     reportService = { getSlaBatch: vi.fn(() => getSlaBatch()) };
@@ -1076,6 +1078,49 @@ describe('RequestDetailComponent', () => {
 
       expect(form()).toBeNull();
       expect(document.activeElement).toBe(trigger());
+    });
+  });
+
+  describe('posibles duplicados (EP3-84)', () => {
+    const panel = () => element.querySelector('app-request-duplicate-panel');
+
+    it.each([Role.Funcionario, Role.Admin])(
+      '%s ve el panel, consultado con el id del trámite',
+      async (role) => {
+        await render(role);
+        expect(service.findRequestDuplicates).toHaveBeenCalledWith('req-1');
+        expect(words(panel())).toContain('No se encontraron trámites abiertos parecidos.');
+      },
+    );
+
+    it.each([Role.Vecino, Role.Auditor])('%s no ve el panel ni se consulta', async (role) => {
+      await render(role);
+      expect(panel()).toBeNull();
+      expect(service.findRequestDuplicates).not.toHaveBeenCalled();
+    });
+
+    it('va después de la solicitud y antes del historial', async () => {
+      await render(Role.Funcionario);
+      const main = element.querySelector('.request-detail__main')!;
+      const order = [...main.children].map((child) =>
+        child.matches('app-request-duplicate-panel') ? 'panel' : child.querySelector('h2')?.id,
+      );
+      expect(order).toEqual(['request-title', 'panel', 'history-title']);
+    });
+
+    it('sin punto y con el sector "otro" no tiene base y no consulta', async () => {
+      await render(Role.Funcionario, () => of({ ...base, sector: 'otro' }));
+      expect(service.findRequestDuplicates).not.toHaveBeenCalled();
+      expect(words(panel())).toContain(
+        'Sin punto en el mapa ni sector específico para buscar posibles duplicados.',
+      );
+    });
+
+    it('con punto consulta aunque el sector no sea comparable', async () => {
+      await render(Role.Admin, () =>
+        of({ ...base, sector: null, latitude: -37.8742, longitude: -71.5915 }),
+      );
+      expect(service.findRequestDuplicates).toHaveBeenCalledWith('req-1');
     });
   });
 });

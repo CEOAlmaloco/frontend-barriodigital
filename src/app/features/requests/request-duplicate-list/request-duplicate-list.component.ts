@@ -14,7 +14,10 @@ const COLLAPSED_COUNT = 2;
 
 let nextId = 0;
 
-/** Lista de posibles duplicados: tipo, estado, folio, cercanía y fecha, sin datos del solicitante. */
+/**
+ * Lista de posibles duplicados: tipo, estado, folio, cercanía y fecha, sin datos del solicitante. Al personal le
+ * llega el id, que abre el detalle, y si tiene responsable; al Vecino, solo el enlace a los suyos.
+ */
 @Component({
   selector: 'app-request-duplicate-list',
   imports: [MatButton, MatIcon, RequestStatusBadgeComponent, RouterLink],

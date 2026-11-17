@@ -31,6 +31,11 @@ export const COMMUNE_SECTORS = [
 
 export type LocationMode = 'ninguno' | 'gps' | 'mapa' | 'coordenadas';
 
+/** "Otro sector de la comuna" abarca demasiado para indicar un duplicado (EP3-75, sección 3). */
+export function isComparableSector(code: string | null | undefined): code is string {
+  return !!code && code !== 'otro';
+}
+
 export function isInsideCommune(latitude: number, longitude: number): boolean {
   return (
     Number.isFinite(latitude) &&

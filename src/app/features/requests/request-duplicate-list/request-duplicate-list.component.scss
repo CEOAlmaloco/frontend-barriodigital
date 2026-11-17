@@ -1,4 +1,5 @@
 @use 'tokens' as *;
+@use 'links';
 
 :host {
   display: flex;
@@ -23,7 +24,8 @@
   gap: $space-1;
   min-width: 0;
   padding: $space-2 $space-3;
-  border: $border-width solid var(--bd-container-border);
+  // Superficie anidada: --bd-container-border es transparente en tema claro y el ítem se perdería sobre una tarjeta
+  border: $border-width solid var(--bd-border);
   border-radius: $radius-base;
   background-color: var(--bd-surface);
 
@@ -87,6 +89,10 @@
     outline: $border-width-strong solid var(--bd-primary-dark);
     outline-offset: $border-width-strong;
   }
+}
+
+.duplicate-list__link--forward {
+  @include links.forward-arrow(16px);
 }
 
 // El padding del botón de texto se compensa para alinearlo con las tarjetas

@@ -318,6 +318,17 @@ describe('RequestsService', () => {
       expect(call.request.params.keys()).toEqual(['procedureType', 'sector']);
       call.flush([]);
     });
+
+    it('de un trámite ingresado consulta por su id, sin parámetros', async () => {
+      const result = firstValueFrom(service.findRequestDuplicates('req-1'));
+      const call = backend.expectOne(`${url}/req-1/duplicates`);
+
+      expect(call.request.method).toBe('GET');
+      expect(call.request.params.keys()).toEqual([]);
+      call.flush([]);
+
+      expect(await result).toEqual([]);
+    });
   });
 
   it('lee y guarda preferencias de aviso en /me/notification-preferences', async () => {

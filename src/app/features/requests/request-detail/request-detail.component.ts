@@ -52,8 +52,9 @@ import {
 } from '../request-gestion-dialog/request-gestion-dialog.component';
 import { RequestDatePipe } from '../request-date.pipe';
 import { RequestDetailSkeletonComponent } from '../request-detail-skeleton/request-detail-skeleton.component';
+import { RequestDuplicatePanelComponent } from '../request-duplicate-panel/request-duplicate-panel.component';
 import { RequestLocationMapComponent } from '../request-location-map.component';
-import { mapUrl, sectorLabel } from '../request-location';
+import { isComparableSector, mapUrl, sectorLabel } from '../request-location';
 import { RequestProgressComponent } from '../request-progress/request-progress.component';
 import { RequestSatisfactionComponent } from '../request-satisfaction/request-satisfaction.component';
 import { RequestStatusBadgeComponent } from '../request-status-badge/request-status-badge.component';
@@ -85,6 +86,7 @@ const NOTIFIED_STATUSES: readonly RequestStatus[] = [
     RequestAttentionPanelComponent,
     RequestCommentFormComponent,
     RequestDetailSkeletonComponent,
+    RequestDuplicatePanelComponent,
     RequestLocationMapComponent,
     RequestProgressComponent,
     RequestSatisfactionComponent,
@@ -192,6 +194,13 @@ export class RequestDetailComponent {
   protected readonly commentMaxCount = COMMENT_MAX_COUNT;
   protected readonly stages = computed(() => this.activity()?.tiempos.etapas ?? []);
   protected readonly sector = computed(() => sectorLabel(this.request()?.sector));
+  protected readonly hasComparableSector = computed(() =>
+    isComparableSector(this.request()?.sector),
+  );
+  /** Herramienta operativa: el Auditor queda fuera (EP3-75, sección 2). */
+  protected readonly canReviewDuplicates = computed(
+    () => this.viewer() === Role.Funcionario || this.viewer() === Role.Admin,
+  );
   protected readonly hasPoint = computed(() => {
     const request = this.request();
     return request?.latitude != null && request.longitude != null;
