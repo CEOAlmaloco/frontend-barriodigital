@@ -13,6 +13,8 @@ const FILTER_LABELS: Record<TimelineFilter, string> = {
   GESTION: 'Contacto',
   ASIGNACION: 'Asignación',
   CREADO: 'Ingreso',
+  CALIFICACION: 'Calificación',
+  COMENTARIO: 'Comentario',
 };
 
 const CHANNEL_ICONS: Record<string, string> = {

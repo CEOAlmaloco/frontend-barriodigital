@@ -1,0 +1,161 @@
+<section class="satisfaction" aria-labelledby="satisfaction-title">
+  <div class="satisfaction__head">
+    <h2 id="satisfaction-title" class="satisfaction__title">
+      ¿Qué tan satisfecho estás con la atención de este trámite?
+    </h2>
+    <p class="satisfaction__lead">Seleccione una nota del 1 al 5. Solo puede calificar una vez.</p>
+  </div>
+
+  <div
+    class="satisfaction__scale"
+    [class.satisfaction__scale--picked]="score() != null"
+    role="group"
+    aria-labelledby="satisfaction-title"
+  >
+    <div class="satisfaction__faces">
+      @for (item of scores; track item.value) {
+        <button
+          type="button"
+          class="satisfaction__face"
+          [class.satisfaction__face--selected]="score() === item.value"
+          [attr.data-tone]="item.tone"
+          [attr.aria-pressed]="score() === item.value"
+          [attr.aria-label]="'Nota ' + item.value + ' de 5: ' + item.label"
+          [disabled]="saving()"
+          (click)="selectScore(item.value)"
+        >
+          <span class="satisfaction__face-bubble" aria-hidden="true">
+            <svg class="satisfaction__face-svg" viewBox="0 0 48 48" focusable="false">
+              <circle class="satisfaction__face-disc" cx="24" cy="24" r="22" />
+              @switch (item.tone) {
+                @case ('red') {
+                  <circle class="satisfaction__face-dot" cx="16" cy="22" r="2.2" />
+                  <circle class="satisfaction__face-dot" cx="32" cy="22" r="2.2" />
+                  <path
+                    class="satisfaction__face-ink"
+                    d="M14 17 L20 19.5 M34 17 L28 19.5 M16 33 Q24 27.5 32 33"
+                  />
+                }
+                @case ('orange') {
+                  <circle class="satisfaction__face-dot" cx="16" cy="21" r="2.2" />
+                  <circle class="satisfaction__face-dot" cx="32" cy="21" r="2.2" />
+                  <path class="satisfaction__face-ink" d="M16 33 Q24 28 32 33" />
+                }
+                @case ('yellow') {
+                  <circle class="satisfaction__face-dot" cx="16" cy="21" r="2.2" />
+                  <circle class="satisfaction__face-dot" cx="32" cy="21" r="2.2" />
+                  <path class="satisfaction__face-ink" d="M16 32 H32" />
+                }
+                @case ('green-dark') {
+                  <circle class="satisfaction__face-dot" cx="16" cy="21" r="2.2" />
+                  <circle class="satisfaction__face-dot" cx="32" cy="21" r="2.2" />
+                  <path class="satisfaction__face-ink" d="M16 30 Q24 36 32 30" />
+                }
+                @default {
+                  <path class="satisfaction__face-ink" d="M15 21 Q17.5 18.5 20 21 M28 21 Q30.5 18.5 33 21" />
+                  <path class="satisfaction__face-ink" d="M15 29 Q24 39 33 29" />
+                }
+              }
+            </svg>
+          </span>
+          <span class="satisfaction__face-caption">{{ item.short }}</span>
+        </button>
+      }
+    </div>
+
+    <div class="satisfaction__track" aria-hidden="true"></div>
+
+    <div class="satisfaction__ends" aria-hidden="true">
+      <span class="satisfaction__ends-start">Muy insatisfactoria</span>
+      <span class="satisfaction__ends-end">Muy satisfactoria</span>
+    </div>
+
+    <p class="cdk-visually-hidden" aria-live="polite">
+      @if (selectedLabel(); as label) {
+        Nota seleccionada: {{ label }}
+      }
+    </p>
+  </div>
+
+  @if (needsReasons()) {
+    <div class="satisfaction__reasons" aria-labelledby="satisfaction-reasons-title">
+      <h3 id="satisfaction-reasons-title" class="satisfaction__subtitle">
+        ¿Por qué no quedaste conforme?
+      </h3>
+      <p class="satisfaction__lead">Puedes marcar más de una opción.</p>
+      <div class="satisfaction__chips" role="group" aria-label="Razones">
+        @for (reason of lowReasons; track reason) {
+          <button
+            matButton
+            type="button"
+            class="satisfaction__chip"
+            [class.satisfaction__chip--selected]="isReasonSelected(reason)"
+            [attr.aria-pressed]="isReasonSelected(reason)"
+            [disabled]="saving()"
+            (click)="toggleReason(reason)"
+          >
+            {{ reason }}
+          </button>
+        }
+        <button
+          matButton
+          type="button"
+          class="satisfaction__chip"
+          [class.satisfaction__chip--selected]="otherSelected()"
+          [attr.aria-pressed]="otherSelected()"
+          [disabled]="saving()"
+          (click)="toggleOther()"
+        >
+          Otros
+        </button>
+      </div>
+      @if (otherSelected()) {
+        <mat-form-field class="satisfaction__comment" appearance="outline">
+          <mat-label>Cuéntanos el motivo</mat-label>
+          <textarea
+            matInput
+            rows="2"
+            [maxlength]="commentMax"
+            [ngModel]="otherText()"
+            [disabled]="saving()"
+            (ngModelChange)="otherText.set($event)"
+          ></textarea>
+          <mat-hint align="end">{{ otherText().length }}/{{ commentMax }}</mat-hint>
+        </mat-form-field>
+      }
+    </div>
+  } @else if (score() != null) {
+    <mat-form-field class="satisfaction__comment" appearance="outline">
+      <mat-label>Comentario (opcional)</mat-label>
+      <textarea
+        matInput
+        rows="3"
+        [maxlength]="commentMax"
+        [ngModel]="comment()"
+        [disabled]="saving()"
+        (ngModelChange)="comment.set($event)"
+      ></textarea>
+      <mat-hint align="end">{{ comment().length }}/{{ commentMax }}</mat-hint>
+    </mat-form-field>
+  }
+
+  @if (error(); as message) {
+    <p class="satisfaction__error" role="alert">{{ message }}</p>
+  }
+
+  <button
+    matButton="filled"
+    type="button"
+    class="satisfaction__submit"
+    [disabled]="!canSubmit()"
+    [attr.aria-busy]="saving()"
+    (click)="submit()"
+  >
+    @if (saving()) {
+      <mat-progress-spinner mode="indeterminate" diameter="20" aria-hidden="true" />
+      Enviando
+    } @else {
+      Enviar calificación
+    }
+  </button>
+</section>
