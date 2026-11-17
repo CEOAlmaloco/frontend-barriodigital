@@ -1,7 +1,10 @@
 <app-report-toolbar
   [range]="range()"
   [freshness]="freshness()"
+  [paused]="paused()"
+  [intervalSeconds]="intervalSeconds"
   (rangeChange)="selectRange($event)"
+  (togglePause)="togglePause()"
   (refresh)="refresh()"
 />
 

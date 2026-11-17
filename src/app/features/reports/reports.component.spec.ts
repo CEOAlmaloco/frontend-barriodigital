@@ -171,7 +171,7 @@ describe('ReportsComponent', () => {
     const freshness = text('.toolbar__freshness');
     expect(freshness).toContain('Datos al 13 nov 2026');
     expect(freshness).toContain(`Consultado ${formatClock(new Date())}`);
-    expect(freshness).not.toContain('Se actualiza cada');
+    expect(freshness).toContain('Se actualiza cada 5 s');
   });
 
   it('consulta cada 5 s después de cada respuesta y se detiene al salir de la pantalla', async () => {
@@ -215,22 +215,31 @@ describe('ReportsComponent', () => {
     expect(kpiCalls).toHaveLength(2);
   });
 
-  it('Actualizar consulta de inmediato y el polling sigue', async () => {
+  it('en pausa, Actualizar consulta una vez y no reactiva el polling', async () => {
     await open();
     loadBoth();
+    button('Pausar').click();
+    render();
+    expect(text('.toolbar__freshness')).toContain('Actualización automática en pausa');
+    expect(announce).toHaveBeenCalledWith('Actualización automática en pausa.');
+    vi.advanceTimersByTime(60_000);
+    expect(kpiCalls).toHaveLength(1);
 
     button('Actualizar').click();
     expect(kpiCalls).toHaveLength(2);
     expect(topCalls).toHaveLength(2);
     loadBoth();
     expect(announce).toHaveBeenCalledWith('Reportes actualizados.');
-    vi.advanceTimersByTime(5_000);
-    expect(kpiCalls).toHaveLength(3);
+    vi.advanceTimersByTime(60_000);
+    expect(kpiCalls).toHaveLength(2);
+    expect(button('Reanudar')).toBeTruthy();
   });
 
-  it('cambiar de período lo guarda en la URL y lo carga', async () => {
+  it('cambiar de período lo guarda en la URL, lo carga y conserva la pausa', async () => {
     await open();
     loadBoth();
+    button('Pausar').click();
+    render();
 
     vi.useRealTimers();
     button('Últimos 7 días').click();
@@ -247,8 +256,9 @@ describe('ReportsComponent', () => {
     );
     expect(text()).toContain('Trámites ingresados por día');
     expect(announce).toHaveBeenCalledWith('Reportes de los últimos 7 días cargados.');
-    vi.advanceTimersByTime(5_000);
-    expect(kpiCalls).toHaveLength(3);
+    vi.advanceTimersByTime(60_000);
+    expect(kpiCalls).toHaveLength(2);
+    expect(button('Reanudar')).toBeTruthy();
   });
 
   it('lee el período de la URL y corrige un valor inválido', async () => {

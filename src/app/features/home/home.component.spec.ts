@@ -430,7 +430,7 @@ describe('HomeComponent', () => {
         (tile) => tile.querySelector('dt')?.textContent === 'Trámites abiertos',
       )!;
       expect(text(openTile.querySelector('.kpi-tile__value'))).toBe('26');
-      expect(text(element().querySelector('.kpis'))).toContain('Consultado');
+      expect(text(element().querySelector('.kpis'))).toContain('Se actualiza cada 5 s');
       expect(
         element().querySelector<HTMLAnchorElement>('.kpis .home-link')!.getAttribute('href'),
       ).toBe('/reports');
@@ -447,13 +447,24 @@ describe('HomeComponent', () => {
       expect(pending('/api/requests')).toHaveLength(0);
     });
 
-    it('salir de /inicio detiene el polling', async () => {
+    it('Pausar detiene el polling y salir de /inicio también', async () => {
       await open(Role.Admin);
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
       flush(one('/api/report/kpis'), kpis());
       flush(one('/api/report/sla'), slaPage([]));
       flush(one('/api/requests'), page([]));
 
+      const pause = element().querySelector<HTMLButtonElement>('.kpis__actions button')!;
+      pause.click();
+      render();
+      expect(text(element().querySelector('.kpis'))).toContain('Actualización automática en pausa');
+      expect(announce).toHaveBeenCalledWith('Actualización automática en pausa.');
+      vi.advanceTimersByTime(30_000);
+      expect(pending('/api/report/kpis')).toHaveLength(0);
+
+      pause.click();
+      render();
+      flush(one('/api/report/kpis'), kpis());
       await TestBed.inject(Router).navigateByUrl('/otra');
       vi.advanceTimersByTime(30_000);
       expect(pending('/api/report/kpis')).toHaveLength(0);

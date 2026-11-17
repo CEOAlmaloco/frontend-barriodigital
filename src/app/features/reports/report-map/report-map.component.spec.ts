@@ -214,8 +214,7 @@ describe('ReportMapComponent', () => {
     );
     expect(sectors).toEqual(['Ralco', 'Pitril', 'Sin sector']);
     expect(text('.toolbar__freshness')).toContain('Datos al 13 nov 2026');
-    expect(text('.toolbar__freshness')).toContain('Consultado');
-    expect(text('.toolbar__freshness')).not.toContain('Se actualiza cada');
+    expect(text('.toolbar__freshness')).toContain('Se actualiza cada 30 s');
     expect(text('app-report-map-legend')).toBe(
       'Otros abiertos En terreno Resuelto Rechazado o cancelado',
     );

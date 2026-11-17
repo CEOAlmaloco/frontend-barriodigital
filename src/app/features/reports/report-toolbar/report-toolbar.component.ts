@@ -13,7 +13,7 @@ export interface ReportFreshness {
   consultedAt: string;
 }
 
-/** Período, frescura y actualización manual de una pestaña de reportería. */
+/** Período, frescura y control del polling de una pestaña de reportería. */
 @Component({
   selector: 'app-report-toolbar',
   imports: [MatButton, MatButtonToggle, MatButtonToggleGroup, MatIcon, RequestDatePipe],
@@ -24,8 +24,11 @@ export interface ReportFreshness {
 export class ReportToolbarComponent {
   readonly range = input.required<ReportRange>();
   readonly freshness = input.required<ReportFreshness | null>();
+  readonly paused = input.required<boolean>();
+  readonly intervalSeconds = input.required<number>();
 
   readonly rangeChange = output<ReportRange>();
+  readonly togglePause = output<void>();
   readonly refresh = output<void>();
 
   protected readonly ranges = REPORT_RANGES;

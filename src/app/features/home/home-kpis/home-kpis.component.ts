@@ -25,8 +25,9 @@ import { HomeStateComponent } from '../home-state/home-state.component';
 const RANGE: ReportRange = 'last24h';
 
 /**
- * KPIs del Admin con polling silencioso (K8): se pausa solo con la pestaña oculta, se detiene al salir de
- * /inicio y espera más entre intentos ante errores. La frescura se muestra como «Consultado …».
+ * KPIs del Admin con polling cada 5 s (K8): se pausa con la pestaña oculta, se detiene al salir de /inicio y
+ * espera más entre intentos ante errores. La pausa manual cumple WCAG 2.2.2, porque la información se actualiza
+ * sola junto a otro contenido.
  */
 @Component({
   selector: 'app-home-kpis',
@@ -61,12 +62,25 @@ export class HomeKpisComponent {
     const view = this.view();
     return view.status === 'error' ? view : null;
   });
-  protected readonly retryHint = computed(() => 'Se volverá a intentar automáticamente.');
+  protected readonly paused = this.source.paused;
+  protected readonly retryHint = computed(() =>
+    this.paused()
+      ? 'Usa Reintentar para volver a consultar.'
+      : 'Se volverá a intentar automáticamente.',
+  );
   protected readonly formatClock = formatClock;
 
   constructor() {
     this.source.setKey(RANGE);
     this.announceFailures();
+  }
+
+  protected togglePause(): void {
+    const paused = !this.paused();
+    this.source.setPaused(paused);
+    this.announcer.announce(
+      paused ? 'Actualización automática en pausa.' : 'Actualización automática reanudada.',
+    );
   }
 
   protected retry(): void {

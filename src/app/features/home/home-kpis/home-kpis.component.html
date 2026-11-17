@@ -20,7 +20,15 @@
           >
         </p>
       }
+      <span class="kpis__live" [class.kpis__live--paused]="paused()">
+        <mat-icon aria-hidden="true">{{ paused() ? 'pause_circle' : 'autorenew' }}</mat-icon>
+        {{ paused() ? 'Actualización automática en pausa' : 'Se actualiza cada 5 s' }}
+      </span>
       <div class="kpis__actions">
+        <button matButton="outlined" type="button" (click)="togglePause()">
+          <mat-icon aria-hidden="true">{{ paused() ? 'play_arrow' : 'pause' }}</mat-icon>
+          {{ paused() ? 'Reanudar' : 'Pausar' }}
+        </button>
         <a class="home-link" routerLink="/reports">
           Ver reportes<mat-icon aria-hidden="true">arrow_forward</mat-icon>
         </a>
