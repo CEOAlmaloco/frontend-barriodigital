@@ -1,5 +1,8 @@
 <div class="timeline__head">
   <ng-content select="[timelineTitle]" />
+  <div class="timeline__action">
+    <ng-content select="[timelineAction]" />
+  </div>
   @if (filters().length) {
     <div class="timeline__filters" role="group" aria-label="Filtrar historial">
       @for (option of filters(); track option.id) {
@@ -15,6 +18,8 @@
     </div>
   }
 </div>
+
+<ng-content select="[timelineLead]" />
 
 @if (visible().length === 0) {
   <p class="timeline__empty">
@@ -40,7 +45,7 @@
           </p>
           <p class="timeline__meta">
             <time [attr.datetime]="item.event.occurredAt">{{
-              item.event.occurredAt | date: 'dd/MM/yyyy HH:mm'
+              item.event.occurredAt | date: dateFormat
             }}</time>
             <span aria-hidden="true">·</span>
             <span class="timeline__actor">{{ actor(item.event) }}</span>
@@ -53,7 +58,7 @@
                 <mat-icon aria-hidden="true">event_repeat</mat-icon>
                 Próximo intento
                 <time [attr.datetime]="item.event.nextAttemptAt">{{
-                  item.event.nextAttemptAt | date: 'dd/MM/yyyy HH:mm'
+                  item.event.nextAttemptAt | date: dateFormat
                 }}</time>
               </span>
             }
@@ -63,6 +68,13 @@
           }
           @if (item.event.note) {
             <p class="timeline__note">{{ item.event.note }}</p>
+          }
+          @if (item.photo; as photo) {
+            <app-request-comment-photo
+              [requestId]="photo.requestId"
+              [commentId]="item.event.id"
+              [context]="photo.context"
+            />
           }
           @if (showIntervention(item.event)) {
             <p class="timeline__intervention">

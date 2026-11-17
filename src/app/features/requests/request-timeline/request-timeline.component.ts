@@ -1,8 +1,17 @@
-import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { DatePipe, formatDate } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  LOCALE_ID,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 
 import { activityText } from '../activity-summary';
+import { RequestCommentPhotoComponent } from '../request-comment-photo/request-comment-photo.component';
 import { RequestActivityEvent, RequestActivityKind } from '../requests.service';
 
 type TimelineFilter = 'TODOS' | RequestActivityKind;
@@ -13,7 +22,10 @@ const FILTER_LABELS: Record<TimelineFilter, string> = {
   GESTION: 'Contacto',
   ASIGNACION: 'Asignación',
   CREADO: 'Ingreso',
+  COMENTARIO: 'Comentarios',
 };
+
+const DATE_FORMAT = 'dd/MM/yyyy HH:mm';
 
 const CHANNEL_ICONS: Record<string, string> = {
   LLAMADA: 'call',
@@ -24,7 +36,7 @@ const CHANNEL_ICONS: Record<string, string> = {
 
 @Component({
   selector: 'app-request-timeline',
-  imports: [DatePipe, MatIcon],
+  imports: [DatePipe, MatIcon, RequestCommentPhotoComponent],
   templateUrl: './request-timeline.component.html',
   styleUrl: './request-timeline.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -33,6 +45,11 @@ export class RequestTimelineComponent {
   readonly events = input.required<readonly RequestActivityEvent[]>();
   /** El staff ve filtros, marcas internas, rol del actor y motivo de intervención. */
   readonly staff = input(false);
+  /** Necesario para pedir la foto de un comentario; sin él, la foto no se muestra. */
+  readonly requestId = input<string | null>(null);
+
+  private readonly locale = inject(LOCALE_ID);
+  protected readonly dateFormat = DATE_FORMAT;
 
   protected readonly filter = signal<TimelineFilter>('TODOS');
 
@@ -41,7 +58,7 @@ export class RequestTimelineComponent {
       return [];
     }
     const kinds = new Set(this.events().map((event) => event.kind));
-    const options = (['ESTADO', 'GESTION', 'ASIGNACION'] as const).filter((kind) =>
+    const options = (['ESTADO', 'GESTION', 'ASIGNACION', 'COMENTARIO'] as const).filter((kind) =>
       kinds.has(kind),
     );
     if (options.length === 0 || kinds.size < 2) {
@@ -58,7 +75,7 @@ export class RequestTimelineComponent {
     return [...this.events()]
       .reverse()
       .filter((event) => filter === 'TODOS' || event.kind === filter)
-      .map((event) => ({ event, text: activityText(event) }));
+      .map((event) => ({ event, text: activityText(event), photo: this.photoContext(event) }));
   });
 
   protected icon(event: RequestActivityEvent): string {
@@ -69,6 +86,8 @@ export class RequestTimelineComponent {
         return CHANNEL_ICONS[event.channel ?? ''] ?? 'support_agent';
       case 'ASIGNACION':
         return 'assignment_ind';
+      case 'COMENTARIO':
+        return 'chat';
       default:
         if (event.toStatus === 'RECHAZADO') return 'block';
         if (event.toStatus === 'RESUELTO') return 'task_alt';
@@ -87,6 +106,16 @@ export class RequestTimelineComponent {
 
   protected actor(event: RequestActivityEvent): string {
     return event.actorName?.trim() || (this.staff() ? event.actorId : null) || 'Municipalidad';
+  }
+
+  /** Datos para pedir la foto de un comentario, con su autor y hora; null si el evento no trae una. */
+  private photoContext(event: RequestActivityEvent): { requestId: string; context: string } | null {
+    const requestId = this.requestId();
+    if (event.kind !== 'COMENTARIO' || event.hasAttachment !== true || !requestId) {
+      return null;
+    }
+    const when = formatDate(event.occurredAt, DATE_FORMAT, this.locale);
+    return { requestId, context: `${this.actor(event)}, ${when}` };
   }
 
   protected showIntervention(event: RequestActivityEvent): boolean {

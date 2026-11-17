@@ -176,6 +176,12 @@ $icon-small: 18px;
 
 .request-detail__card-title {
   font-size: $font-h3;
+
+  // Destino del foco tras alcanzar el tope de comentarios, igual que el título del trámite
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: $space-1;
+  }
 }
 
 .request-detail__progress {
@@ -442,21 +448,6 @@ $icon-small: 18px;
 
   mat-icon {
     color: var(--bd-text-muted);
-  }
-}
-
-.request-detail__preview {
-  display: grid;
-  min-height: 12rem;
-  max-height: 75vh;
-  place-items: center;
-  overflow: auto;
-
-  img {
-    display: block;
-    max-width: 100%;
-    max-height: 70vh;
-    object-fit: contain;
   }
 }
 

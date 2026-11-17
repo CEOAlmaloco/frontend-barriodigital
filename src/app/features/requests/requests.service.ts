@@ -104,6 +104,27 @@ export class RequestsService {
   registerGestion(id: string, payload: RegisterGestionPayload): Observable<RequestActivity> {
     return this.http.post<RequestActivity>(`${this.url}/${id}/gestiones`, payload);
   }
+
+  /** Comentario del Vecino titular (EP3-64). Con imagen viaja como multipart, igual que el alta. */
+  addComment(id: string, text: string, attachment?: File | null): Observable<RequestActivity> {
+    const url = `${this.url}/${encodeURIComponent(id)}/comments`;
+    const comment = { text };
+    if (!attachment) {
+      return this.http.post<RequestActivity>(url, comment);
+    }
+    const formData = new FormData();
+    formData.append('comment', new Blob([JSON.stringify(comment)], { type: 'application/json' }));
+    formData.append('attachment', attachment, 'evidencia');
+    return this.http.post<RequestActivity>(url, formData);
+  }
+
+  /** commentId es el id del evento del historial. Uno sin foto o de otro trámite responde 404. */
+  getCommentAttachment(id: string, commentId: string): Observable<Blob> {
+    return this.http.get(
+      `${this.url}/${encodeURIComponent(id)}/comments/${encodeURIComponent(commentId)}/attachment`,
+      { responseType: 'blob' },
+    );
+  }
 }
 
 export interface RequestActivity {
@@ -114,7 +135,7 @@ export interface RequestActivity {
   limites: string[];
 }
 
-export type RequestActivityKind = 'CREADO' | 'ESTADO' | 'GESTION' | 'ASIGNACION';
+export type RequestActivityKind = 'CREADO' | 'ESTADO' | 'GESTION' | 'ASIGNACION' | 'COMENTARIO';
 
 /** Al Vecino, requests le entrega el actor de staff como "Municipalidad" y nunca el motivo de intervención. */
 export interface RequestActivityEvent {
@@ -138,6 +159,8 @@ export interface RequestActivityEvent {
   assigneeName?: string | null;
   previousAssigneeId?: string | null;
   previousAssigneeName?: string | null;
+  /** Solo un COMENTARIO con foto lo trae en true. */
+  hasAttachment?: boolean;
 }
 
 export interface RequestActivityTimes {

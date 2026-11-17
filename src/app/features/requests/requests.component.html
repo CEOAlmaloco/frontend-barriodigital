@@ -159,12 +159,12 @@
         <fieldset class="requests__attachment">
           <legend class="requests__location-title">Imagen del problema (opcional)</legend>
           <app-request-image-field
-            [file]="selectedAttachment()"
-            [processing]="isProcessingAttachment()"
-            [error]="attachmentError()"
+            [file]="attachment.file()"
+            [processing]="attachment.processing()"
+            [error]="attachment.error()"
             [disabled]="isSubmitting()"
-            (fileSelected)="selectAttachment($event)"
-            (removed)="removeAttachment()"
+            (fileSelected)="attachment.select($event)"
+            (removed)="attachment.clear()"
           />
         </fieldset>
 
@@ -176,8 +176,8 @@
           class="requests__submit"
           [disabled]="
             isSubmitting() ||
-            isProcessingAttachment() ||
-            attachmentError() !== null ||
+            attachment.processing() ||
+            attachment.error() !== null ||
             !catalogAvailable()
           "
           [attr.aria-busy]="isSubmitting()"
@@ -641,19 +641,6 @@
     <p class="requests__description-full">{{ description }}</p>
   </mat-dialog-content>
   <mat-dialog-actions align="end">
-    <button matButton type="button" mat-dialog-close>Cerrar</button>
-  </mat-dialog-actions>
-</ng-template>
-
-<ng-template #attachmentPreview let-preview>
-  <h2 mat-dialog-title>Imagen adjunta del trámite</h2>
-  <mat-dialog-content class="requests__attachment-preview">
-    <img [src]="preview.url" [alt]="'Imagen adjunta del trámite ' + preview.requestId" />
-  </mat-dialog-content>
-  <mat-dialog-actions align="end">
-    <a matButton [href]="preview.url" [download]="'evidencia.' + preview.extension" rel="noopener">
-      Descargar
-    </a>
     <button matButton type="button" mat-dialog-close>Cerrar</button>
   </mat-dialog-actions>
 </ng-template>

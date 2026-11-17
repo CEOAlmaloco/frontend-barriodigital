@@ -91,6 +91,9 @@ export const ACCEPTED_IMAGE_TYPES: readonly string[] = ['image/jpeg', 'image/png
 export const REJECTION_REASON_MAX_LENGTH = 500;
 export const INTERVENTION_REASON_MAX_LENGTH = 500;
 export const ASSIGNMENT_REASON_MAX_LENGTH = 500;
+/** Tope del trámite y largo del texto del comentario del vecino (EP3-64, sección 1). */
+export const COMMENT_MAX_COUNT = 20;
+export const COMMENT_MAX_LENGTH = 500;
 
 /** Textos frecuentes del funcionario; se copian al campo y se pueden editar (EP3-82). */
 export interface ReplyTemplate {

@@ -51,6 +51,7 @@ import { Subject, catchError, debounceTime, finalize, map, of, switchMap, tap } 
 import { AuthService } from '../../core/auth/auth.service';
 import { CatalogService } from '../../core/catalog/catalog.service';
 import { ReportService } from '../../core/report/report.service';
+import { openImagePreview } from '../../shared/components/image-preview-dialog/image-preview-dialog.component';
 import { ProcedureType } from '../../shared/models/procedure-type.model';
 import { SlaBatchItem } from '../../shared/models/report.model';
 import {
@@ -118,7 +119,8 @@ import { SlaIndicatorComponent, SlaIndicatorState } from './sla-indicator/sla-in
 import { procedureTypeLabel } from './procedure-label';
 import { RequestImageFieldComponent } from './request-image-field/request-image-field.component';
 import { RequestPrivacyNoticeComponent } from './request-privacy-notice/request-privacy-notice.component';
-import { ACCEPTED_IMAGE_TYPES, NEW_REQUEST_FRAGMENT, isClosedStatus } from './requests.constants';
+import { ImageSelection } from './image-selection';
+import { NEW_REQUEST_FRAGMENT, isClosedStatus } from './requests.constants';
 import { RequestsService } from './requests.service';
 import { RequestLocationMapComponent } from './request-location-map.component';
 import {
@@ -132,13 +134,9 @@ import {
 
 type LoadState = 'loading' | 'ready' | 'error';
 type LoadQuery = 'catalog' | 'requests' | 'transitions';
-type AttachmentPreview = { requestId: string; url: string; imageType: string; extension: string };
 
 const COLUMNS = ['tipo', 'descripcion', 'estado', 'fecha'];
 const STAFF_COLUMNS = ['tipo', 'descripcion', 'solicitante', 'responsable', 'estado', 'fecha'];
-const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
-const MAX_IMAGE_PIXELS = 12_000_000;
-const MAX_IMAGE_DIMENSION = 6000;
 
 @Component({
   selector: 'app-requests',
@@ -201,8 +199,6 @@ export class RequestsComponent {
   private readonly newRequestTitle = viewChild<ElementRef<HTMLElement>>('newRequestTitle');
   private readonly descriptionDialogTemplate =
     viewChild.required<TemplateRef<{ $implicit: string }>>('descriptionDialog');
-  private readonly attachmentPreviewTemplate =
-    viewChild.required<TemplateRef<{ $implicit: AttachmentPreview }>>('attachmentPreview');
   /** El ítem del menú se destruye al cerrarse. El foco vuelve a los tres puntos. */
   private detailsAnchor: HTMLButtonElement | null = null;
   private readonly reload$ = new Subject<void>();
@@ -311,10 +307,7 @@ export class RequestsComponent {
   protected readonly isSubmitting = signal(false);
   protected readonly submitError = signal<string | null>(null);
   protected readonly submittedTypeUnavailable = signal(false);
-  protected readonly selectedAttachment = signal<File | null>(null);
-  protected readonly attachmentError = signal<string | null>(null);
-  protected readonly isProcessingAttachment = signal(false);
-  private attachmentSelection = 0;
+  protected readonly attachment = new ImageSelection();
 
   protected readonly createForm = this.formBuilder.group({
     procedureType: ['', Validators.required],
@@ -824,18 +817,12 @@ export class RequestsComponent {
             return;
           }
           const url = URL.createObjectURL(image);
-          const extension = image.type === 'image/jpeg' ? 'jpg' : 'png';
-          this.attachmentPreviewDialog = this.dialog.open(this.attachmentPreviewTemplate(), {
-            data: {
-              requestId: request.id,
-              url,
-              imageType: image.type,
-              extension,
-            } satisfies AttachmentPreview,
-            panelClass: 'request-dialog',
-            autoFocus: 'first-heading',
-            width: '56rem',
-            maxWidth: 'calc(100vw - 2rem)',
+          const reference = request.folio?.trim() || request.id;
+          this.attachmentPreviewDialog = openImagePreview(this.dialog, {
+            title: 'Imagen adjunta del trámite',
+            url,
+            alt: `Imagen adjunta del trámite ${reference}`,
+            downloadName: `evidencia.${image.type === 'image/jpeg' ? 'jpg' : 'png'}`,
           });
           this.attachmentPreviewDialog
             .afterClosed()
@@ -954,8 +941,8 @@ export class RequestsComponent {
   protected submit(formDirective: FormGroupDirective): void {
     if (
       this.isSubmitting() ||
-      this.isProcessingAttachment() ||
-      this.attachmentError() !== null ||
+      this.attachment.processing() ||
+      this.attachment.error() !== null ||
       !this.catalogAvailable() ||
       this.createForm.invalid ||
       this.locationForm.invalid ||
@@ -973,15 +960,14 @@ export class RequestsComponent {
     this.updateCreateControls();
 
     const payload = this.creationPayload();
-    const attachment = this.selectedAttachment();
+    const attachment = this.attachment.file();
     const creation = attachment
       ? this.requestsService.createRequestWithAttachment(payload, attachment)
       : this.requestsService.createRequest(payload);
     creation.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         formDirective.resetForm();
-        this.selectedAttachment.set(null);
-        this.attachmentError.set(null);
+        this.attachment.clear();
         this.locationForm.reset({
           sector: '',
           locationReference: '',
@@ -1034,87 +1020,6 @@ export class RequestsComponent {
 
   protected mapLink(request: Request): string {
     return mapUrl(request) ?? '';
-  }
-
-  protected async selectAttachment(file: File): Promise<void> {
-    const selection = ++this.attachmentSelection;
-    this.selectedAttachment.set(null);
-    this.attachmentError.set(null);
-    if (file.size > MAX_ATTACHMENT_BYTES) {
-      this.attachmentError.set('La imagen no puede superar 5 MB.');
-      return;
-    }
-    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-      this.attachmentError.set('Adjunta una imagen JPEG, PNG o WebP.');
-      return;
-    }
-
-    this.isProcessingAttachment.set(true);
-    try {
-      const bitmap = await createImageBitmap(file);
-      let normalized: File;
-      try {
-        if (
-          bitmap.width <= 0 ||
-          bitmap.height <= 0 ||
-          bitmap.width > MAX_IMAGE_DIMENSION ||
-          bitmap.height > MAX_IMAGE_DIMENSION ||
-          bitmap.width * bitmap.height > MAX_IMAGE_PIXELS
-        ) {
-          throw new Error('La imagen supera las dimensiones permitidas.');
-        }
-        normalized = file.type === 'image/webp' ? await this.convertWebpToPng(bitmap) : file;
-      } finally {
-        bitmap.close();
-      }
-      if (selection !== this.attachmentSelection) {
-        return;
-      }
-      if (normalized.size > MAX_ATTACHMENT_BYTES) {
-        this.attachmentError.set('La imagen procesada no puede superar 5 MB.');
-        return;
-      }
-      this.selectedAttachment.set(normalized);
-    } catch (error: unknown) {
-      if (selection === this.attachmentSelection) {
-        this.attachmentError.set(
-          error instanceof Error && error.message === 'La imagen supera las dimensiones permitidas.'
-            ? error.message
-            : 'No se pudo leer la imagen. Elige un archivo JPEG, PNG o WebP válido.',
-        );
-      }
-    } finally {
-      if (selection === this.attachmentSelection) {
-        this.isProcessingAttachment.set(false);
-      }
-    }
-  }
-
-  protected removeAttachment(): void {
-    this.attachmentSelection += 1;
-    this.selectedAttachment.set(null);
-    this.attachmentError.set(null);
-    this.isProcessingAttachment.set(false);
-  }
-
-  private convertWebpToPng(bitmap: ImageBitmap): Promise<File> {
-    const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const context = canvas.getContext('2d');
-    if (!context) {
-      return Promise.reject(new Error('No se pudo procesar la imagen.'));
-    }
-    context.drawImage(bitmap, 0, 0);
-    return new Promise((resolve, reject) => {
-      canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(new File([blob], 'evidencia.png', { type: 'image/png' }));
-        } else {
-          reject(new Error('No se pudo procesar la imagen.'));
-        }
-      }, 'image/png');
-    });
   }
 
   protected downloadAttachment(request: Request): void {
@@ -1232,7 +1137,10 @@ export class RequestsComponent {
     this.applyQuery({ page: event.pageIndex, size: event.pageSize }, false);
     const title = this.listTitle().nativeElement;
     if (title.getBoundingClientRect().top < 0) {
-      title.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+      title.scrollIntoView({
+        block: 'start',
+        behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+      });
     }
   }
 

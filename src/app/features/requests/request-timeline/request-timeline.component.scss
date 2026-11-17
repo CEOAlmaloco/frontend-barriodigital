@@ -17,6 +17,20 @@ $icon-glyph: 18px;
   gap: $space-3 $space-4;
 }
 
+// En móvil, la acción ocupa su propia fila a todo el ancho; el grid estira el botón proyectado
+.timeline__action {
+  display: grid;
+  width: 100%;
+
+  &:empty {
+    display: none;
+  }
+
+  @media (min-width: $breakpoint-sm) {
+    width: auto;
+  }
+}
+
 .timeline__filters {
   display: flex;
   flex-wrap: wrap;
@@ -202,6 +216,7 @@ $icon-glyph: 18px;
 
 .timeline__note {
   background-color: var(--bd-background);
+  white-space: pre-line;
 }
 
 .timeline__intervention {
