@@ -81,16 +81,6 @@
   }
 </div>
 
-<ng-template #preview let-image>
-  <h2 mat-dialog-title>Imagen seleccionada</h2>
-  <mat-dialog-content class="image-field__preview">
-    <img [src]="image.url" [alt]="'Imagen seleccionada: ' + image.name" />
-  </mat-dialog-content>
-  <mat-dialog-actions align="end">
-    <button matButton="filled" type="button" mat-dialog-close>Cerrar</button>
-  </mat-dialog-actions>
-</ng-template>
-
 @if (error(); as message) {
   <p class="image-field__error" [id]="errorId" role="alert">
     <mat-icon aria-hidden="true">error_outline</mat-icon>

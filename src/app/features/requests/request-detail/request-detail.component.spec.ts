@@ -130,6 +130,8 @@ describe('RequestDetailComponent', () => {
     rate: ReturnType<typeof vi.fn>;
     changeStatus: ReturnType<typeof vi.fn>;
     registerGestion: ReturnType<typeof vi.fn>;
+    addComment: ReturnType<typeof vi.fn>;
+    getCommentAttachment: ReturnType<typeof vi.fn>;
   };
   let snackBar: { open: ReturnType<typeof vi.fn> };
   /** Nombres del catálogo: vacío equivale a un catálogo que no respondió. */
@@ -158,6 +160,8 @@ describe('RequestDetailComponent', () => {
       rate: vi.fn(),
       changeStatus: vi.fn(),
       registerGestion: vi.fn(),
+      addComment: vi.fn(),
+      getCommentAttachment: vi.fn(() => of(new Blob(['jpg'], { type: 'image/jpeg' }))),
     };
     snackBar = { open: vi.fn() };
     reportService = { getSlaBatch: vi.fn(() => getSlaBatch()) };
@@ -915,6 +919,163 @@ describe('RequestDetailComponent', () => {
         duration: 5000,
       });
       expect(service.getRequest).toHaveBeenCalledTimes(calls + 1);
+    });
+  });
+
+  describe('comentario del vecino (EP3-71)', () => {
+    const open: Request = { ...base, status: 'EN_GESTION', hasAssignee: true };
+    const comments = (count: number) =>
+      Array.from({ length: count }, (_, index) =>
+        event({
+          id: `comentario-${index}`,
+          kind: 'COMENTARIO',
+          toStatus: null,
+          summary: 'Agregó un comentario',
+          note: `Comentario ${index + 1}`,
+        }),
+      );
+    const withComments = (count: number) =>
+      activityOf([event({ id: 'creado' }), ...comments(count)]);
+    const trigger = () =>
+      buttons().find((item) => item.textContent?.includes('Agregar comentario'));
+    const form = () => element.querySelector('app-request-comment-form');
+    const openForm = async () => {
+      await click(trigger()!);
+      await fixture.whenStable();
+    };
+    const send = async (value: string) => {
+      await type(
+        element.querySelector<HTMLTextAreaElement>('app-request-comment-form textarea')!,
+        value,
+      );
+      await click(button('Enviar comentario'));
+    };
+
+    it('el titular de un trámite abierto lo abre desde el historial, con el foco en el texto', async () => {
+      await render(Role.Vecino, () => of(open));
+      expect(form()).toBeNull();
+
+      await openForm();
+
+      expect(trigger()).toBeUndefined();
+      expect(document.activeElement).toBe(form()?.querySelector('textarea'));
+    });
+
+    it.each([Role.Funcionario, Role.Admin, Role.Auditor])(
+      '%s ve los comentarios pero no puede agregar',
+      async (role) => {
+        await render(role, () => of(open), withComments(1));
+        expect(trigger()).toBeUndefined();
+        expect(text()).toContain('Comentario 1');
+      },
+    );
+
+    it.each(['RESUELTO', 'RECHAZADO', 'CANCELADO'] as const)(
+      'un trámite %s no admite comentarios',
+      async (status) => {
+        await render(Role.Vecino, () => of({ ...open, status }));
+        expect(trigger()).toBeUndefined();
+        expect(text()).not.toContain('máximo de 20 comentarios');
+      },
+    );
+
+    it('si el historial no cargó, no ofrece comentar: no se sabe cuántos quedan', async () => {
+      await render(Role.Vecino, () => of(open));
+      service.getActividad.mockReturnValue(
+        throwError(() => new HttpErrorResponse({ status: 500 })),
+      );
+      params.next(convertToParamMap({ id: 'req-2' }));
+      await fixture.whenStable();
+
+      expect(text()).toContain('No se pudo cargar el historial.');
+      expect(trigger()).toBeUndefined();
+    });
+
+    it('con 20 comentarios reemplaza el botón por el aviso del tope', async () => {
+      await render(Role.Vecino, () => of(open), withComments(20));
+      expect(trigger()).toBeUndefined();
+      expect(text()).toContain('Este trámite alcanzó el máximo de 20 comentarios.');
+    });
+
+    it('cerca del tope el formulario dice cuántos quedan', async () => {
+      await render(Role.Vecino, () => of(open), withComments(17));
+      await openForm();
+      expect(form()?.textContent).toContain('Puedes agregar 3 comentarios más.');
+    });
+
+    it('al enviarlo, el comentario aparece en el historial y el foco vuelve al botón', async () => {
+      await render(Role.Vecino, () => of(open));
+      const updated = activityOf([
+        event({ id: 'creado' }),
+        event({
+          id: 'nuevo',
+          kind: 'COMENTARIO',
+          toStatus: null,
+          summary: 'Agregó un comentario',
+          note: 'Ahora se junta agua',
+        }),
+      ]);
+      service.addComment.mockReturnValue(of(updated));
+      const loads = service.getActividad.mock.calls.length;
+
+      await openForm();
+      await send('Ahora se junta agua');
+      await fixture.whenStable();
+
+      expect(service.addComment).toHaveBeenCalledWith('req-1', 'Ahora se junta agua', null);
+      expect(service.getActividad).toHaveBeenCalledTimes(loads);
+      expect(form()).toBeNull();
+      expect(element.querySelector('.timeline__note')?.textContent).toContain(
+        'Ahora se junta agua',
+      );
+      expect(snackBar.open).toHaveBeenCalledWith('Comentario agregado.', undefined, {
+        duration: 3000,
+      });
+      expect(document.activeElement).toBe(trigger());
+    });
+
+    it('si el trámite ya no admite comentarios, cierra el formulario y recarga el trámite', async () => {
+      await render(Role.Vecino, () => of(open));
+      service.addComment.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409 })));
+      const calls = service.getRequest.mock.calls.length;
+
+      await openForm();
+      service.getRequest.mockReturnValue(of({ ...open, status: 'RESUELTO' }));
+      await send('Se acumula agua');
+      await fixture.whenStable();
+
+      expect(snackBar.open).toHaveBeenCalledWith(
+        'El trámite ya no admite comentarios.',
+        undefined,
+        {
+          duration: 5000,
+        },
+      );
+      expect(service.getRequest).toHaveBeenCalledTimes(calls + 1);
+      expect(form()).toBeNull();
+      expect(trigger()).toBeUndefined();
+    });
+
+    it('un error que no cambia el trámite deja el formulario abierto con el texto', async () => {
+      await render(Role.Vecino, () => of(open));
+      service.addComment.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 0 })));
+
+      await openForm();
+      await send('Se acumula agua');
+
+      expect(form()).not.toBeNull();
+      expect(form()?.querySelector('textarea')?.value).toBe('Se acumula agua');
+      expect(snackBar.open).not.toHaveBeenCalled();
+    });
+
+    it('Cancelar cierra el formulario y devuelve el foco al botón', async () => {
+      await render(Role.Vecino, () => of(open));
+      await openForm();
+      await click(button('Cancelar'));
+      await fixture.whenStable();
+
+      expect(form()).toBeNull();
+      expect(document.activeElement).toBe(trigger());
     });
   });
 });

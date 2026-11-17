@@ -6,7 +6,6 @@ import {
   DestroyRef,
   ElementRef,
   Injector,
-  TemplateRef,
   afterNextRender,
   computed,
   inject,
@@ -15,14 +14,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButton, MatIconButton } from '@angular/material/button';
-import {
-  MatDialog,
-  MatDialogActions,
-  MatDialogClose,
-  MatDialogContent,
-  MatDialogRef,
-  MatDialogTitle,
-} from '@angular/material/dialog';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatIcon } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Title } from '@angular/platform-browser';
@@ -32,6 +24,7 @@ import { Subject, catchError, combineLatest, map, of, startWith, switchMap, tap 
 import { AuthService } from '../../../core/auth/auth.service';
 import { CatalogService } from '../../../core/catalog/catalog.service';
 import { ReportService } from '../../../core/report/report.service';
+import { openImagePreview } from '../../../shared/components/image-preview-dialog/image-preview-dialog.component';
 import { Request, RequestStatus, RequestTransitions } from '../../../shared/models/request.model';
 import { OVERSIGHT_ROLES, Role } from '../../../shared/models/role';
 import { assignmentFailure } from '../assignment-errors';
@@ -48,6 +41,10 @@ import {
   AttentionSla,
   RequestAttentionPanelComponent,
 } from '../request-attention-panel/request-attention-panel.component';
+import {
+  CommentFailure,
+  RequestCommentFormComponent,
+} from '../request-comment-form/request-comment-form.component';
 import {
   RequestGestionDialogComponent,
   RequestGestionDialogData,
@@ -66,12 +63,11 @@ import {
   RequestStatusDialogResult,
 } from '../request-status-dialog/request-status-dialog.component';
 import { RequestTimelineComponent } from '../request-timeline/request-timeline.component';
-import { isClosedStatus } from '../requests.constants';
+import { COMMENT_MAX_COUNT, isClosedStatus } from '../requests.constants';
 import { RequestActivity, RequestsService } from '../requests.service';
 
 type PageState = 'loading' | 'ready' | 'error' | 'not-found';
 type LoadState = 'loading' | 'ready' | 'error';
-type AttachmentPreview = { url: string; extension: string };
 
 const NOTIFIED_STATUSES: readonly RequestStatus[] = [
   'ADMITIDO',
@@ -84,13 +80,10 @@ const NOTIFIED_STATUSES: readonly RequestStatus[] = [
   selector: 'app-request-detail',
   imports: [
     MatButton,
-    MatDialogActions,
-    MatDialogClose,
-    MatDialogContent,
-    MatDialogTitle,
     MatIcon,
     MatIconButton,
     RequestAttentionPanelComponent,
+    RequestCommentFormComponent,
     RequestDetailSkeletonComponent,
     RequestLocationMapComponent,
     RequestProgressComponent,
@@ -117,8 +110,8 @@ export class RequestDetailComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
-  private readonly previewTemplate =
-    viewChild.required<TemplateRef<{ $implicit: AttachmentPreview }>>('attachmentPreview');
+  private readonly commentTrigger = viewChild('commentTrigger', { read: ElementRef });
+  private readonly historyTitle = viewChild<ElementRef<HTMLElement>>('historyTitle');
 
   private readonly reload$ = new Subject<void>();
   private readonly activityReload$ = new Subject<void>();
@@ -136,6 +129,7 @@ export class RequestDetailComponent {
   protected readonly attachmentUrl = signal<string | null>(null);
   protected readonly attachmentState = signal<LoadState>('loading');
   protected readonly taking = signal(false);
+  protected readonly composerOpen = signal(false);
   private readonly attachmentExtension = signal('png');
 
   /** Único rol del usuario (EP3-04, sección 4); accessGuard impide llegar aquí sin uno. */
@@ -186,6 +180,16 @@ export class RequestDetailComponent {
     const folio = this.folio();
     return folio ? { view: 'timeline', folio } : { view: 'timeline', requestId: request.id };
   });
+  /** Sin el historial no se sabe cuántos comentarios quedan: el botón espera a que cargue. */
+  protected readonly commentsLeft = computed(() => {
+    const activity = this.activity();
+    if (this.viewer() !== Role.Vecino || this.isClosed() || !activity) {
+      return null;
+    }
+    const used = activity.eventos.filter((event) => event.kind === 'COMENTARIO').length;
+    return Math.max(COMMENT_MAX_COUNT - used, 0);
+  });
+  protected readonly commentMaxCount = COMMENT_MAX_COUNT;
   protected readonly stages = computed(() => this.activity()?.tiempos.etapas ?? []);
   protected readonly sector = computed(() => sectorLabel(this.request()?.sector));
   protected readonly hasPoint = computed(() => {
@@ -548,17 +552,46 @@ export class RequestDetailComponent {
       });
   }
 
+  protected openComposer(): void {
+    this.composerOpen.set(true);
+  }
+
+  protected closeComposer(): void {
+    this.composerOpen.set(false);
+    this.focusCommentTrigger();
+  }
+
+  /** La respuesta trae el historial con el comentario: no hace falta volver a pedirlo. */
+  protected commentSaved(activity: RequestActivity): void {
+    this.activity.set(activity);
+    this.activityState.set('ready');
+    this.composerOpen.set(false);
+    this.snackBar.open('Comentario agregado.', undefined, { duration: 3000 });
+    this.focusCommentTrigger();
+  }
+
+  /** Cerrado, tope alcanzado o sin acceso: el trámite se recarga y la pantalla muestra lo que permite ahora. */
+  protected commentFailed(failure: CommentFailure): void {
+    if (!failure.requiresReload) {
+      return;
+    }
+    this.composerOpen.set(false);
+    this.snackBar.open(failure.message, undefined, { duration: 5000 });
+    this.reload$.next();
+    this.loadActivity();
+    this.focusHeading();
+  }
+
   protected openPreview(): void {
     const url = this.attachmentUrl();
     if (!url || this.openedDialog) {
       return;
     }
-    const ref = this.dialog.open(this.previewTemplate(), {
-      data: { url, extension: this.attachmentExtension() } satisfies AttachmentPreview,
-      panelClass: 'request-dialog',
-      autoFocus: 'first-heading',
-      width: '56rem',
-      maxWidth: 'calc(100vw - 2rem)',
+    const ref = openImagePreview(this.dialog, {
+      title: 'Imagen adjunta',
+      url,
+      alt: 'Imagen adjunta al trámite',
+      downloadName: `evidencia.${this.attachmentExtension()}`,
     });
     this.openedDialog = ref;
     ref
@@ -575,6 +608,7 @@ export class RequestDetailComponent {
     this.request.set(null);
     this.activity.set(null);
     this.activityState.set('loading');
+    this.composerOpen.set(false);
     this.revokeAttachment();
     this.attachmentState.set('loading');
     // En paralelo con el trámite: basta el id de la ruta
@@ -615,6 +649,13 @@ export class RequestDetailComponent {
     } else {
       this.focusHeading();
     }
+  }
+
+  /** Si el botón ya no está, porque se alcanzó el tope, el foco queda en el título del historial. */
+  private focusCommentTrigger(): void {
+    afterNextRender(() => (this.commentTrigger() ?? this.historyTitle())?.nativeElement.focus(), {
+      injector: this.injector,
+    });
   }
 
   private focusHeading(): void {

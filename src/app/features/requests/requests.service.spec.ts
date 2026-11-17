@@ -241,6 +241,54 @@ describe('RequestsService', () => {
     expect(await result).toEqual([{ id: 'oid-ana', name: 'Ana' }]);
   });
 
+  describe('comentario del vecino (EP3-64)', () => {
+    const activity = {
+      requestId: request.id,
+      eventos: [],
+      tiempos: {},
+      contacto: null,
+      limites: [],
+    };
+
+    it('sin imagen envía JSON y devuelve el historial', async () => {
+      const result = firstValueFrom(service.addComment(request.id, 'Se acumula agua'));
+      const call = backend.expectOne(`${url}/${request.id}/comments`);
+
+      expect(call.request.method).toBe('POST');
+      expect(call.request.body).toEqual({ text: 'Se acumula agua' });
+      call.flush(activity);
+
+      expect(await result).toEqual(activity);
+    });
+
+    it('con imagen envía multipart con las partes comment y attachment', async () => {
+      const image = new File(['png'], 'foto.png', { type: 'image/png' });
+      const result = firstValueFrom(service.addComment(request.id, 'Se acumula agua', image));
+      const call = backend.expectOne(`${url}/${request.id}/comments`);
+
+      const body = call.request.body as FormData;
+      expect(body).toBeInstanceOf(FormData);
+      const comment = body.get('comment') as Blob;
+      expect(comment.type).toBe('application/json');
+      expect(JSON.parse(await comment.text())).toEqual({ text: 'Se acumula agua' });
+      expect((body.get('attachment') as File).name).toBe('evidencia');
+      call.flush(activity);
+
+      expect(await result).toEqual(activity);
+    });
+
+    it('pide la foto de un comentario como blob con el id del evento', async () => {
+      const result = firstValueFrom(service.getCommentAttachment(request.id, 'ev-7'));
+      const call = backend.expectOne(`${url}/${request.id}/comments/ev-7/attachment`);
+
+      expect(call.request.method).toBe('GET');
+      expect(call.request.responseType).toBe('blob');
+      call.flush(new Blob(['jpg'], { type: 'image/jpeg' }));
+
+      expect((await result).type).toBe('image/jpeg');
+    });
+  });
+
   it('lee y guarda preferencias de aviso en /me/notification-preferences', async () => {
     const getResult = firstValueFrom(service.getNotificationPreferences());
     const getCall = backend.expectOne(`${url}/me/notification-preferences`);

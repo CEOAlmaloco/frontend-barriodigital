@@ -78,6 +78,9 @@ describe('RequestImageFieldComponent', () => {
     expect(caution?.textContent).toMatch(/patentes/i);
     expect(picker().hidden).toBe(true);
     expect(picker().accept).toBe('image/jpeg,image/png,image/webp');
+    expect(element.querySelector('app-request-image-field')?.classList).not.toContain(
+      'image-field--compact',
+    );
     expect(element.querySelector('img')).toBeNull();
   });
 
@@ -119,7 +122,7 @@ describe('RequestImageFieldComponent', () => {
 
   describe('vista ampliada', () => {
     let overlay: HTMLElement;
-    const dialogImage = () => overlay.querySelector<HTMLImageElement>('.image-field__preview img');
+    const dialogImage = () => overlay.querySelector<HTMLImageElement>('.image-preview img');
     const thumb = () => element.querySelector<HTMLButtonElement>('button.image-field__thumb')!;
 
     beforeEach(async () => {
@@ -152,7 +155,7 @@ describe('RequestImageFieldComponent', () => {
       thumb().click();
       thumb().click();
       await settle();
-      expect(overlay.querySelectorAll('.image-field__preview')).toHaveLength(1);
+      expect(overlay.querySelectorAll('.image-preview')).toHaveLength(1);
     });
 
     it('se cierra si el campo deja de existir', async () => {

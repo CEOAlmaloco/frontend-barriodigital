@@ -4,8 +4,8 @@ import {
   DestroyRef,
   ElementRef,
   Injector,
-  TemplateRef,
   afterNextRender,
+  booleanAttribute,
   computed,
   effect,
   inject,
@@ -15,21 +15,13 @@ import {
   viewChild,
 } from '@angular/core';
 import { MatButton } from '@angular/material/button';
-import {
-  MatDialog,
-  MatDialogActions,
-  MatDialogClose,
-  MatDialogContent,
-  MatDialogRef,
-  MatDialogTitle,
-} from '@angular/material/dialog';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 
+import { openImagePreview } from '../../../shared/components/image-preview-dialog/image-preview-dialog.component';
 import { formatFileSize } from '../../../shared/utils/file-size';
 import { ACCEPTED_IMAGE_TYPES } from '../requests.constants';
-
-type ImagePreview = { url: string; name: string };
 
 let nextId = 0;
 
@@ -39,24 +31,19 @@ let nextId = 0;
  */
 @Component({
   selector: 'app-request-image-field',
-  imports: [
-    MatButton,
-    MatDialogActions,
-    MatDialogClose,
-    MatDialogContent,
-    MatDialogTitle,
-    MatIcon,
-    MatProgressSpinner,
-  ],
+  imports: [MatButton, MatIcon, MatProgressSpinner],
   templateUrl: './request-image-field.component.html',
   styleUrl: './request-image-field.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[class.image-field--compact]': 'compact()' },
 })
 export class RequestImageFieldComponent {
   readonly file = input<File | null>(null);
   readonly processing = input(false);
   readonly error = input<string | null>(null);
   readonly disabled = input(false);
+  /** Ayudas en el tamaño de las de un campo de Material, para formularios donde el grupo lleva una etiqueta y no un título. */
+  readonly compact = input(false, { transform: booleanAttribute });
 
   readonly fileSelected = output<File>();
   readonly removed = output<void>();
@@ -64,8 +51,6 @@ export class RequestImageFieldComponent {
   private readonly picker = viewChild.required<ElementRef<HTMLInputElement>>('picker');
   private readonly chooseButton = viewChild('choose', { read: ElementRef });
   private readonly changeButton = viewChild('change', { read: ElementRef });
-  private readonly previewTemplate =
-    viewChild.required<TemplateRef<{ $implicit: ImagePreview }>>('preview');
   private readonly injector = inject(Injector);
   private readonly dialog = inject(MatDialog);
   private previewDialog: MatDialogRef<unknown> | null = null;
@@ -118,12 +103,10 @@ export class RequestImageFieldComponent {
     if (!url || !file || this.previewDialog) {
       return;
     }
-    this.previewDialog = this.dialog.open(this.previewTemplate(), {
-      data: { url, name: file.name } satisfies ImagePreview,
-      panelClass: 'request-dialog',
-      autoFocus: 'first-heading',
-      width: '56rem',
-      maxWidth: 'calc(100vw - 2rem)',
+    this.previewDialog = openImagePreview(this.dialog, {
+      title: 'Imagen seleccionada',
+      url,
+      alt: `Imagen seleccionada: ${file.name}`,
     });
     this.previewDialog.afterClosed().subscribe(() => (this.previewDialog = null));
   }

@@ -347,10 +347,48 @@
                   </div>
                 }
                 @default {
-                  <app-request-timeline [events]="activity()?.eventos ?? []" [staff]="isStaff()">
-                    <h2 id="history-title" class="request-detail__card-title" timelineTitle>
+                  <app-request-timeline
+                    [events]="activity()?.eventos ?? []"
+                    [staff]="isStaff()"
+                    [requestId]="request.id"
+                  >
+                    <h2
+                      #historyTitle
+                      id="history-title"
+                      class="request-detail__card-title"
+                      tabindex="-1"
+                      timelineTitle
+                    >
                       Historial
                     </h2>
+                    @if (commentsLeft() && !composerOpen()) {
+                      <button
+                        #commentTrigger
+                        matButton="outlined"
+                        type="button"
+                        timelineAction
+                        (click)="openComposer()"
+                      >
+                        <mat-icon aria-hidden="true">add_comment</mat-icon>
+                        Agregar comentario
+                      </button>
+                    }
+                    @if (commentsLeft() && composerOpen()) {
+                      <app-request-comment-form
+                        timelineLead
+                        [requestId]="request.id"
+                        [remaining]="commentsLeft() ?? 0"
+                        (saved)="commentSaved($event)"
+                        (failed)="commentFailed($event)"
+                        (cancelled)="closeComposer()"
+                      />
+                    }
+                    @if (commentsLeft() === 0) {
+                      <p class="request-detail__notice" role="note" timelineLead>
+                        <mat-icon aria-hidden="true">info</mat-icon>
+                        Este trámite alcanzó el máximo de {{ commentMaxCount }} comentarios.
+                      </p>
+                    }
                   </app-request-timeline>
                 }
               }
@@ -361,17 +399,3 @@
     }
   }
 </main>
-
-<ng-template #attachmentPreview let-preview>
-  <h2 mat-dialog-title>Imagen adjunta</h2>
-  <mat-dialog-content class="request-detail__preview">
-    <img [src]="preview.url" alt="Imagen adjunta al trámite" />
-  </mat-dialog-content>
-  <mat-dialog-actions align="end">
-    <a matButton [href]="preview.url" [download]="'evidencia.' + preview.extension">
-      <mat-icon aria-hidden="true">download</mat-icon>
-      Descargar
-    </a>
-    <button matButton="filled" type="button" mat-dialog-close>Cerrar</button>
-  </mat-dialog-actions>
-</ng-template>
