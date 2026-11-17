@@ -2166,7 +2166,7 @@ describe('RequestsComponent', () => {
         cell.textContent?.replace(/\s+/g, ' ').trim(),
       );
     const queueLabels = () =>
-      Array.from(element.querySelectorAll('app-request-queue .mat-button-toggle-label-content'), (label) =>
+      Array.from(element.querySelectorAll('app-request-queue .queue .mat-button-toggle-label-content'), (label) =>
         label.textContent?.replace(/\s+/g, ' ').trim(),
       );
 
@@ -2314,6 +2314,78 @@ describe('RequestsComponent', () => {
       });
     });
 
+    const contactToggle = () =>
+      element.querySelector<HTMLButtonElement>('app-request-queue .contact button')!;
+    const emptyButton = (label: string) =>
+      [...element.querySelectorAll<HTMLButtonElement>('.requests__empty-state button')].find(
+        (button) => button.textContent?.trim() === label,
+      )!;
+
+    it('Funcionario: contacto pendiente se combina con la bandeja y queda en la URL', async () => {
+      await render(Role.Funcionario, undefined, undefined, undefined, '/?assignee=me&page=2');
+
+      expect(contactToggle().getAttribute('aria-pressed')).toBe('false');
+      contactToggle().click();
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({ assignee: 'me', contactDue: 'true' });
+      expect(TestBed.inject(Router).url).toBe('/?assignee=me&contactDue=true');
+      expect(contactToggle().getAttribute('aria-pressed')).toBe('true');
+
+      contactToggle().click();
+      await settle();
+      expect(service.getRequests).toHaveBeenLastCalledWith({ assignee: 'me' });
+    });
+
+    it('Admin: llega con contacto pendiente desde la URL', async () => {
+      await render(Role.Admin, undefined, undefined, undefined, '/?contactDue=true');
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({ contactDue: 'true' });
+      expect(contactToggle().getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('contacto pendiente sin resultados lo dice según la bandeja y permite quitarlo', async () => {
+      await render(
+        Role.Funcionario,
+        () => of(page([])),
+        undefined,
+        undefined,
+        '/?assignee=me&contactDue=true',
+      );
+
+      expect(text()).toContain('No hay contactos pendientes entre tus asignados.');
+      emptyButton('Quitar filtro').click();
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({ assignee: 'me' });
+    });
+
+    it('contacto pendiente con otros filtros no afirma que no quede ninguno, y limpiar lo quita', async () => {
+      await render(
+        Role.Funcionario,
+        () => of(page([])),
+        undefined,
+        undefined,
+        '/?assignee=none&contactDue=true&sector=ralco',
+      );
+
+      expect(text()).toContain('No hay contactos pendientes con la búsqueda o los filtros actuales.');
+      emptyButton('Limpiar búsqueda y filtros').click();
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({ assignee: 'none' });
+    });
+
+    it('"Limpiar filtros" del panel también quita contacto pendiente', async () => {
+      await render(Role.Auditor, undefined, undefined, undefined, '/?contactDue=true&status=INGRESADO');
+
+      element.querySelector<HTMLButtonElement>('.filters__clear')!.click();
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({});
+      expect(contactToggle().getAttribute('aria-pressed')).toBe('false');
+    });
+
     it('bandeja vacía de mis asignados invita a tomar uno sin asignar', async () => {
       await render(Role.Funcionario, () => of(page([])), undefined, undefined, '/?assignee=me');
 
@@ -2352,8 +2424,8 @@ describe('RequestsComponent', () => {
       expect(queueLabels()).toEqual(['inbox Todos', 'person_off Sin asignar']);
     });
 
-    it('Vecino: no ve responsable ni bandeja, y un assignee en la URL se ignora', async () => {
-      await render(Role.Vecino, undefined, undefined, undefined, '/?assignee=none');
+    it('Vecino: no ve responsable ni filtros rápidos, y assignee o contactDue en la URL se ignoran', async () => {
+      await render(Role.Vecino, undefined, undefined, undefined, '/?assignee=none&contactDue=true');
 
       expect(service.getRequests).toHaveBeenCalledWith({});
       expect(element.querySelector('app-request-queue')).toBeNull();

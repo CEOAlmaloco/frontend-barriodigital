@@ -52,6 +52,7 @@ describe('request-list-query', () => {
         open: 'true',
         sector: 'villa-ralco',
         assignee: 'none',
+        contactDue: true,
         sort: 'status',
         direction: 'asc',
         page: 4,
@@ -62,6 +63,7 @@ describe('request-list-query', () => {
       open: 'true',
       sector: 'villa-ralco',
       assignee: 'none',
+      contactDue: 'true',
       sort: 'status,asc',
     });
     expect(toRequestExportParams(DEFAULT_REQUEST_QUERY)).toEqual({});
@@ -86,6 +88,14 @@ describe('request-list-query', () => {
     const query = parseRequestListParams(fromRecord(params));
     expect(query.open).toBe('true');
     expect(toRequestListParams(query)).toEqual(params);
+  });
+
+  it('contacto pendiente viaja como contactDue=true y se combina con la bandeja', () => {
+    const params = { assignee: 'me', contactDue: 'true' };
+    const query = parseRequestListParams(fromRecord(params));
+    expect(query).toMatchObject({ assignee: 'me', contactDue: true });
+    expect(toRequestListParams(query)).toEqual(params);
+    expect(activeFilterCount(query)).toBe(0);
   });
 
   it('descarta un estado de la otra situación, que siempre daría una lista vacía', () => {
@@ -126,6 +136,8 @@ describe('request-list-query', () => {
     ['to', 'ayer'],
     ['assignee', 'oid-ana'],
     ['open', 'si'],
+    ['contactDue', 'false'],
+    ['contactDue', '1'],
   ])('descarta %s=%s manipulado en la URL', (key, value) => {
     expect(parseRequestListParams(fromRecord({ [key]: value }))).toEqual(DEFAULT_REQUEST_QUERY);
   });

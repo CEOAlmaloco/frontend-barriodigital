@@ -239,7 +239,9 @@
         <app-request-queue
           [queues]="queues()"
           [value]="query().assignee"
+          [contactDue]="query().contactDue"
           (valueChange)="changeQueue($event)"
+          (contactDueChange)="changeContactDue($event)"
         />
       }
 
@@ -296,7 +298,29 @@
       <div class="requests__results" [class.requests__results--stale]="listState() === 'loading'">
         @if (requests().length === 0) {
           <div class="requests__empty-state">
-            @if (isNarrowed()) {
+            @if (query().contactDue && isNarrowed()) {
+              <mat-icon aria-hidden="true">search_off</mat-icon>
+              <p class="requests__empty-title">
+                No hay contactos pendientes con la búsqueda o los filtros actuales.
+              </p>
+              <button matButton="outlined" type="button" (click)="clearSearchAndFilters()">
+                Limpiar búsqueda y filtros
+              </button>
+            } @else if (query().contactDue) {
+              <mat-icon aria-hidden="true">event_available</mat-icon>
+              <p class="requests__empty-title">
+                No hay contactos pendientes{{
+                  query().assignee === 'me'
+                    ? ' entre tus asignados'
+                    : query().assignee === 'none'
+                      ? ' entre los trámites sin asignar'
+                      : ''
+                }}.
+              </p>
+              <button matButton="outlined" type="button" (click)="changeContactDue(false)">
+                Quitar filtro
+              </button>
+            } @else if (isNarrowed()) {
               <mat-icon aria-hidden="true">search_off</mat-icon>
               <p class="requests__empty-title">Ningún trámite coincide con la búsqueda o los filtros.</p>
               <button matButton="outlined" type="button" (click)="clearSearchAndFilters()">

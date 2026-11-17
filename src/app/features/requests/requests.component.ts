@@ -698,6 +698,10 @@ export class RequestsComponent {
     this.applyQuery({ assignee });
   }
 
+  protected changeContactDue(contactDue: boolean): void {
+    this.applyQuery({ contactDue });
+  }
+
   protected take(request: Request, trigger: HTMLButtonElement): void {
     if (this.takingId() || this.anyDialogOpen() || this.rowMode(request) !== 'take') {
       return;
@@ -1184,7 +1188,16 @@ export class RequestsComponent {
     );
     this.toMin.set(MUNICIPALITY_SINCE);
     this.listTitle().nativeElement.focus({ preventScroll: true });
-    this.applyQuery({ status: '', open: '', procedureType: '', sector: '', from: '', to: '' });
+    // Contacto pendiente es un filtro sobre los datos, no una bandeja: se limpia con los del panel
+    this.applyQuery({
+      status: '',
+      open: '',
+      procedureType: '',
+      sector: '',
+      from: '',
+      to: '',
+      contactDue: false,
+    });
   }
 
   protected clearSearchAndFilters(): void {
@@ -1220,10 +1233,10 @@ export class RequestsComponent {
       .finally(() => this.ownNavigations.delete(key));
   }
 
-  /** La bandeja es solo de staff: al Vecino el backend le respondería 403. */
+  /** La bandeja y contacto pendiente son solo de staff: al Vecino el backend le respondería 403. */
   private readQuery(get: (key: string) => string | null): RequestListQuery {
     const query = parseRequestListParams(get);
-    return this.isStaff() || !query.assignee ? query : { ...query, assignee: '' };
+    return this.isStaff() ? query : { ...query, assignee: '', contactDue: false };
   }
 
   private filtersFromForm(): Partial<RequestListQuery> {
