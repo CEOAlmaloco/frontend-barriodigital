@@ -1,0 +1,103 @@
+@use 'tokens' as *;
+@use '../admin-ops-kpis';
+@use '../admin-detail';
+
+.kafka-panel {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  min-width: 0;
+}
+
+.kafka-panel__heading {
+  display: flex;
+  gap: $space-4;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  h2,
+  h3 {
+    margin: 0;
+  }
+}
+
+.kafka-panel__lead,
+.kafka-panel__empty,
+.kafka-panel__muted {
+  margin: $space-2 0 0;
+  color: var(--bd-text-muted);
+  line-height: $line-height-body;
+}
+
+.kafka-panel__muted {
+  display: block;
+  font-size: $font-body-sm;
+  overflow-wrap: anywhere;
+}
+
+.kafka-panel__sections,
+.kafka-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+  align-items: center;
+}
+
+.kafka-panel__chip {
+  min-height: $size-touch-target;
+  padding: $space-2 $space-4;
+  color: var(--bd-text);
+  background: var(--bd-surface);
+  border: $border-width solid var(--bd-border-interactive);
+  border-radius: $radius-base;
+  font: inherit;
+  cursor: pointer;
+
+  &[aria-selected='true'] {
+    color: var(--bd-primary);
+    background: var(--bd-primary-container);
+    border-color: var(--bd-primary);
+    font-weight: $font-weight-medium;
+  }
+}
+
+.kafka-panel__status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3;
+  align-items: center;
+  color: var(--bd-text-muted);
+}
+
+.kafka-panel__table-wrap {
+  overflow-x: auto;
+  border: $border-width solid var(--bd-border);
+  border-radius: $radius-base;
+}
+
+.kafka-panel__detail {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: $space-4;
+  border: $border-width solid var(--bd-border);
+  border-radius: $radius-base;
+  background: var(--bd-surface);
+}
+
+.kafka-panel__lag-list {
+  margin: 0;
+  padding-left: $space-6;
+  color: var(--bd-text);
+  line-height: $line-height-body;
+}
+
+.kafka-panel__select {
+  width: min(100%, 28rem);
+}
+
+.kafka-panel__mono {
+  display: block;
+  font-weight: $font-weight-medium;
+  overflow-wrap: anywhere;
+}

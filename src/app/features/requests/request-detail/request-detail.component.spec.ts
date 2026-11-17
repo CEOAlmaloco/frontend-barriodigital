@@ -127,6 +127,7 @@ describe('RequestDetailComponent', () => {
     getTransitions: ReturnType<typeof vi.fn>;
     getAttachment: ReturnType<typeof vi.fn>;
     take: ReturnType<typeof vi.fn>;
+    rate: ReturnType<typeof vi.fn>;
     changeStatus: ReturnType<typeof vi.fn>;
     registerGestion: ReturnType<typeof vi.fn>;
     addComment: ReturnType<typeof vi.fn>;
@@ -156,6 +157,7 @@ describe('RequestDetailComponent', () => {
       getTransitions: vi.fn(() => of(TRANSITIONS)),
       getAttachment: vi.fn(() => of(new Blob(['png'], { type: 'image/png' }))),
       take: vi.fn(),
+      rate: vi.fn(),
       changeStatus: vi.fn(),
       registerGestion: vi.fn(),
       addComment: vi.fn(),
@@ -786,6 +788,66 @@ describe('RequestDetailComponent', () => {
 
       expect(element.querySelector('app-request-status-badge')?.textContent).toContain('Cancelado');
       expect(text()).toContain('Cancelaste este trámite.');
+    });
+  });
+
+  describe('encuesta de satisfacción (EP3-78)', () => {
+    it('el Vecino ve la encuesta en RESUELTO si aún no calificó', async () => {
+      await render(Role.Vecino, () => of({ ...base, status: 'RESUELTO' }));
+
+      expect(element.querySelector('app-request-satisfaction')).not.toBeNull();
+      expect(text()).toContain('¿Cómo fue la atención?');
+      expect(hasButton('Enviar calificación')).toBe(true);
+    });
+
+    it('si ya calificó, muestra la nota y no vuelve a ofrecer la encuesta', async () => {
+      await render(Role.Vecino, () =>
+        of({
+          ...base,
+          status: 'RESUELTO',
+          satisfactionScore: 4,
+          satisfactionComment: 'Bien atendido',
+        }),
+      );
+
+      expect(element.querySelector('app-request-satisfaction')).toBeNull();
+      expect(text()).toContain('Tu calificación: 4 de 5');
+      expect(text()).toContain('Bien atendido');
+    });
+
+    it('el personal no ve la encuesta; sí ve la nota si existe', async () => {
+      await render(Role.Funcionario, () => of({ ...assigned(), status: 'RESUELTO' }));
+      expect(element.querySelector('app-request-satisfaction')).toBeNull();
+
+      TestBed.resetTestingModule();
+      await render(Role.Admin, () =>
+        of({ ...assigned(), status: 'RESUELTO', satisfactionScore: 5 }),
+      );
+      expect(element.querySelector('app-request-satisfaction')).toBeNull();
+      expect(text()).toContain('Calificación del vecino: 5 de 5');
+    });
+
+    it('al enviar, actualiza el trámite y oculta el formulario', async () => {
+      await render(Role.Vecino, () => of({ ...base, status: 'RESUELTO' }));
+      service.rate.mockReturnValue(
+        of({
+          ...base,
+          status: 'RESUELTO',
+          satisfactionScore: 5,
+          satisfactionComment: 'Rapido',
+        }),
+      );
+
+      element.querySelector<HTMLButtonElement>('[aria-label="Nota 5 de 5"]')!.click();
+      await fixture.whenStable();
+      await click(button('Enviar calificación'));
+
+      expect(service.rate).toHaveBeenCalledWith('req-1', { score: 5 });
+      expect(snackBar.open).toHaveBeenCalledWith('Gracias. Guardamos tu calificación.', undefined, {
+        duration: 3500,
+      });
+      expect(element.querySelector('app-request-satisfaction')).toBeNull();
+      expect(text()).toContain('Tu calificación: 5 de 5');
     });
   });
 

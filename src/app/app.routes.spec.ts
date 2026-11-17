@@ -67,6 +67,8 @@ const setup = () => {
           getRequest: () => NEVER,
           getActividad: () => NEVER,
           getTransitions: () => NEVER,
+          getNotificationPreferences: () => of({ emailEnabled: true }),
+          updateNotificationPreferences: (emailEnabled: boolean) => of({ emailEnabled }),
         },
       },
     ],
@@ -82,6 +84,32 @@ describe('Layout autenticado', () => {
   it('exige sesión y un rol válido antes de cualquier ruta hija', () => {
     expect(layoutRoute()?.canActivate).toEqual([authGuard]);
     expect(layoutRoute()?.canActivateChild).toEqual([accessGuard]);
+  });
+});
+
+describe('Ruta /perfil', () => {
+  let ctx: ReturnType<typeof setup>;
+
+  beforeEach(() => {
+    ctx = setup();
+  });
+
+  it('carga diferida para cualquier rol válido, sin roleGuard propio', () => {
+    const config = childRoute('perfil');
+    expect(config?.canActivate).toBeUndefined();
+    expect(config?.loadComponent).toBeTypeOf('function');
+  });
+
+  it.each(ALL_ROLES)('%s accede al perfil con el header compartido', async (role) => {
+    ctx.auth.tokenRoles.set([role]);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/perfil');
+    expect(TestBed.inject(Router).url).toBe('/perfil');
+    expect(harness.routeNativeElement?.querySelector('app-header')).not.toBeNull();
+    expect(harness.routeNativeElement?.querySelector('app-profile')).not.toBeNull();
+    expect(harness.routeNativeElement?.querySelector('app-profile h1')?.textContent?.trim()).toBe(
+      'Mi perfil',
+    );
   });
 });
 

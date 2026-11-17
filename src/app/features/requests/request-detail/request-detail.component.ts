@@ -55,6 +55,7 @@ import { RequestDetailSkeletonComponent } from '../request-detail-skeleton/reque
 import { RequestLocationMapComponent } from '../request-location-map.component';
 import { mapUrl, sectorLabel } from '../request-location';
 import { RequestProgressComponent } from '../request-progress/request-progress.component';
+import { RequestSatisfactionComponent } from '../request-satisfaction/request-satisfaction.component';
 import { RequestStatusBadgeComponent } from '../request-status-badge/request-status-badge.component';
 import {
   RequestStatusDialogComponent,
@@ -86,6 +87,7 @@ const NOTIFIED_STATUSES: readonly RequestStatus[] = [
     RequestDetailSkeletonComponent,
     RequestLocationMapComponent,
     RequestProgressComponent,
+    RequestSatisfactionComponent,
     RequestStatusBadgeComponent,
     RequestDatePipe,
     RequestTimelineComponent,
@@ -145,6 +147,16 @@ export class RequestDetailComponent {
   protected readonly canOperate = computed(
     () => !this.isClosed() && (this.viewer() === Role.Admin || this.isResponsible()),
   );
+  /** Solo el Vecino, en RESUELTO y si aún no calificó (EP3-78). */
+  protected readonly canRate = computed(() => {
+    const request = this.request();
+    return (
+      this.viewer() === Role.Vecino &&
+      request?.status === 'RESUELTO' &&
+      request.satisfactionScore == null
+    );
+  });
+  protected readonly ratedScore = computed(() => this.request()?.satisfactionScore ?? null);
   protected readonly allowedStatuses = computed(() => {
     const request = this.request();
     return request ? (this.transitions()?.[request.status] ?? []) : [];
@@ -375,6 +387,11 @@ export class RequestDetailComponent {
     this.snackBar.open(copied ? 'Folio copiado.' : 'No se pudo copiar el folio.', undefined, {
       duration: 2500,
     });
+  }
+
+  protected onRated(request: Request): void {
+    this.request.set(request);
+    this.afterChange('Gracias. Guardamos tu calificación.');
   }
 
   protected take(): void {

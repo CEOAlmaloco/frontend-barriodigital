@@ -104,7 +104,8 @@ describe('AdminComponent', () => {
   it('mantiene encabezado y creación disponibles durante una única carga inicial', async () => {
     await render(() => new Subject<ProcedureType[]>());
     expect(text()).toContain('Panel de administración');
-    expect(text()).toContain('Gestiona los tipos de trámite disponibles para la atención vecinal.');
+    expect(text()).toContain('RabbitMQ');
+    expect(text()).toContain('Kafka');
     expect(button('Nuevo tipo').disabled).toBe(false);
     expect(refreshButton()?.disabled).toBe(true);
     expect(element.querySelector('.admin__refresh-icon--spinning')).toBeNull();
@@ -127,7 +128,8 @@ describe('AdminComponent', () => {
     await render(() => throwError(() => new Error('sin red')));
     expect(text()).toContain('No pudimos cargar los tipos de trámite. Intenta nuevamente.');
     expect(refreshButton()).toBeNull();
-    expect(element.querySelectorAll('button')).toHaveLength(2);
+    expect(button('Reintentar')).toBeTruthy();
+    expect(button('Nuevo tipo')).toBeTruthy();
     const response = new Subject<ProcedureType[]>();
     service.getProcedures.mockReturnValue(response);
     button('Reintentar').click();
@@ -148,8 +150,8 @@ describe('AdminComponent', () => {
   it('muestra vacío sin duplicar la acción de creación', async () => {
     await render(() => of([]));
     expect(text()).toContain('Todavía no hay tipos de trámite registrados.');
-    expect(element.querySelectorAll('button')).toHaveLength(2);
     expect(button('Nuevo tipo').disabled).toBe(false);
+    expect(refreshButton()).not.toBeNull();
   });
 
   it('presenta tabla y tarjetas con código, nombre, estado, cupo y plazo en el orden recibido', async () => {

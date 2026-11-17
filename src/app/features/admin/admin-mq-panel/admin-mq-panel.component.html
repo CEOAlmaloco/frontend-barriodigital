@@ -1,0 +1,255 @@
+<section class="mq-panel" aria-labelledby="mq-panel-title">
+  <div class="mq-panel__heading">
+    <div>
+      <h2 id="mq-panel-title">RabbitMQ</h2>
+      <p class="mq-panel__lead">
+        Colas del clúster, mensajes pendientes y destinos de dead-letter. Vaciar o borrar requiere
+        confirmación.
+      </p>
+    </div>
+    <div class="mq-panel__actions">
+      <button
+        type="button"
+        class="mq-panel__chip"
+        [attr.aria-pressed]="onlyWithMessages()"
+        (click)="toggleOnlyMessages()"
+      >
+        Con mensajes
+      </button>
+      <button
+        type="button"
+        class="mq-panel__chip"
+        [attr.aria-pressed]="onlyDlq()"
+        (click)="toggleOnlyDlq()"
+      >
+        Solo DLQ
+      </button>
+      <button
+        mat-icon-button
+        type="button"
+        aria-label="Actualizar colas"
+        matTooltip="Actualizar colas"
+        [disabled]="loadState() === 'loading'"
+        (click)="reload()"
+      >
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  @if (loadState() === 'ready') {
+    <dl class="admin-ops-kpis" aria-label="Indicadores RabbitMQ">
+      <div class="admin-ops-kpis__tile">
+        <dt>Colas</dt>
+        <dd>{{ queues().length }}</dd>
+      </div>
+      <div class="admin-ops-kpis__tile">
+        <dt>Ready</dt>
+        <dd>{{ readyTotal() }}</dd>
+      </div>
+      <div class="admin-ops-kpis__tile">
+        <dt>Unacked</dt>
+        <dd>{{ unackedTotal() }}</dd>
+      </div>
+      <div class="admin-ops-kpis__tile">
+        <dt>En DLQ</dt>
+        <dd>{{ dlqMessageTotal() }}</dd>
+      </div>
+      <div class="admin-ops-kpis__tile" [class.admin-ops-kpis__tile--warn]="stuckQueues() > 0">
+        <dt>Sin consumidor</dt>
+        <dd>{{ stuckQueues() }}</dd>
+      </div>
+    </dl>
+    <p class="mq-panel__summary">
+      {{ messageTotal() }} mensaje(s) en total (Ready + Unacked)
+    </p>
+  }
+
+  @if (loadState() === 'loading') {
+    <div class="mq-panel__status" role="status">
+      <mat-progress-spinner mode="indeterminate" diameter="32" />
+      <span>Cargando colas…</span>
+    </div>
+  } @else if (loadState() === 'error') {
+    <div class="mq-panel__status" role="alert">
+      <p>No pudimos cargar las colas.</p>
+      <button matButton type="button" (click)="reload()">Reintentar</button>
+    </div>
+  } @else if (visibleQueues().length === 0) {
+    <p class="mq-panel__empty">No hay colas con los filtros actuales.</p>
+  } @else {
+    <div class="mq-panel__table-wrap">
+      <table mat-table [dataSource]="visibleQueues()" class="mq-panel__table" aria-label="Colas RabbitMQ">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Cola</th>
+          <td mat-cell *matCellDef="let queue">
+            <span class="mq-panel__name">{{ queue.name }}</span>
+            @if (isDlq(queue)) {
+              <span class="mq-panel__badge">DLQ</span>
+            }
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="ready">
+          <th mat-header-cell *matHeaderCellDef>Ready</th>
+          <td mat-cell *matCellDef="let queue">{{ queue.messagesReady ?? 0 }}</td>
+        </ng-container>
+        <ng-container matColumnDef="unacked">
+          <th mat-header-cell *matHeaderCellDef>Unacked</th>
+          <td mat-cell *matCellDef="let queue">{{ queue.messagesUnacked ?? 0 }}</td>
+        </ng-container>
+        <ng-container matColumnDef="messages">
+          <th mat-header-cell *matHeaderCellDef>Total</th>
+          <td mat-cell *matCellDef="let queue">{{ queue.messages }}</td>
+        </ng-container>
+        <ng-container matColumnDef="consumers">
+          <th mat-header-cell *matHeaderCellDef>Consumidores</th>
+          <td mat-cell *matCellDef="let queue">{{ queue.consumers }}</td>
+        </ng-container>
+        <ng-container matColumnDef="ttl">
+          <th mat-header-cell *matHeaderCellDef>TTL</th>
+          <td mat-cell *matCellDef="let queue">
+            {{ queue.ttl == null ? '—' : queue.ttl + ' ms' }}
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="deadLetter">
+          <th mat-header-cell *matHeaderCellDef>Dead-letter</th>
+          <td mat-cell *matCellDef="let queue">
+            @if (queue.deadLetterExchange) {
+              {{ queue.deadLetterExchange }}
+              @if (queue.deadLetterRoutingKey) {
+                · {{ queue.deadLetterRoutingKey }}
+              }
+            } @else {
+              —
+            }
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="acciones">
+          <th mat-header-cell *matHeaderCellDef>Acciones</th>
+          <td mat-cell *matCellDef="let queue">
+            <button matButton type="button" (click)="openDetail(queue)">Ver detalle</button>
+            <button
+              matButton
+              type="button"
+              [disabled]="busyName() === queue.name || queue.messages === 0"
+              (click)="purge(queue)"
+            >
+              Vaciar
+            </button>
+            <button
+              matButton
+              type="button"
+              [disabled]="busyName() === queue.name"
+              (click)="remove(queue)"
+            >
+              Eliminar
+            </button>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+      </table>
+    </div>
+  }
+
+  @if (detailLoading()) {
+    <div class="mq-panel__status" role="status">
+      <mat-progress-spinner mode="indeterminate" diameter="28" />
+      <span>Cargando detalle…</span>
+    </div>
+  } @else if (detail(); as queue) {
+    <section class="admin-detail" aria-labelledby="mq-detail-title">
+      <div class="admin-detail__bar">
+        <div class="admin-detail__heading">
+          <p class="admin-detail__eyebrow">Cola RabbitMQ</p>
+          <h3 id="mq-detail-title" class="admin-detail__title">{{ queue.name }}</h3>
+          <div class="admin-detail__meta">
+            <span class="admin-detail__chip">{{ queue.state || 'Sin estado' }}</span>
+            <span class="admin-detail__chip admin-detail__chip--muted">
+              {{ queue.durable ? 'Durable' : 'No durable' }}
+            </span>
+            @if (isDlq(queue)) {
+              <span class="admin-detail__chip">DLQ</span>
+            }
+          </div>
+        </div>
+        <button
+          mat-icon-button
+          type="button"
+          class="admin-detail__close"
+          aria-label="Cerrar detalle"
+          (click)="closeDetail()"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="admin-detail__section">
+        <h4 class="admin-detail__section-title">Inventario</h4>
+        <dl class="admin-detail__metrics">
+          <div class="admin-detail__metric">
+            <dt>Ready</dt>
+            <dd>{{ queue.messagesReady ?? 0 }}</dd>
+          </div>
+          <div class="admin-detail__metric">
+            <dt>Unacked</dt>
+            <dd>{{ queue.messagesUnacked ?? 0 }}</dd>
+          </div>
+          <div class="admin-detail__metric">
+            <dt>Total</dt>
+            <dd>{{ queue.messages }}</dd>
+          </div>
+          <div class="admin-detail__metric">
+            <dt>Consumidores</dt>
+            <dd>{{ queue.consumers }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="admin-detail__section">
+        <h4 class="admin-detail__section-title">Rendimiento y recursos</h4>
+        <dl class="admin-detail__metrics">
+          <div class="admin-detail__metric">
+            <dt>Publicación</dt>
+            <dd>{{ formatRate(queue.publishRate) }}</dd>
+          </div>
+          <div class="admin-detail__metric">
+            <dt>Entrega</dt>
+            <dd>{{ formatRate(queue.deliverRate) }}</dd>
+          </div>
+          <div class="admin-detail__metric">
+            <dt>ACK</dt>
+            <dd>{{ formatRate(queue.ackRate) }}</dd>
+          </div>
+          <div class="admin-detail__metric">
+            <dt>Memoria</dt>
+            <dd>{{ formatBytes(queue.memoryBytes) }}</dd>
+          </div>
+          <div class="admin-detail__metric">
+            <dt>TTL</dt>
+            <dd>{{ queue.ttl == null ? '—' : queue.ttl + ' ms' }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="admin-detail__section">
+        <h4 class="admin-detail__section-title">Dead-letter</h4>
+        <dl class="admin-detail__metrics">
+          <div class="admin-detail__metric admin-detail__metric--wide">
+            <dt>Exchange / routing key</dt>
+            <dd>
+              @if (queue.deadLetterExchange) {
+                {{ queue.deadLetterExchange }}
+                @if (queue.deadLetterRoutingKey) {
+                  · {{ queue.deadLetterRoutingKey }}
+                }
+              } @else {
+                Sin destino de dead-letter
+              }
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+  }
+</section>

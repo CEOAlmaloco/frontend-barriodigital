@@ -12,6 +12,7 @@
   --bd-error: #{$color-error};
   --bd-secondary: #{$color-secondary};
   --bd-success: #{$color-success};
+  --bd-accent: #{$color-accent};
   --bd-accent-text: #{$color-accent-dark};
   --bd-primary-container: #{rgba($color-primary-light, 0.24)};
   --bd-secondary-container: #{rgba($color-secondary, 0.1)};
@@ -118,6 +119,7 @@ html[data-bd-contrast='high'] {
   --bd-error: #000000;
   --bd-secondary: #000000;
   --bd-success: #000000;
+  --bd-accent: #000000;
   --bd-accent-text: #000000;
   --bd-primary-container: #ffffff;
   --bd-secondary-container: #ffffff;
@@ -150,6 +152,7 @@ html[data-bd-contrast='dark'] {
   --bd-error: #f0b4b3;
   --bd-secondary: #9fd4d8;
   --bd-success: #8fd4ae;
+  --bd-accent: #f1d49b;
   --bd-accent-text: #f1d49b;
   --bd-primary-container: rgba(228, 188, 233, 0.16);
   --bd-secondary-container: rgba(159, 212, 216, 0.14);
@@ -244,6 +247,7 @@ html[data-bd-contrast='negative'] {
   --bd-error: #ffffff;
   --bd-secondary: #ffffff;
   --bd-success: #ffffff;
+  --bd-accent: #ffffff;
   --bd-accent-text: #ffffff;
   --bd-primary-container: #000000;
   --bd-secondary-container: #000000;

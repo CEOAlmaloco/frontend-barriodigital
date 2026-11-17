@@ -39,6 +39,12 @@ export const routes: Routes = [
         title: 'Inicio | BarrioDigital',
       },
       {
+        path: 'perfil',
+        loadComponent: () =>
+          import('./features/profile/profile.component').then((m) => m.ProfileComponent),
+        title: 'Mi perfil | BarrioDigital',
+      },
+      {
         path: 'tramites',
         canActivate: [roleGuard],
         data: { roles: REQUESTS_ROLES },

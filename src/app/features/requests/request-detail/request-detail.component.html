@@ -127,6 +127,21 @@
             <p>{{ isStaff() ? 'El vecino canceló este trámite.' : 'Cancelaste este trámite.' }}</p>
           </div>
         }
+        @if (canRate()) {
+          <app-request-satisfaction [requestId]="request.id" (rated)="onRated($event)" />
+        } @else if (ratedScore(); as score) {
+          <div class="request-detail__notice" role="note">
+            <mat-icon aria-hidden="true">star</mat-icon>
+            <div>
+              <p class="request-detail__notice-title">
+                {{ isStaff() ? 'Calificación del vecino' : 'Tu calificación' }}: {{ score }} de 5
+              </p>
+              @if (request.satisfactionComment?.trim(); as comment) {
+                <p class="request-detail__notice-text">{{ comment }}</p>
+              }
+            </div>
+          </div>
+        }
 
         <div class="request-detail__grid">
           <aside class="request-detail__aside" aria-label="Atención del trámite">

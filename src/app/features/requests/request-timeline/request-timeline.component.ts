@@ -22,7 +22,8 @@ const FILTER_LABELS: Record<TimelineFilter, string> = {
   GESTION: 'Contacto',
   ASIGNACION: 'Asignación',
   CREADO: 'Ingreso',
-  COMENTARIO: 'Comentarios',
+  CALIFICACION: 'Calificación',
+  COMENTARIO: 'Comentario',
 };
 
 const DATE_FORMAT = 'dd/MM/yyyy HH:mm';

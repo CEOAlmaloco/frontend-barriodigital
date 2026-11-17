@@ -103,7 +103,7 @@ describe('RequestTimelineComponent', () => {
       { staff: true },
     );
     const filter = [...element.querySelectorAll<HTMLButtonElement>('.timeline__filter')].find(
-      (button) => button.textContent?.trim() === 'Comentarios',
+      (button) => button.textContent?.trim() === 'Comentario',
     )!;
     filter.click();
     fixture.detectChanges();

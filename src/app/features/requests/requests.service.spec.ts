@@ -164,6 +164,22 @@ describe('RequestsService', () => {
     await expect(result).rejects.toMatchObject({ status: 400 });
   });
 
+  it('califica con POST /rating y conserva satisfactionScore', async () => {
+    const result = firstValueFrom(service.rate(request.id, { score: 5, comment: 'Rapido' }));
+    const call = backend.expectOne(`${url}/${request.id}/rating`);
+
+    expect(call.request.method).toBe('POST');
+    expect(call.request.body).toEqual({ score: 5, comment: 'Rapido' });
+    call.flush({ ...response, status: 'RESUELTO', satisfactionScore: 5, satisfactionComment: 'Rapido' });
+
+    expect(await result).toEqual({
+      ...request,
+      status: 'RESUELTO',
+      satisfactionScore: 5,
+      satisfactionComment: 'Rapido',
+    });
+  });
+
   it('cambia el estado con PUT y conserva el nombre persistido y la identidad del creador', async () => {
     const result = firstValueFrom(service.changeStatus(request.id, { status: 'ADMITIDO' }));
     const call = backend.expectOne(`${url}/${request.id}/status`);
@@ -271,5 +287,20 @@ describe('RequestsService', () => {
 
       expect((await result).type).toBe('image/jpeg');
     });
+  });
+
+  it('lee y guarda preferencias de aviso en /me/notification-preferences', async () => {
+    const getResult = firstValueFrom(service.getNotificationPreferences());
+    const getCall = backend.expectOne(`${url}/me/notification-preferences`);
+    expect(getCall.request.method).toBe('GET');
+    getCall.flush({ emailEnabled: true });
+    expect(await getResult).toEqual({ emailEnabled: true });
+
+    const putResult = firstValueFrom(service.updateNotificationPreferences(false));
+    const putCall = backend.expectOne(`${url}/me/notification-preferences`);
+    expect(putCall.request.method).toBe('PUT');
+    expect(putCall.request.body).toEqual({ emailEnabled: false });
+    putCall.flush({ emailEnabled: false });
+    expect(await putResult).toEqual({ emailEnabled: false });
   });
 });

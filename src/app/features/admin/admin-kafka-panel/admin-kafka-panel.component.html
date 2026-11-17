@@ -1,0 +1,537 @@
+<section class="kafka-panel" aria-labelledby="kafka-panel-title">
+  <div class="kafka-panel__heading">
+    <div>
+      <h2 id="kafka-panel-title">Kafka</h2>
+      <p class="kafka-panel__lead">
+        Tópicos, lag de consumer groups y mensajes en DLT con replay selectivo. Las acciones
+        destructivas piden confirmación.
+      </p>
+    </div>
+    <button
+      mat-icon-button
+      type="button"
+      aria-label="Actualizar Kafka"
+      matTooltip="Actualizar"
+      [disabled]="loadState() === 'loading' || busy()"
+      (click)="reload()"
+    >
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </div>
+
+  <div class="kafka-panel__sections" role="tablist" aria-label="Secciones de Kafka">
+    <button
+      type="button"
+      class="kafka-panel__chip"
+      role="tab"
+      [attr.aria-selected]="section() === 'topics'"
+      (click)="selectSection('topics')"
+    >
+      Tópicos
+    </button>
+    <button
+      type="button"
+      class="kafka-panel__chip"
+      role="tab"
+      [attr.aria-selected]="section() === 'groups'"
+      (click)="selectSection('groups')"
+    >
+      Consumer groups
+    </button>
+    <button
+      type="button"
+      class="kafka-panel__chip"
+      role="tab"
+      [attr.aria-selected]="section() === 'dlt'"
+      (click)="selectSection('dlt')"
+    >
+      DLT y replay
+    </button>
+  </div>
+
+  @if (loadState() === 'loading') {
+    <div class="kafka-panel__status" role="status">
+      <mat-progress-spinner mode="indeterminate" diameter="32" />
+      <span>Cargando Kafka…</span>
+    </div>
+  } @else if (loadState() === 'error') {
+    <div class="kafka-panel__status" role="alert">
+      <p>No pudimos cargar Kafka.</p>
+      <button matButton type="button" (click)="reload()">Reintentar</button>
+    </div>
+  } @else {
+    <dl class="admin-ops-kpis" aria-label="Indicadores Kafka">
+      <div class="admin-ops-kpis__tile">
+        <dt>Tópicos de negocio</dt>
+        <dd>{{ businessTopics() }}</dd>
+      </div>
+      <div class="admin-ops-kpis__tile">
+        <dt>Tópicos DLT</dt>
+        <dd>{{ dltNames().length }}</dd>
+      </div>
+      <div class="admin-ops-kpis__tile">
+        <dt>Consumer groups</dt>
+        <dd>{{ groups().length }}</dd>
+      </div>
+      <div class="admin-ops-kpis__tile">
+        <dt>Con miembros</dt>
+        <dd>{{ groupsWithMembers() }}</dd>
+      </div>
+      <div class="admin-ops-kpis__tile" [class.admin-ops-kpis__tile--warn]="emptyGroups() > 0">
+        <dt>Vacíos / sin miembros</dt>
+        <dd>{{ emptyGroups() }}</dd>
+      </div>
+    </dl>
+
+    @switch (section()) {
+      @case ('topics') {
+        @if (topics().length === 0) {
+          <p class="kafka-panel__empty">No hay tópicos visibles.</p>
+        } @else {
+          <div class="kafka-panel__table-wrap">
+            <table mat-table [dataSource]="topics()" aria-label="Tópicos Kafka">
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>Tópico</th>
+                <td mat-cell *matCellDef="let topic">{{ topic.name }}</td>
+              </ng-container>
+              <ng-container matColumnDef="partitions">
+                <th mat-header-cell *matHeaderCellDef>Particiones</th>
+                <td mat-cell *matCellDef="let topic">{{ topic.partitions }}</td>
+              </ng-container>
+              <ng-container matColumnDef="replication">
+                <th mat-header-cell *matHeaderCellDef>Réplicas</th>
+                <td mat-cell *matCellDef="let topic">{{ topic.replicationFactor }}</td>
+              </ng-container>
+              <ng-container matColumnDef="system">
+                <th mat-header-cell *matHeaderCellDef>Sistema</th>
+                <td mat-cell *matCellDef="let topic">{{ topic.system ? 'Sí' : 'No' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="acciones">
+                <th mat-header-cell *matHeaderCellDef>Acciones</th>
+                <td mat-cell *matCellDef="let topic">
+                  <button matButton type="button" (click)="openTopic(topic.name)">Ver detalle</button>
+                  <button
+                    matButton
+                    type="button"
+                    [disabled]="busy() || topic.system"
+                    (click)="deleteTopic(topic)"
+                  >
+                    Eliminar
+                  </button>
+                </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="topicColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: topicColumns"></tr>
+            </table>
+          </div>
+        }
+
+        @if (detailLoading() && !groupDetail() && !dltMessageDetail()) {
+          <div class="kafka-panel__status" role="status">
+            <mat-progress-spinner mode="indeterminate" diameter="28" />
+            <span>Cargando detalle…</span>
+          </div>
+        } @else if (topicDetail(); as topic) {
+          <section class="admin-detail" aria-labelledby="kafka-topic-detail">
+            <div class="admin-detail__bar">
+              <div class="admin-detail__heading">
+                <p class="admin-detail__eyebrow">Tópico Kafka</p>
+                <h3 id="kafka-topic-detail" class="admin-detail__title">{{ topic.name }}</h3>
+                <div class="admin-detail__meta">
+                  <span class="admin-detail__chip">
+                    {{ topic.system ? 'Sistema' : 'Negocio' }}
+                  </span>
+                  <span class="admin-detail__chip admin-detail__chip--muted">
+                    {{ topic.partitions.length }} particiones
+                  </span>
+                </div>
+              </div>
+              <button
+                mat-icon-button
+                type="button"
+                class="admin-detail__close"
+                aria-label="Cerrar detalle"
+                (click)="closeDetails()"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+
+            <div class="admin-detail__section">
+              <h4 class="admin-detail__section-title">Particiones</h4>
+              <div class="admin-detail__table-wrap">
+                <table class="admin-detail__table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Partición</th>
+                      <th scope="col">Líder</th>
+                      <th scope="col">Réplicas</th>
+                      <th scope="col">ISR</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (part of topic.partitions; track part.partition) {
+                      <tr>
+                        <td>{{ part.partition }}</td>
+                        <td>{{ part.leader ?? '—' }}</td>
+                        <td>{{ part.replicas.join(', ') || '—' }}</td>
+                        <td>{{ part.isr.join(', ') || '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            @if (topic.configs.length) {
+              <div class="admin-detail__section">
+                <h4 class="admin-detail__section-title">Configuración</h4>
+                <div class="admin-detail__table-wrap">
+                  <table class="admin-detail__table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Clave</th>
+                        <th scope="col">Valor</th>
+                        <th scope="col">Origen</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (config of topic.configs; track config.name) {
+                        <tr>
+                          <td><code>{{ config.name }}</code></td>
+                          <td>{{ config.value || '—' }}</td>
+                          <td class="admin-detail__muted">{{ config.source }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+          </section>
+        }
+      }
+
+      @case ('groups') {
+        @if (groups().length === 0) {
+          <p class="kafka-panel__empty">No hay consumer groups.</p>
+        } @else {
+          <div class="kafka-panel__table-wrap">
+            <table mat-table [dataSource]="groups()" aria-label="Consumer groups">
+              <ng-container matColumnDef="groupId">
+                <th mat-header-cell *matHeaderCellDef>Grupo</th>
+                <td mat-cell *matCellDef="let group">{{ group.groupId }}</td>
+              </ng-container>
+              <ng-container matColumnDef="state">
+                <th mat-header-cell *matHeaderCellDef>Estado</th>
+                <td mat-cell *matCellDef="let group">{{ group.state }}</td>
+              </ng-container>
+              <ng-container matColumnDef="members">
+                <th mat-header-cell *matHeaderCellDef>Miembros</th>
+                <td mat-cell *matCellDef="let group">{{ group.members }}</td>
+              </ng-container>
+              <ng-container matColumnDef="system">
+                <th mat-header-cell *matHeaderCellDef>Sistema</th>
+                <td mat-cell *matCellDef="let group">{{ group.system ? 'Sí' : 'No' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="acciones">
+                <th mat-header-cell *matHeaderCellDef>Acciones</th>
+                <td mat-cell *matCellDef="let group">
+                  <button matButton type="button" (click)="openGroup(group.groupId)">
+                    Ver detalle
+                  </button>
+                </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="groupColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: groupColumns"></tr>
+            </table>
+          </div>
+        }
+
+        @if (detailLoading()) {
+          <div class="kafka-panel__status" role="status">
+            <mat-progress-spinner mode="indeterminate" diameter="28" />
+            <span>Cargando detalle…</span>
+          </div>
+        } @else if (groupDetail(); as detail) {
+          <section class="admin-detail" aria-labelledby="kafka-group-detail">
+            <div class="admin-detail__bar">
+              <div class="admin-detail__heading">
+                <p class="admin-detail__eyebrow">Consumer group</p>
+                <h3 id="kafka-group-detail" class="admin-detail__title">{{ detail.groupId }}</h3>
+                <div class="admin-detail__meta">
+                  <span class="admin-detail__chip">{{ detail.state }}</span>
+                  <span class="admin-detail__chip admin-detail__chip--muted">
+                    {{ detail.system ? 'Sistema' : 'Aplicación' }}
+                  </span>
+                </div>
+              </div>
+              <button
+                mat-icon-button
+                type="button"
+                class="admin-detail__close"
+                aria-label="Cerrar detalle"
+                (click)="closeDetails()"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+
+            <div class="admin-detail__section">
+              <h4 class="admin-detail__section-title">Resumen</h4>
+              <dl class="admin-detail__metrics">
+                <div class="admin-detail__metric">
+                  <dt>Miembros</dt>
+                  <dd>{{ detail.members }}</dd>
+                </div>
+                <div class="admin-detail__metric">
+                  <dt>Lag total</dt>
+                  <dd>{{ selectedGroupLag() ?? '—' }}</dd>
+                </div>
+                <div class="admin-detail__metric">
+                  <dt>Tópicos</dt>
+                  <dd>{{ detail.topics.length }}</dd>
+                </div>
+              </dl>
+            </div>
+
+            @if (detail.memberDetails?.length) {
+              <div class="admin-detail__section">
+                <h4 class="admin-detail__section-title">Miembros conectados</h4>
+                <div class="admin-detail__table-wrap">
+                  <table class="admin-detail__table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Cliente</th>
+                        <th scope="col">Host</th>
+                        <th scope="col">Member ID</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (member of detail.memberDetails; track member.memberId) {
+                        <tr>
+                          <td>{{ member.clientId || '—' }}</td>
+                          <td>{{ member.host || '—' }}</td>
+                          <td><code>{{ member.memberId }}</code></td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+
+            <div class="admin-detail__section">
+              <h4 class="admin-detail__section-title">Lag por partición</h4>
+              <div class="admin-detail__table-wrap">
+                <table class="admin-detail__table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Tópico</th>
+                      <th scope="col">Part.</th>
+                      <th scope="col">Committed</th>
+                      <th scope="col">End</th>
+                      <th scope="col">Lag</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (topic of detail.topics; track topic.topic) {
+                      @for (part of topic.partitions; track part.partition) {
+                        <tr>
+                          <td>{{ topic.topic }}</td>
+                          <td>{{ part.partition }}</td>
+                          <td>{{ part.committedOffset ?? '—' }}</td>
+                          <td>{{ part.endOffset }}</td>
+                          <td>
+                            {{ part.lag ?? '—' }}
+                            @if (part.lagBasis) {
+                              <span class="admin-detail__muted">({{ part.lagBasis }})</span>
+                            }
+                          </td>
+                        </tr>
+                      }
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="admin-detail__actions">
+              <button matButton type="button" [disabled]="busy()" (click)="resetOffsets(true)">
+                Simular reset (EARLIEST)
+              </button>
+              <button matButton type="button" [disabled]="busy()" (click)="resetOffsets(false)">
+                Aplicar reset
+              </button>
+            </div>
+          </section>
+        }
+      }
+
+      @case ('dlt') {
+        @if (dltNames().length === 0) {
+          <p class="kafka-panel__empty">No hay tópicos DLT del sistema en el listado.</p>
+        } @else {
+          <mat-form-field appearance="outline" class="kafka-panel__select">
+            <mat-label>DLT</mat-label>
+            <mat-select
+              [value]="selectedDlt()"
+              (selectionChange)="onDltChange($event.value)"
+            >
+              @for (name of dltNames(); track name) {
+                <mat-option [value]="name">{{ name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          @if (detailLoading()) {
+            <div class="kafka-panel__status" role="status">
+              <mat-progress-spinner mode="indeterminate" diameter="28" />
+              <span>Cargando mensajes…</span>
+            </div>
+          } @else if (dltMessages().length === 0) {
+            <p class="kafka-panel__empty">No hay mensajes en esta DLT (o no fueron leídos).</p>
+          } @else {
+            <div class="kafka-panel__actions">
+              <button
+                matButton="filled"
+                type="button"
+                [disabled]="busy() || selectedOffsets().size === 0"
+                (click)="replaySelected()"
+              >
+                Reenviar seleccionados ({{ selectedOffsets().size }})
+              </button>
+            </div>
+            <div class="kafka-panel__table-wrap">
+              <table mat-table [dataSource]="dltMessages()" aria-label="Mensajes DLT">
+                <ng-container matColumnDef="select">
+                  <th mat-header-cell *matHeaderCellDef></th>
+                  <td mat-cell *matCellDef="let message">
+                    <mat-checkbox
+                      [checked]="isSelected(message)"
+                      (change)="toggleMessage(message, $event.checked)"
+                      [attr.aria-label]="'Seleccionar offset ' + message.offset"
+                    />
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="event">
+                  <th mat-header-cell *matHeaderCellDef>Evento</th>
+                  <td mat-cell *matCellDef="let message">
+                    <span class="kafka-panel__mono">{{ message.eventType || '—' }}</span>
+                    <span class="kafka-panel__muted">{{ message.eventId || 'sin eventId' }}</span>
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="partition">
+                  <th mat-header-cell *matHeaderCellDef>Part.</th>
+                  <td mat-cell *matCellDef="let message">{{ message.partition }}</td>
+                </ng-container>
+                <ng-container matColumnDef="offset">
+                  <th mat-header-cell *matHeaderCellDef>Offset</th>
+                  <td mat-cell *matCellDef="let message">{{ message.offset }}</td>
+                </ng-container>
+                <ng-container matColumnDef="error">
+                  <th mat-header-cell *matHeaderCellDef>Error</th>
+                  <td mat-cell *matCellDef="let message">
+                    {{ message.exceptionClass || '—' }}
+                    @if (message.exceptionMessage) {
+                      <span class="kafka-panel__muted">{{ message.exceptionMessage }}</span>
+                    }
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="receivedAt">
+                  <th mat-header-cell *matHeaderCellDef>En DLT</th>
+                  <td mat-cell *matCellDef="let message">{{ message.receivedAt || '—' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="acciones">
+                  <th mat-header-cell *matHeaderCellDef>Acciones</th>
+                  <td mat-cell *matCellDef="let message">
+                    <button matButton type="button" (click)="openDltMessage(message)">
+                      Ver detalle
+                    </button>
+                  </td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="dltColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: dltColumns"></tr>
+              </table>
+            </div>
+          }
+
+          @if (dltMessageDetail(); as message) {
+            <section class="admin-detail" aria-labelledby="kafka-dlt-detail">
+              <div class="admin-detail__bar">
+                <div class="admin-detail__heading">
+                  <p class="admin-detail__eyebrow">Mensaje en DLT</p>
+                  <h3 id="kafka-dlt-detail" class="admin-detail__title">
+                    {{ message.eventType || 'Evento sin tipo' }}
+                  </h3>
+                  <div class="admin-detail__meta">
+                    <span class="admin-detail__chip">
+                      p{{ message.partition }} · offset {{ message.offset }}
+                    </span>
+                    @if (message.exceptionClass) {
+                      <span class="admin-detail__chip">{{ message.exceptionClass }}</span>
+                    }
+                  </div>
+                </div>
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="admin-detail__close"
+                  aria-label="Cerrar detalle"
+                  (click)="closeDetails()"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+
+              <div class="admin-detail__section">
+                <h4 class="admin-detail__section-title">Trazabilidad</h4>
+                <dl class="admin-detail__metrics">
+                  <div class="admin-detail__metric">
+                    <dt>Event ID</dt>
+                    <dd>{{ message.eventId || '—' }}</dd>
+                  </div>
+                  <div class="admin-detail__metric">
+                    <dt>Tópico origen</dt>
+                    <dd>{{ message.originalTopic || '—' }}</dd>
+                  </div>
+                  <div class="admin-detail__metric">
+                    <dt>Offset origen</dt>
+                    <dd>
+                      {{ message.originalPartition ?? '—' }} /
+                      {{ message.originalOffset ?? '—' }}
+                    </dd>
+                  </div>
+                  <div class="admin-detail__metric">
+                    <dt>Consumer group</dt>
+                    <dd>{{ message.consumerGroup || '—' }}</dd>
+                  </div>
+                  <div class="admin-detail__metric">
+                    <dt>Recibido en DLT</dt>
+                    <dd>{{ message.receivedAt || '—' }}</dd>
+                  </div>
+                  <div class="admin-detail__metric">
+                    <dt>Causa</dt>
+                    <dd>{{ message.exceptionCause || '—' }}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              @if (message.exceptionMessage) {
+                <div class="admin-detail__section">
+                  <h4 class="admin-detail__section-title">Error</h4>
+                  <pre class="admin-detail__pre">{{ message.exceptionMessage }}</pre>
+                </div>
+              }
+
+              <div class="admin-detail__section">
+                <h4 class="admin-detail__section-title">Payload</h4>
+                <pre class="admin-detail__pre">{{ prettyJson(message.value) }}</pre>
+              </div>
+            </section>
+          }
+        }
+      }
+    }
+  }
+</section>
