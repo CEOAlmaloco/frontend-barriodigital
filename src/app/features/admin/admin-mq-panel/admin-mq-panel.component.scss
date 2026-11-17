@@ -1,0 +1,93 @@
+@use 'tokens' as *;
+@use '../admin-ops-kpis';
+@use '../admin-detail';
+
+.mq-panel {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  min-width: 0;
+}
+
+.mq-panel__heading {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  @media (min-width: $breakpoint-md) {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  h2 {
+    margin: 0;
+  }
+}
+
+.mq-panel__lead,
+.mq-panel__summary,
+.mq-panel__empty {
+  margin: $space-2 0 0;
+  color: var(--bd-text-muted);
+  line-height: $line-height-body;
+}
+
+.mq-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+  align-items: center;
+}
+
+.mq-panel__chip {
+  min-height: $size-touch-target;
+  padding: $space-2 $space-4;
+  color: var(--bd-text);
+  background: var(--bd-surface);
+  border: $border-width solid var(--bd-border-interactive);
+  border-radius: $radius-base;
+  font: inherit;
+  cursor: pointer;
+
+  &[aria-pressed='true'] {
+    color: var(--bd-primary);
+    background: var(--bd-primary-container);
+    border-color: var(--bd-primary);
+    font-weight: $font-weight-medium;
+  }
+}
+
+.mq-panel__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-3;
+  color: var(--bd-text-muted);
+}
+
+.mq-panel__table-wrap {
+  overflow-x: auto;
+  border: $border-width solid var(--bd-border);
+  border-radius: $radius-base;
+}
+
+.mq-panel__table {
+  width: 100%;
+}
+
+.mq-panel__name {
+  font-weight: $font-weight-medium;
+  overflow-wrap: anywhere;
+}
+
+.mq-panel__badge {
+  display: inline-flex;
+  margin-left: $space-2;
+  padding: 0 $space-2;
+  font-size: $font-label;
+  font-weight: $font-weight-medium;
+  color: var(--bd-text);
+  background: color-mix(in srgb, var(--bd-error) 16%, transparent);
+  border-radius: $radius-base;
+}
