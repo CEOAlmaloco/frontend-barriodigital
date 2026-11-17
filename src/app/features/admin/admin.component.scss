@@ -1,5 +1,6 @@
 @use 'sass:color';
 @use 'tokens' as *;
+@use './admin-ops-kpis';
 
 $content-max-width: 1200px;
 $badge-tint: 0.12;
@@ -22,6 +23,19 @@ $badge-tint: 0.12;
   display: flex;
   flex-direction: column;
   gap: $space-2;
+  min-width: 0;
+}
+
+.admin__tabs {
+  --mat-tab-container-height: #{$size-touch-target + 4px};
+  min-width: 0;
+
+  mat-icon {
+    margin-inline-end: $space-2;
+  }
+}
+
+.admin__panel {
   min-width: 0;
 }
 

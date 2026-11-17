@@ -24,11 +24,7 @@ import {
   isReportRange,
 } from '../../shared/models/report.model';
 import { FailureKind, failureKind } from '../../shared/utils/http-failure';
-import {
-  POLL_INTERVAL_MS,
-  PolledResource,
-  polledResource,
-} from '../../shared/utils/polled-resource';
+import { PolledResource, polledResource } from '../../shared/utils/polled-resource';
 import { REQUEST_STATUS_VIEW } from '../requests/requests.constants';
 import { RANGE_LABELS, RANGE_PHRASES, formatClock } from './report-format';
 import { ReportKpiTilesComponent } from './report-kpi-tiles/report-kpi-tiles.component';
@@ -93,10 +89,8 @@ export class ReportsComponent {
   private started = false;
 
   protected readonly rangeLabels = RANGE_LABELS;
-  protected readonly intervalSeconds = POLL_INTERVAL_MS / 1000;
   protected readonly range = this.kpisSource.key;
   protected readonly periodPhrase = computed(() => RANGE_PHRASES[this.range()]);
-  protected readonly paused = this.kpisSource.paused;
   protected readonly formatClock = formatClock;
 
   protected readonly kpis: Signal<SourceView<ReportKpis>> = computed(() =>
@@ -139,11 +133,7 @@ export class ReportsComponent {
     return { dataAt: events[0] ?? null, consultedAt: formatClock(new Date(consulted)) };
   });
 
-  protected readonly retryHint = computed(() =>
-    this.paused()
-      ? 'Usa Actualizar para volver a intentarlo.'
-      : 'Se volverá a intentar automáticamente.',
-  );
+  protected readonly retryHint = computed(() => 'Se volverá a intentar automáticamente.');
 
   protected readonly activeItems = computed<RankingItem[]>(() => {
     const view = this.kpis();
@@ -220,14 +210,6 @@ export class ReportsComponent {
 
   protected retryTop(): void {
     this.topSource.refresh();
-  }
-
-  protected togglePause(): void {
-    const paused = !this.paused();
-    this.sources.forEach((source) => source.setPaused(paused));
-    this.announcer.announce(
-      paused ? 'Actualización automática en pausa.' : 'Actualización automática reanudada.',
-    );
   }
 
   /** replaceUrl: el período es un filtro de la vista, como los del listado (EP3-48). */

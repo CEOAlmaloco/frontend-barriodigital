@@ -105,9 +105,7 @@ export class ReportMapComponent {
   private catalogRequest: Subscription | null = null;
   private started = false;
 
-  protected readonly intervalSeconds = MAP_POLL_INTERVAL_MS / 1000;
   protected readonly query = this.source.key;
-  protected readonly paused = this.source.paused;
   protected readonly view = signal<MapView>('map');
   protected readonly catalogStatus = signal<CatalogStatus>('loading');
   protected readonly fitKey = computed(() => mapQueryKey(this.query()));
@@ -186,11 +184,7 @@ export class ReportMapComponent {
     })),
   );
 
-  protected readonly retryHint = computed(() =>
-    this.paused()
-      ? 'Usa Actualizar para volver a intentarlo.'
-      : 'Se volverá a intentar automáticamente.',
-  );
+  protected readonly retryHint = computed(() => 'Se volverá a intentar automáticamente.');
 
   constructor() {
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
@@ -251,14 +245,6 @@ export class ReportMapComponent {
 
   protected retry(): void {
     this.source.refresh();
-  }
-
-  protected togglePause(): void {
-    const paused = !this.paused();
-    this.source.setPaused(paused);
-    this.announcer.announce(
-      paused ? 'Actualización automática en pausa.' : 'Actualización automática reanudada.',
-    );
   }
 
   protected loadCatalog(): void {
