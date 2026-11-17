@@ -155,9 +155,10 @@ describe('ProfileComponent', () => {
     activityBtn?.click();
     await fixture.whenStable();
 
-    expect(getRequests).toHaveBeenCalled();
+    expect(getRequests).toHaveBeenCalledWith({ page: '0', size: '5', sort: 'createdAt,desc' });
     expect(element.textContent).toContain('Alumbrado público');
     expect(element.textContent).toContain('BD-2026-000009');
+    expect(element.textContent).toContain('Ver mis trámites');
   });
 
   it('muestra preferencias de trabajo al Funcionario', async () => {
@@ -170,6 +171,46 @@ describe('ProfileComponent', () => {
     workBtn?.click();
     await fixture.whenStable();
     expect(element.textContent).toContain('Preferencias de trabajo');
+    expect(getRequests).toHaveBeenCalledWith({
+      page: '0',
+      size: '5',
+      sort: 'createdAt,desc',
+      assignee: 'me',
+    });
+  });
+
+  it('Admin y Auditor ven perfil con textos de personal, sin prefs de trabajo', async () => {
+    for (const role of [Role.Admin, Role.Auditor] as const) {
+      TestBed.resetTestingModule();
+      const fixture = await render(role);
+      const element = fixture.nativeElement as HTMLElement;
+
+      expect(element.querySelector('h1')?.textContent?.trim()).toBe('Mi perfil');
+      expect(
+        Array.from(element.querySelectorAll('.profile__nav-btn')).some((button) =>
+          button.textContent?.includes('Preferencias de trabajo'),
+        ),
+      ).toBe(role === Role.Admin);
+
+      Array.from(element.querySelectorAll<HTMLButtonElement>('.profile__nav-btn'))
+        .find((button) => button.textContent?.includes('Notificaciones'))
+        ?.click();
+      await fixture.whenStable();
+      expect(element.textContent).toContain('cuenta municipal');
+
+      Array.from(element.querySelectorAll<HTMLButtonElement>('.profile__nav-btn'))
+        .find((button) => button.textContent?.includes('Privacidad'))
+        ?.click();
+      await fixture.whenStable();
+      if (role === Role.Auditor) {
+        expect(element.textContent).toContain('consulta');
+        expect(element.textContent).not.toContain('otros vecinos');
+      } else {
+        expect(element.textContent).toContain('rol asignado');
+        expect(element.textContent).not.toContain('otros vecinos');
+      }
+      expect(element.textContent).toContain('Ir a Trámites');
+    }
   });
 
   it('muestra error si la preferencia no carga', async () => {

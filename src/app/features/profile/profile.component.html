@@ -144,7 +144,7 @@
           <section class="profile__card" aria-labelledby="profile-alerts-title">
             <div class="profile__section-head">
               <h2 id="profile-alerts-title">Notificaciones</h2>
-              <p>Elige qué avisos recibir por correo sobre tus trámites.</p>
+              <p>{{ notificationsLead() }}</p>
             </div>
 
             @if (prefsLoading()) {
@@ -179,9 +179,7 @@
                 <li class="profile__settings-item">
                   <div>
                     <p class="profile__toggle-label" id="email-alerts-label">Avisos por correo</p>
-                    <p class="profile__toggle-hint">
-                      Cambios de estado, comentarios y resoluciones de tus solicitudes.
-                    </p>
+                    <p class="profile__toggle-hint">{{ notificationsHint() }}</p>
                   </div>
                   <mat-slide-toggle
                     [checked]="emailEnabled()"
@@ -192,7 +190,7 @@
                     {{ emailEnabled() ? 'Activados' : 'Pausados' }}
                   </mat-slide-toggle>
                 </li>
-                @for (channel of emailChannels; track channel.title) {
+                @for (channel of emailChannels(); track channel.title) {
                   <li class="profile__settings-item">
                     <div>
                       <p class="profile__toggle-label">{{ channel.title }}</p>
@@ -372,7 +370,7 @@
           <section class="profile__card" aria-labelledby="profile-activity-title">
             <div class="profile__section-head">
               <h2 id="profile-activity-title">Mi actividad</h2>
-              <p>Trámites recientes asociados a tu cuenta.</p>
+              <p>{{ activityLead() }}</p>
             </div>
 
             @if (lastSignIn(); as when) {
@@ -405,7 +403,7 @@
                   </li>
                 }
               </ol>
-              <a matButton routerLink="/tramites">Ver mis trámites</a>
+              <a matButton routerLink="/tramites">{{ activityCta() }}</a>
             }
           </section>
         }
@@ -420,19 +418,13 @@
               </p>
             </div>
             <ul class="profile__bullets">
-              <li>
-                Usamos los datos de tu cuenta y la información del trámite (tipo, descripción,
-                ubicación e imagen adjunta, si corresponde).
-              </li>
-              <li>El personal municipal atiende el caso; otros vecinos no ven tus solicitudes.</li>
-              <li>
-                Contraseña y verificación en dos pasos se administran en Microsoft Entra ID, no en
-                esta aplicación.
-              </li>
+              @for (item of privacyBullets(); track item) {
+                <li>{{ item }}</li>
+              }
             </ul>
             <div class="profile__actions">
               <a matButton [href]="correctionHref()">Solicitar rectificación</a>
-              <a matButton routerLink="/tramites">Revisar mis trámites</a>
+              <a matButton routerLink="/tramites">{{ activityCta() }}</a>
               <a matButton [href]="supportHref()">Contactar soporte</a>
             </div>
           </section>

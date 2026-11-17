@@ -23,7 +23,6 @@ import { environment } from '../../../environments/environment';
 import {
   OVERSIGHT_ROLES,
   REPORTS_ROLES,
-  REQUESTS_ROLES,
   ROLE_LABELS,
   Role,
 } from '../../shared/models/role';
@@ -123,10 +122,17 @@ const NAV: readonly NavItem[] = [
 const SHORTCUTS: readonly Shortcut[] = [
   {
     label: 'Mis trámites',
-    description: 'Consultar y seguir solicitudes',
+    description: 'Consultar y seguir tus solicitudes',
     path: '/tramites',
     icon: 'assignment',
-    roles: REQUESTS_ROLES,
+    roles: [Role.Vecino],
+  },
+  {
+    label: 'Trámites',
+    description: 'Bandeja operativa de la comuna',
+    path: '/tramites',
+    icon: 'assignment',
+    roles: [Role.Funcionario, Role.Admin, Role.Auditor],
   },
   {
     label: 'Administración',
@@ -158,7 +164,7 @@ const SHORTCUTS: readonly Shortcut[] = [
   },
 ];
 
-const EMAIL_CHANNELS = [
+const CITIZEN_EMAIL_CHANNELS = [
   {
     title: 'Comprobantes PDF',
     detail: 'Se envían cuando el trámite lo requiere. No dependen de esta preferencia.',
@@ -166,6 +172,13 @@ const EMAIL_CHANNELS = [
   {
     title: 'Tickets de cuadrilla',
     detail: 'Comunicación operativa del municipio. Se mantiene activa.',
+  },
+] as const;
+
+const STAFF_EMAIL_CHANNELS = [
+  {
+    title: 'Comprobantes y tickets operativos',
+    detail: 'Siguen el flujo municipal. No se apagan con esta preferencia.',
   },
 ] as const;
 
@@ -233,9 +246,59 @@ export class ProfileComponent {
     const role = this.role();
     return role ? SHORTCUTS.filter((item) => item.roles.includes(role)) : [];
   });
+  protected readonly isVecino = computed(() => this.role() === Role.Vecino);
   protected readonly showWorkPrefs = computed(() => {
     const role = this.role();
     return role === Role.Funcionario || role === Role.Admin;
+  });
+  protected readonly emailChannels = computed(() =>
+    this.isVecino() ? CITIZEN_EMAIL_CHANNELS : STAFF_EMAIL_CHANNELS,
+  );
+  protected readonly notificationsLead = computed(() =>
+    this.isVecino()
+      ? 'Elige qué avisos recibir por correo sobre tus trámites.'
+      : 'Preferencia de correo de tu cuenta municipal. Aplica a los avisos asociados a tu identidad.',
+  );
+  protected readonly notificationsHint = computed(() =>
+    this.isVecino()
+      ? 'Cambios de estado, comentarios y resoluciones de tus solicitudes.'
+      : 'Avisos dirigidos a tu usuario. Los comprobantes y tickets operativos siguen activos.',
+  );
+  protected readonly activityLead = computed(() => {
+    switch (this.role()) {
+      case Role.Funcionario:
+        return 'Trámites recientes de tu bandeja (asignados a ti cuando aplica).';
+      case Role.Admin:
+        return 'Trámites recientes de la comuna.';
+      case Role.Auditor:
+        return 'Trámites recientes visibles para consulta.';
+      default:
+        return 'Trámites recientes asociados a tu cuenta.';
+    }
+  });
+  protected readonly activityCta = computed(() =>
+    this.isVecino() ? 'Ver mis trámites' : 'Ir a Trámites',
+  );
+  protected readonly privacyBullets = computed(() => {
+    if (this.isVecino()) {
+      return [
+        'Usamos los datos de tu cuenta y la información del trámite (tipo, descripción, ubicación e imagen adjunta, si corresponde).',
+        'El personal municipal atiende el caso; otros vecinos no ven tus solicitudes.',
+        'Contraseña y verificación en dos pasos se administran en Microsoft Entra ID, no en esta aplicación.',
+      ] as const;
+    }
+    if (this.role() === Role.Auditor) {
+      return [
+        'Tu cuenta permite consultar trámites, reportes y auditoría según el rol Auditor.',
+        'Los datos operativos se usan para control y seguimiento; no atiendes ni modificas trámites desde este perfil.',
+        'Contraseña y verificación en dos pasos se administran en Microsoft Entra ID, no en esta aplicación.',
+      ] as const;
+    }
+    return [
+      'Tu cuenta permite operar o administrar trámites según el rol asignado en Entra ID.',
+      'Los motivos de intervención y datos internos quedan en el historial para el personal autorizado.',
+      'Contraseña y verificación en dos pasos se administran en Microsoft Entra ID, no en esta aplicación.',
+    ] as const;
   });
   protected readonly correctionHref = computed(() => {
     const subject = encodeURIComponent('Solicitud de corrección de datos personales — BarrioDigital');
@@ -264,7 +327,6 @@ export class ProfileComponent {
     preferAssignedOnly: false,
     openTramitesOnStart: true,
   });
-  protected readonly emailChannels = EMAIL_CHANNELS;
 
   constructor() {
     this.loadPhoto();
@@ -493,8 +555,12 @@ export class ProfileComponent {
   private loadRecentActivity(): void {
     this.activityLoading.set(true);
     this.activityError.set(false);
+    const params: Record<string, string> = { page: '0', size: '5', sort: 'createdAt,desc' };
+    if (this.role() === Role.Funcionario) {
+      params['assignee'] = 'me';
+    }
     this.requests
-      .getRequests({ page: '0', size: '5', sort: 'createdAt,desc' })
+      .getRequests(params)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (page) => {
