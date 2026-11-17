@@ -13,7 +13,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   FormControl,
   FormGroup,
@@ -119,6 +119,10 @@ import { SlaIndicatorComponent, SlaIndicatorState } from './sla-indicator/sla-in
 import { procedureTypeLabel } from './procedure-label';
 import { RequestImageFieldComponent } from './request-image-field/request-image-field.component';
 import { RequestPrivacyNoticeComponent } from './request-privacy-notice/request-privacy-notice.component';
+import {
+  RequestDuplicateWarningComponent,
+  duplicateSearch,
+} from './request-duplicate-warning/request-duplicate-warning.component';
 import { ImageSelection } from './image-selection';
 import { NEW_REQUEST_FRAGMENT, isClosedStatus } from './requests.constants';
 import { RequestsService } from './requests.service';
@@ -172,6 +176,7 @@ const STAFF_COLUMNS = ['tipo', 'descripcion', 'solicitante', 'responsable', 'est
     RequestImageFieldComponent,
     RequestListFiltersComponent,
     RequestPrivacyNoticeComponent,
+    RequestDuplicateWarningComponent,
     RequestQueueComponent,
     RequestLocationMapComponent,
     RequestStatusBadgeComponent,
@@ -330,6 +335,22 @@ export class RequestsComponent {
   );
 
   protected readonly locationError = signal<string | null>(null);
+
+  private readonly procedureTypeValue = toSignal(
+    this.createForm.controls.procedureType.valueChanges,
+    { initialValue: this.createForm.controls.procedureType.value },
+  );
+  private readonly locationValue = toSignal(this.locationForm.valueChanges, {
+    initialValue: this.locationForm.getRawValue(),
+  });
+  /** "Sin punto" limpia las coordenadas sin emitir; el modo decide si el punto cuenta. */
+  protected readonly duplicateSearch = computed(() => {
+    const location = this.locationValue();
+    return duplicateSearch(
+      this.procedureTypeValue(),
+      location.locationMode === 'ninguno' ? { sector: location.sector } : location,
+    );
+  });
 
   protected readonly filters: RequestFiltersForm = this.formBuilder.group({
     status: this.formBuilder.control<RequestStatus | ''>(''),

@@ -102,6 +102,7 @@ describe('RequestsComponent', () => {
     getTransitions: ReturnType<typeof vi.fn>;
     changeStatus: ReturnType<typeof vi.fn>;
     exportRequests: ReturnType<typeof vi.fn>;
+    findDuplicates: ReturnType<typeof vi.fn>;
     take?: ReturnType<typeof vi.fn>;
   };
   let fixture: ComponentFixture<RequestsComponent>;
@@ -139,6 +140,7 @@ describe('RequestsComponent', () => {
       getTransitions: vi.fn(getTransitions),
       changeStatus: vi.fn(),
       exportRequests: vi.fn(() => of(new Blob(['csv'], { type: 'text/csv' }))),
+      findDuplicates: vi.fn(() => of([])),
     };
     const auth = {
       role: () => role,
@@ -213,6 +215,67 @@ describe('RequestsComponent', () => {
     expect(solicitanteNames()).toEqual({ table: [], cards: [] });
     expect(text()).not.toContain(mine.solicitanteNombre);
     expect(text()).not.toContain(other.solicitanteNombre);
+  });
+
+  describe('posibles duplicados en el alta (EP3-79)', () => {
+    const candidate = {
+      id: null,
+      folio: 'BD-2026-000123',
+      procedureType: 'alumbrado',
+      procedureLabel: 'Iluminación municipal',
+      status: 'EN_GESTION' as const,
+      sector: 'ralco',
+      distanceMeters: null,
+      createdDate: '2026-11-11',
+      hasAssignee: null,
+      mine: false,
+    };
+    const waitForSearch = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 550));
+      fixture.detectChanges();
+      await fixture.whenStable();
+    };
+
+    it('con tipo y sector consulta, avisa dentro de Ubicación y no bloquea el ingreso', async () => {
+      await render(Role.Vecino);
+      service.findDuplicates.mockReturnValue(of([candidate]));
+      fixture.componentInstance['createForm'].setValue({
+        procedureType: 'alumbrado',
+        description: 'Luminaria apagada',
+        address: 'Calle 1',
+      });
+      fixture.componentInstance['locationForm'].controls.sector.setValue('ralco');
+      await waitForSearch();
+
+      expect(service.findDuplicates).toHaveBeenCalledWith({
+        procedureType: 'alumbrado',
+        sector: 'ralco',
+      });
+      const warning = element.querySelector('.requests__location app-request-duplicate-warning');
+      expect(words(warning)).toContain('Hay 1 trámite abierto que podría estar relacionado');
+      expect(words(warning)).toContain('BD-2026-000123');
+      expect(submitButton()?.disabled).toBe(false);
+
+      submitButton()?.click();
+      await fixture.whenStable();
+      expect(service.createRequest).toHaveBeenCalled();
+    });
+
+    it('sin punto y con "Otro sector" no consulta', async () => {
+      await render(Role.Vecino);
+      fixture.componentInstance['createForm'].controls.procedureType.setValue('alumbrado');
+      fixture.componentInstance['locationForm'].controls.sector.setValue('otro');
+      await waitForSearch();
+
+      expect(service.findDuplicates).not.toHaveBeenCalled();
+    });
+
+    it('el personal no tiene el aviso', async () => {
+      await render(Role.Funcionario);
+
+      expect(element.querySelector('app-request-duplicate-warning')).toBeNull();
+      expect(service.findDuplicates).not.toHaveBeenCalled();
+    });
   });
 
   describe('privacidad en el alta', () => {

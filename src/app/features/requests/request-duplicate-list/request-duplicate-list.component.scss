@@ -1,0 +1,112 @@
+@use 'tokens' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $space-2;
+}
+
+.duplicate-list {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.duplicate-list__item {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  min-width: 0;
+  padding: $space-2 $space-3;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-surface);
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: duplicate-enter $transition-base;
+  }
+}
+
+.duplicate-list__title,
+.duplicate-list__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.duplicate-list__title {
+  gap: $space-1 $space-2;
+  font-weight: $font-weight-medium;
+}
+
+.duplicate-list__mine {
+  padding: 0 $space-2;
+  border: $border-width solid var(--bd-primary);
+  border-radius: $space-3;
+  color: var(--bd-primary-dark);
+  font-size: $font-label;
+  font-weight: $font-weight-semibold;
+}
+
+.duplicate-list__meta {
+  gap: 0 $space-2;
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+  font-variant-numeric: tabular-nums;
+}
+
+.duplicate-list__folio {
+  color: var(--bd-text);
+  font-weight: $font-weight-medium;
+}
+
+.duplicate-list__link {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: $space-1;
+  min-height: $size-touch-target;
+  color: var(--bd-primary-dark);
+  font-size: $font-body-sm;
+  font-weight: $font-weight-medium;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: $border-width-strong;
+  }
+}
+
+// El padding del botón de texto se compensa para alinearlo con las tarjetas
+.duplicate-list__toggle {
+  min-height: $size-touch-target;
+  margin-inline-start: -$space-3;
+}
+
+.duplicate-list__chevron {
+  @media (prefers-reduced-motion: no-preference) {
+    transition: transform $transition-base;
+  }
+}
+
+.duplicate-list__chevron--open {
+  transform: rotate(180deg);
+}
+
+@keyframes duplicate-enter {
+  from {
+    opacity: 0;
+  }
+}

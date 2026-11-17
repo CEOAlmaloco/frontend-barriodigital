@@ -33,6 +33,10 @@ describe('RequestPrivacyNoticeComponent', () => {
     expect(text).toContain('Elaborar reportes de la gestión municipal');
     expect(text).toContain('para la auditoría interna');
     expect(text).toContain('La auditoría interna, sin ver tu correo.');
+    expect(text).toContain('Otros vecinos no ven tus datos, tu descripción ni tu dirección.');
+    expect(text).toContain(
+      'Al buscar posibles duplicados, otros vecinos pueden ver el tipo, el estado, el sector, el folio',
+    );
     expect(text).toContain('Ley N° 19.628');
     expect(text).not.toMatch(/\bsolo\b/i);
   });
