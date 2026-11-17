@@ -43,6 +43,29 @@
   }
 }
 
+.toolbar__live {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  padding: 2px $space-2;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: 999px;
+  background-color: var(--bd-secondary-container);
+  color: var(--bd-secondary);
+  font-weight: $font-weight-semibold;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.toolbar__live--paused {
+  background-color: var(--bd-accent-container);
+  color: var(--bd-accent-text);
+}
+
 .toolbar__actions {
   display: flex;
   gap: $space-2;
