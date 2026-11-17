@@ -31,6 +31,15 @@ export interface Request {
   assigneeId?: string | null;
   assigneeName?: string | null;
   slaBusinessDays?: number | null;
+  /** Encuesta del titular (EP3-74). null si aún no calificó. */
+  satisfactionScore?: number | null;
+  satisfactionComment?: string | null;
+}
+
+/** Body de POST /api/requests/{id}/rating. */
+export interface RateRequestPayload {
+  score: number;
+  comment?: string;
 }
 
 /** Body del POST. title y solicitanteId no van: el backend los arma solo. */

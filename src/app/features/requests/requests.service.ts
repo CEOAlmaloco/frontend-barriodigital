@@ -9,6 +9,7 @@ import {
   Assignee,
   ChangeRequestStatusPayload,
   CreateRequestPayload,
+  RateRequestPayload,
   Request,
   RequestStatus,
   RequestTransitions,
@@ -80,6 +81,13 @@ export class RequestsService {
     return this.http.put<RequestResponse>(`${this.url}/${id}/status`, payload).pipe(map(toRequest));
   }
 
+  /** El Vecino titular califica un trámite RESUELTO una sola vez (EP3-74). */
+  rate(id: string, payload: RateRequestPayload): Observable<Request> {
+    return this.http
+      .post<RequestResponse>(`${this.url}/${id}/rating`, payload)
+      .pipe(map(toRequest));
+  }
+
   /** El Funcionario se asigna un trámite sin responsable. */
   take(id: string): Observable<Request> {
     return this.http.post<RequestResponse>(`${this.url}/${id}/take`, null).pipe(map(toRequest));
@@ -131,7 +139,13 @@ export interface RequestActivity {
   limites: string[];
 }
 
-export type RequestActivityKind = 'CREADO' | 'ESTADO' | 'GESTION' | 'ASIGNACION';
+export type RequestActivityKind =
+  | 'CREADO'
+  | 'ESTADO'
+  | 'GESTION'
+  | 'ASIGNACION'
+  | 'CALIFICACION'
+  | 'COMENTARIO';
 
 /** Al Vecino, requests le entrega el actor de staff como "Municipalidad" y nunca el motivo de intervención. */
 export interface RequestActivityEvent {
@@ -215,6 +229,8 @@ function toRequest({
   assigneeId,
   assigneeName,
   slaBusinessDays,
+  satisfactionScore,
+  satisfactionComment,
 }: RequestResponse): Request {
   return {
     id,
@@ -239,5 +255,7 @@ function toRequest({
     ...(assigneeId !== undefined ? { assigneeId } : {}),
     ...(assigneeName !== undefined ? { assigneeName } : {}),
     ...(slaBusinessDays !== undefined ? { slaBusinessDays } : {}),
+    ...(satisfactionScore !== undefined ? { satisfactionScore } : {}),
+    ...(satisfactionComment !== undefined ? { satisfactionComment } : {}),
   };
 }
