@@ -2,7 +2,9 @@
 @use 'tokens' as *;
 
 :host {
-  display: block;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
   max-width: 100%;
 
   @media (max-width: $breakpoint-sm - 1px) {
@@ -10,7 +12,8 @@
   }
 }
 
-.queue {
+.queue,
+.contact {
   @include mat.button-toggle-overrides(
     (
       shape: $radius-base,
@@ -31,11 +34,30 @@
     font-size: 18px;
     vertical-align: -4px;
   }
+}
 
-  // Mobile: los tres filtros ocupan el ancho y el texto basta
-  @media (max-width: $breakpoint-sm - 1px) {
+// Secondary: es un estado de contacto con el vecino, distinto de la bandeja
+.contact {
+  @include mat.button-toggle-overrides(
+    (
+      selected-state-background-color: var(--bd-secondary-container),
+      selected-state-text-color: var(--bd-secondary),
+    )
+  );
+
+  &.mat-button-toggle-standalone.mat-button-toggle-checked {
+    border-color: var(--bd-secondary);
+  }
+}
+
+// Mobile: cada filtro ocupa el ancho y en la bandeja el texto basta
+@media (max-width: $breakpoint-sm - 1px) {
+  .queue,
+  .contact {
     width: 100%;
+  }
 
+  .queue {
     .mat-button-toggle {
       flex: 1 1 0;
     }

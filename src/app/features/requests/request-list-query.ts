@@ -20,6 +20,8 @@ export interface RequestListQuery {
   from: string;
   to: string;
   assignee: RequestQueue;
+  /** Reintento de contacto vencido o de hoy (EP3-66). Solo staff: al Vecino el backend le responde 403. */
+  contactDue: boolean;
   sort: RequestSortField;
   direction: RequestSortDirection;
   page: number;
@@ -42,6 +44,7 @@ export const DEFAULT_REQUEST_QUERY: RequestListQuery = {
   from: '',
   to: '',
   assignee: '',
+  contactDue: false,
   sort: 'createdAt',
   direction: 'desc',
   page: 0,
@@ -77,6 +80,7 @@ export function toRequestListParams(query: RequestListQuery): Record<string, str
   if (query.from) params['from'] = query.from;
   if (query.to) params['to'] = query.to;
   if (query.assignee) params['assignee'] = query.assignee;
+  if (query.contactDue) params['contactDue'] = 'true';
   if (
     query.sort !== DEFAULT_REQUEST_QUERY.sort ||
     query.direction !== DEFAULT_REQUEST_QUERY.direction
@@ -140,6 +144,7 @@ export function parseRequestListParams(get: (key: string) => string | null): Req
   if (assignee === 'me' || assignee === 'none') {
     query.assignee = assignee;
   }
+  query.contactDue = get('contactDue') === 'true';
 
   const [sortField, sortDirection = 'asc'] = (get('sort') ?? '').split(',');
   if (
@@ -170,7 +175,7 @@ export function serializeRequestListQuery(query: RequestListQuery): string {
   return new URLSearchParams(Object.entries(toRequestListParams(query)).sort()).toString();
 }
 
-/** Filtros que el usuario eligió; la búsqueda, la bandeja, el orden y la página no cuentan. */
+/** Filtros del panel; la búsqueda, los filtros rápidos, el orden y la página no cuentan. */
 export function activeFilterCount(query: RequestListQuery): number {
   return [query.status, query.open, query.procedureType, query.sector, query.from, query.to].filter(
     Boolean,
