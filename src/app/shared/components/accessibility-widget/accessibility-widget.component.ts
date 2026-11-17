@@ -71,6 +71,14 @@ export class AccessibilityWidgetComponent {
     this.accessibility.setContrast(mode);
   }
 
+  protected followSystemContrast(): void {
+    this.accessibility.followSystemContrast();
+  }
+
+  protected isContrastFollowSystem(): boolean {
+    return this.accessibility.preferences().contrastFollowSystem;
+  }
+
   protected toggleGrayscale(): void {
     this.accessibility.toggleGrayscale();
   }
@@ -83,8 +91,16 @@ export class AccessibilityWidgetComponent {
     this.accessibility.toggleUnderlineLinks();
   }
 
-  protected togglePauseMotion(): void {
-    this.accessibility.togglePauseMotion();
+  protected setMotionPaused(paused: boolean): void {
+    this.accessibility.setMotionPaused(paused);
+  }
+
+  protected followSystemMotion(): void {
+    this.accessibility.followSystemMotion();
+  }
+
+  protected isMotionFollowSystem(): boolean {
+    return this.accessibility.preferences().motionFollowSystem;
   }
 
   protected reset(): void {

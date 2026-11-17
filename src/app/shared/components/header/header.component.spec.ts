@@ -27,6 +27,7 @@ describe('HeaderComponent', () => {
       providers: [
         provideRouter([
           { path: 'inicio', children: [] },
+          { path: 'perfil', children: [] },
           { path: 'reports', children: [{ path: 'map', children: [] }] },
           { path: 'audit', children: [] },
         ]),
@@ -90,11 +91,15 @@ describe('HeaderComponent', () => {
     );
   });
 
-  it('muestra el nombre de la cuenta y cierra sesión desde el header', async () => {
+  it('muestra el nombre de la cuenta, enlaza al perfil y cierra sesión', async () => {
     await render(Role.Vecino);
 
     expect(element.querySelector('.header__account-name')?.textContent?.trim()).toBe(
       'Usuario de prueba',
+    );
+    expect(element.querySelector('.header__account-avatar')?.textContent?.trim()).toBe('UD');
+    expect(element.querySelector('a.header__account-identity')?.getAttribute('href')).toBe(
+      '/perfil',
     );
 
     element.querySelector<HTMLButtonElement>('.header__sign-out')?.click();
