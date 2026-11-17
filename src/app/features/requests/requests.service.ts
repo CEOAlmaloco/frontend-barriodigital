@@ -9,6 +9,8 @@ import {
   Assignee,
   ChangeRequestStatusPayload,
   CreateRequestPayload,
+  DuplicateCandidate,
+  DuplicateSearch,
   RateRequestPayload,
   Request,
   RequestStatus,
@@ -86,6 +88,20 @@ export class RequestsService {
     return this.http
       .post<RequestResponse>(`${this.url}/${id}/rating`, payload)
       .pipe(map(toRequest));
+  }
+
+  /** Trámites abiertos parecidos antes del alta; solo el Vecino. */
+  findDuplicates(search: DuplicateSearch): Observable<DuplicateCandidate[]> {
+    let params = new HttpParams().set('procedureType', search.procedureType);
+    if (search.latitude !== undefined && search.longitude !== undefined) {
+      params = params
+        .set('latitude', String(search.latitude))
+        .set('longitude', String(search.longitude));
+    }
+    if (search.sector) {
+      params = params.set('sector', search.sector);
+    }
+    return this.http.get<DuplicateCandidate[]>(`${this.url}/duplicates`, { params });
   }
 
   /** El Funcionario se asigna un trámite sin responsable. */

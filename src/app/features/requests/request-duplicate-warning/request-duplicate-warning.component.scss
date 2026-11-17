@@ -1,0 +1,91 @@
+@use 'tokens' as *;
+
+$icon-size: 20px;
+
+:host {
+  display: block;
+}
+
+// Informativo y no de error: el acento lo separa del resto del formulario sin sugerir que algo está mal
+.duplicate-warning {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  padding: $space-3;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-accent-container);
+
+  @media (min-width: $breakpoint-sm) {
+    padding: $space-4;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: duplicate-warning-enter $transition-base;
+  }
+}
+
+.duplicate-warning__head {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-3;
+}
+
+.duplicate-warning__icon {
+  flex: none;
+  width: $icon-size;
+  height: $icon-size;
+  color: var(--bd-accent-text);
+  font-size: $icon-size;
+}
+
+.duplicate-warning__text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.duplicate-warning__title {
+  margin: 0;
+  font-size: $font-body;
+  font-weight: $font-weight-semibold;
+}
+
+.duplicate-warning__lead {
+  margin: 0;
+  font-size: $font-body-sm;
+}
+
+.duplicate-warning__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-1 $space-2;
+  margin: 0;
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+
+  p {
+    flex: 1 1 16rem;
+    margin: 0;
+  }
+
+  mat-icon {
+    flex: none;
+    width: $icon-size;
+    height: $icon-size;
+    font-size: $icon-size;
+  }
+
+  button {
+    min-height: $size-touch-target;
+  }
+}
+
+@keyframes duplicate-warning-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-$space-1);
+  }
+}

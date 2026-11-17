@@ -42,6 +42,33 @@ export interface RateRequestPayload {
   comment?: string;
 }
 
+/** Base de GET /api/requests/duplicates: el tipo y al menos un punto o un sector comparable. */
+export interface DuplicateSearch {
+  procedureType: string;
+  latitude?: number;
+  longitude?: number;
+  sector?: string;
+}
+
+/**
+ * Posible duplicado (EP3-75). Al Vecino no le llegan id ni hasAssignee, y mine dice si es suyo; al personal
+ * le llegan id y hasAssignee, y mine es null.
+ */
+export interface DuplicateCandidate {
+  id: string | null;
+  folio: string;
+  procedureType: string;
+  procedureLabel: string | null;
+  status: RequestStatus;
+  sector: string | null;
+  /** Redondeada a 10 m; null si coincidió por sector. */
+  distanceMeters: number | null;
+  /** Día de ingreso en America/Santiago, YYYY-MM-DD. */
+  createdDate: string;
+  hasAssignee: boolean | null;
+  mine: boolean | null;
+}
+
 /** Body del POST. title y solicitanteId no van: el backend los arma solo. */
 export interface CreateRequestPayload {
   procedureType: string;

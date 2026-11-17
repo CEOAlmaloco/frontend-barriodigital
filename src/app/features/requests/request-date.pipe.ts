@@ -22,6 +22,11 @@ export class RequestDatePipe implements PipeTransform {
   }
 }
 
+/** «11 nov 2026» de un día civil, sin pasar por Date para no correrlo de zona. */
+export function formatCivilDay(year: number, monthIndex: number, day: number): string {
+  return `${day} ${MONTHS[monthIndex]} ${year}`;
+}
+
 function pad(value: number): string {
   return String(value).padStart(2, '0');
 }

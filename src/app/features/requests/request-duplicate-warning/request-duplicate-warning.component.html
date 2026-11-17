@@ -1,0 +1,34 @@
+@switch (state().kind) {
+  @case ('loading') {
+    <p class="duplicate-warning__status">
+      <mat-progress-spinner mode="indeterminate" [diameter]="16" aria-hidden="true" />
+      Buscando trámites parecidos…
+    </p>
+  }
+  @case ('error') {
+    <div class="duplicate-warning__status">
+      <mat-icon aria-hidden="true">cloud_off</mat-icon>
+      <p>No se pudo revisar si hay trámites parecidos. Puedes ingresar el tuyo igual.</p>
+      <button matButton type="button" (click)="retry()">Reintentar</button>
+    </div>
+  }
+  @case ('ready') {
+    @if (candidates().length) {
+      <section class="duplicate-warning" aria-labelledby="duplicate-warning-title">
+        <div class="duplicate-warning__head">
+          <mat-icon class="duplicate-warning__icon" aria-hidden="true">location_searching</mat-icon>
+          <div class="duplicate-warning__text">
+            <h3 id="duplicate-warning-title" class="duplicate-warning__title">{{ title() }}</h3>
+            <p class="duplicate-warning__lead">
+              Revisa si {{ candidates().length === 1 ? 'corresponde' : 'alguno corresponde' }} al
+              mismo problema. Si no, puedes continuar con tu trámite.
+            </p>
+          </div>
+        </div>
+        <app-request-duplicate-list [candidates]="candidates()" />
+      </section>
+    }
+  }
+}
+
+<p class="cdk-visually-hidden" aria-live="polite">{{ announcement() }}</p>

@@ -154,6 +154,8 @@
           } @else if (locationForm.hasError('outsideCommune') && locationForm.touched) {
             <p class="requests__error">El punto está fuera de la comuna.</p>
           }
+
+          <app-request-duplicate-warning [search]="duplicateSearch()" />
         </fieldset>
 
         <fieldset class="requests__attachment">

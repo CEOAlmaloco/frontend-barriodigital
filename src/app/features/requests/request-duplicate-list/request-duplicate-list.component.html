@@ -1,0 +1,54 @@
+<ul class="duplicate-list" [id]="listId">
+  @for (candidate of visible(); track candidate.folio) {
+    <li class="duplicate-list__item">
+      <p class="duplicate-list__title">
+        <span>{{ candidate.procedureLabel || candidate.procedureType }}</span>
+        <app-request-status-badge [status]="candidate.status" />
+        @if (candidate.mine) {
+          <span class="duplicate-list__mine">Tuyo</span>
+        }
+      </p>
+      <p class="duplicate-list__meta">
+        <span class="duplicate-list__folio">{{ candidate.folio }}</span>
+        <span aria-hidden="true">·</span>
+        <span>{{ proximity(candidate) }}</span>
+        <span aria-hidden="true">·</span>
+        <span>Ingresado el {{ date(candidate.createdDate) }}</span>
+      </p>
+      @if (candidate.mine) {
+        <!-- En otra pestaña: el formulario de alta sigue intacto en esta -->
+        <a
+          class="duplicate-list__link"
+          routerLink="/tramites"
+          [queryParams]="{ q: candidate.folio }"
+          target="_blank"
+          rel="noopener"
+        >
+          Ver en mis trámites
+          <mat-icon aria-hidden="true">open_in_new</mat-icon>
+          <span class="cdk-visually-hidden">(se abre en otra pestaña)</span>
+        </a>
+      }
+    </li>
+  }
+</ul>
+
+@if (collapsible()) {
+  <button
+    matButton
+    type="button"
+    class="duplicate-list__toggle"
+    [attr.aria-expanded]="expanded()"
+    [attr.aria-controls]="listId"
+    (click)="toggle()"
+  >
+    {{ expanded() ? 'Ver menos' : 'Ver ' + hiddenCount() + ' más' }}
+    <mat-icon
+      class="duplicate-list__chevron"
+      iconPositionEnd
+      [class.duplicate-list__chevron--open]="expanded()"
+      aria-hidden="true"
+      >expand_more</mat-icon
+    >
+  </button>
+}

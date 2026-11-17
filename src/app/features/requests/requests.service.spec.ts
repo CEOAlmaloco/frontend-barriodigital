@@ -289,6 +289,37 @@ describe('RequestsService', () => {
     });
   });
 
+  describe('posibles duplicados (EP3-75)', () => {
+    it('con punto y sector envía los cuatro parámetros', async () => {
+      const result = firstValueFrom(
+        service.findDuplicates({
+          procedureType: 'bache',
+          latitude: -37.8742,
+          longitude: -71.5915,
+          sector: 'ralco',
+        }),
+      );
+      const call = backend.expectOne((req) => req.url === `${url}/duplicates`);
+
+      expect(call.request.method).toBe('GET');
+      expect(call.request.params.get('procedureType')).toBe('bache');
+      expect(call.request.params.get('latitude')).toBe('-37.8742');
+      expect(call.request.params.get('longitude')).toBe('-71.5915');
+      expect(call.request.params.get('sector')).toBe('ralco');
+      call.flush([]);
+
+      expect(await result).toEqual([]);
+    });
+
+    it('solo con sector no envía coordenadas', () => {
+      service.findDuplicates({ procedureType: 'bache', sector: 'ralco' }).subscribe();
+      const call = backend.expectOne((req) => req.url === `${url}/duplicates`);
+
+      expect(call.request.params.keys()).toEqual(['procedureType', 'sector']);
+      call.flush([]);
+    });
+  });
+
   it('lee y guarda preferencias de aviso en /me/notification-preferences', async () => {
     const getResult = firstValueFrom(service.getNotificationPreferences());
     const getCall = backend.expectOne(`${url}/me/notification-preferences`);
