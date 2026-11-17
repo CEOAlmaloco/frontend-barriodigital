@@ -8,14 +8,11 @@ import { catchError, concat, distinctUntilChanged, map, of, switchMap, timer } f
 
 import { DuplicateCandidate, DuplicateSearch } from '../../../shared/models/request.model';
 import { RequestDuplicateListComponent } from '../request-duplicate-list/request-duplicate-list.component';
-import { isInsideCommune, roundCoordinate } from '../request-location';
+import { isComparableSector, isInsideCommune, roundCoordinate } from '../request-location';
 import { RequestsService } from '../requests.service';
 
 /** Espera tras el último cambio de tipo, punto o sector, para no consultar mientras se escribe o se mueve el punto. */
 export const DUPLICATE_SEARCH_DELAY_MS = 500;
-
-/** "Otro sector de la comuna" abarca demasiado para indicar un duplicado (EP3-75, sección 3). */
-const NON_COMPARABLE_SECTOR = 'otro';
 
 type WarningState =
   | { kind: 'idle' }
@@ -47,8 +44,7 @@ export function duplicateSearch(
     isInsideCommune(latitude, longitude)
       ? { latitude: roundCoordinate(latitude), longitude: roundCoordinate(longitude) }
       : null;
-  const sector =
-    location.sector && location.sector !== NON_COMPARABLE_SECTOR ? location.sector : null;
+  const sector = isComparableSector(location.sector) ? location.sector : null;
   if (!point && !sector) {
     return null;
   }

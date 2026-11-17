@@ -1,5 +1,6 @@
 // Enlace "Ver …" del pie de los bloques de /inicio
 @use 'tokens' as *;
+@use 'links';
 
 .home-link {
   display: inline-flex;
@@ -20,14 +21,5 @@
     outline-offset: $space-1;
   }
 
-  mat-icon {
-    width: 18px;
-    height: 18px;
-    font-size: 18px;
-    transition: transform $transition-base;
-  }
-
-  &:hover mat-icon {
-    transform: translateX(2px);
-  }
+  @include links.forward-arrow;
 }

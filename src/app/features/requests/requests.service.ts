@@ -104,6 +104,11 @@ export class RequestsService {
     return this.http.get<DuplicateCandidate[]>(`${this.url}/duplicates`, { params });
   }
 
+  /** Posibles duplicados de un trámite ya ingresado; solo el Funcionario y el Admin. */
+  findRequestDuplicates(id: string): Observable<DuplicateCandidate[]> {
+    return this.http.get<DuplicateCandidate[]>(`${this.url}/${id}/duplicates`);
+  }
+
   /** El Funcionario se asigna un trámite sin responsable. */
   take(id: string): Observable<Request> {
     return this.http.post<RequestResponse>(`${this.url}/${id}/take`, null).pipe(map(toRequest));

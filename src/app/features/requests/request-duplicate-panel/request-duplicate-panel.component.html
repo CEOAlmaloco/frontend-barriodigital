@@ -1,0 +1,46 @@
+@if (state().kind !== 'hidden') {
+  @if (candidates().length) {
+    <section class="request-detail__card duplicate-panel" [attr.aria-labelledby]="titleId()">
+      <div class="duplicate-panel__head">
+        <h2 #title class="duplicate-panel__title" tabindex="-1" [id]="titleId()">
+          Posibles duplicados
+          <span class="duplicate-panel__count">({{ candidates().length }})</span>
+        </h2>
+        <p class="duplicate-panel__lead">
+          Trámites abiertos del mismo tipo, cercanos o del mismo sector.
+        </p>
+      </div>
+      <app-request-duplicate-list [candidates]="candidates()" />
+    </section>
+  } @else {
+    <!-- Mismo elemento en carga, vacío y error: el detalle no salta y el foco no se pierde al reintentar -->
+    <div
+      #line
+      class="duplicate-panel__line"
+      [class.duplicate-panel__line--error]="state().kind === 'error'"
+      tabindex="-1"
+    >
+      @switch (state().kind) {
+        @case ('loading') {
+          <mat-progress-spinner mode="indeterminate" [diameter]="18" aria-hidden="true" />
+          <p>Buscando posibles duplicados…</p>
+        }
+        @case ('unsearchable') {
+          <mat-icon aria-hidden="true">location_off</mat-icon>
+          <p>Sin punto en el mapa ni sector específico para buscar posibles duplicados.</p>
+        }
+        @case ('error') {
+          <mat-icon aria-hidden="true">cloud_off</mat-icon>
+          <p>No se pudo buscar posibles duplicados.</p>
+          <button matButton type="button" (click)="retry()">Reintentar</button>
+        }
+        @default {
+          <mat-icon aria-hidden="true">search</mat-icon>
+          <p>No se encontraron trámites abiertos parecidos.</p>
+        }
+      }
+    </div>
+  }
+
+  <p class="cdk-visually-hidden" aria-live="polite">{{ announcement() }}</p>
+}

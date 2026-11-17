@@ -14,8 +14,20 @@
         <span>{{ proximity(candidate) }}</span>
         <span aria-hidden="true">·</span>
         <span>Ingresado el {{ date(candidate.createdDate) }}</span>
+        @if (candidate.hasAssignee !== null) {
+          <span aria-hidden="true">·</span>
+          <span>{{ candidate.hasAssignee ? 'Con responsable' : 'Sin responsable' }}</span>
+        }
       </p>
-      @if (candidate.mine) {
+      @if (candidate.id) {
+        <a
+          class="duplicate-list__link duplicate-list__link--forward"
+          [routerLink]="['/tramites', candidate.id]"
+        >
+          Ver trámite<span class="cdk-visually-hidden"> {{ candidate.folio }}</span>
+          <mat-icon aria-hidden="true">arrow_forward</mat-icon>
+        </a>
+      } @else if (candidate.mine) {
         <!-- En otra pestaña: el formulario de alta sigue intacto en esta -->
         <a
           class="duplicate-list__link"

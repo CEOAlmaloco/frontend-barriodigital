@@ -1,0 +1,116 @@
+@use 'tokens' as *;
+
+$icon-size: 20px;
+
+:host {
+  display: block;
+}
+
+:host(.duplicate-panel--hidden) {
+  display: none;
+}
+
+// Tarjeta principal, igual que las del detalle: request-detail__card la engancha a los modos de contraste
+.duplicate-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: $space-4;
+  padding: $space-6;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-surface);
+  box-shadow: $shadow-elevated;
+
+  @media (max-width: $breakpoint-sm) {
+    padding: $space-4;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: duplicate-panel-enter $transition-base;
+  }
+}
+
+.duplicate-panel__head {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+}
+
+.duplicate-panel__title {
+  margin: 0;
+  font-size: $font-h3;
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: $space-1;
+  }
+}
+
+.duplicate-panel__count {
+  color: var(--bd-text-muted);
+  font-weight: $font-weight-medium;
+}
+
+.duplicate-panel__lead {
+  margin: 0;
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+}
+
+// Superficie secundaria: sin nada que revisar no pesa como una tarjeta
+.duplicate-panel__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-1 $space-3;
+  min-height: $size-touch-target;
+  padding: $space-2 $space-4;
+  border: $border-width solid var(--bd-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-surface);
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+
+  @media (max-width: $breakpoint-sm) {
+    padding-inline: $space-3;
+  }
+
+  p {
+    flex: 1 1 14rem;
+    min-width: 0;
+    margin: 0;
+  }
+
+  mat-icon {
+    flex: none;
+    width: $icon-size;
+    height: $icon-size;
+    font-size: $icon-size;
+  }
+
+  mat-progress-spinner {
+    flex: none;
+  }
+
+  // El padding del botón de texto se compensa para alinearlo con el borde de la línea
+  button {
+    min-height: $size-touch-target;
+    margin-inline-end: -$space-2;
+  }
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: $border-width-strong;
+  }
+}
+
+.duplicate-panel__line--error {
+  color: var(--bd-text);
+}
+
+@keyframes duplicate-panel-enter {
+  from {
+    opacity: 0;
+  }
+}
