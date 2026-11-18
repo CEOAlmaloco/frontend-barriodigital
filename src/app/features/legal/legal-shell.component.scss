@@ -1,0 +1,104 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+  min-height: 100dvh;
+  background: var(--bd-background);
+  color: var(--bd-text);
+  font-family: var(--bd-font, #{$font-family-base});
+}
+
+.legal-shell {
+  width: min(100%, 44rem);
+  margin: 0 auto;
+  padding: $space-6 $space-4 $space-12;
+
+  @media (min-width: $breakpoint-sm) {
+    padding: $space-8 $space-6 $space-12;
+  }
+}
+
+.legal-shell__back {
+  margin: 0 0 $space-4;
+
+  a {
+    color: var(--bd-primary);
+    font-weight: $font-weight-medium;
+    min-height: $size-touch-target;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+.legal-shell__nav {
+  display: flex;
+  gap: $space-2;
+  margin: 0 0 $space-6;
+  padding: 0 0 $space-4;
+  border-bottom: $border-width solid var(--bd-border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+
+  a {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    min-height: $size-touch-target;
+    padding: 0 $space-3;
+    border-radius: $radius-base;
+    color: var(--bd-text-muted);
+    text-decoration: none;
+    font-size: $font-body-sm;
+    font-weight: $font-weight-medium;
+    white-space: nowrap;
+
+    &.is-active {
+      color: var(--bd-primary);
+      background: color-mix(in srgb, var(--bd-primary-container) 70%, var(--bd-surface));
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      outline: $border-width-strong solid var(--bd-primary);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.legal-shell__footer {
+  margin-top: $space-12;
+  padding-top: $space-6;
+  border-top: $border-width solid var(--bd-border);
+}
+
+.legal-shell__contact {
+  margin: 0;
+  font-size: $font-body-sm;
+  color: var(--bd-text-muted);
+  text-align: center;
+
+  a {
+    color: var(--bd-primary);
+    font-weight: $font-weight-medium;
+  }
+}
+
+.legal-shell__cookie-btn {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: inherit;
+  font-weight: $font-weight-medium;
+  color: var(--bd-primary);
+  text-decoration: underline;
+  cursor: pointer;
+  min-height: $size-touch-target;
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary);
+    outline-offset: 2px;
+  }
+}

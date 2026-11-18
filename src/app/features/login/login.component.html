@@ -30,4 +30,11 @@
 
 <footer class="login__footer">
   <p>¿Problemas para ingresar? <a class="login__link" [href]="'mailto:' + supportEmail">Contacto</a></p>
+  <div class="login__footer-legal">
+    <app-site-legal-links
+      [showContact]="false"
+      [showCookieSettings]="true"
+      (cookieSettings)="openCookieSettings()"
+    />
+  </div>
 </footer>

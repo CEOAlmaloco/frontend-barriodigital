@@ -18,6 +18,39 @@ export const routes: Routes = [
     canActivate: [redirectAuthenticatedGuard],
     title: 'Iniciar sesión | BarrioDigital',
   },
+  {
+    path: 'legal',
+    loadComponent: () =>
+      import('./features/legal/legal-shell.component').then((m) => m.LegalShellComponent),
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'terminos' },
+      {
+        path: 'terminos',
+        loadComponent: () =>
+          import('./features/legal/terminos.component').then((m) => m.TerminosComponent),
+        title: 'Términos de uso | BarrioDigital',
+      },
+      {
+        path: 'privacidad',
+        loadComponent: () =>
+          import('./features/legal/privacidad.component').then((m) => m.PrivacidadComponent),
+        title: 'Privacidad | BarrioDigital',
+      },
+      {
+        path: 'cookies',
+        loadComponent: () =>
+          import('./features/legal/cookies.component').then((m) => m.LegalCookiesComponent),
+        title: 'Documentación de cookies | BarrioDigital',
+      },
+      {
+        path: 'accesibilidad',
+        loadComponent: () =>
+          import('./features/legal/accesibilidad.component').then((m) => m.AccesibilidadComponent),
+        title: 'Accesibilidad | BarrioDigital',
+      },
+    ],
+  },
+  { path: 'cookies', redirectTo: 'legal/cookies', pathMatch: 'full' },
   // Fuera del layout: sin un rol válido no hay navegación que mostrar
   {
     path: 'no-access',

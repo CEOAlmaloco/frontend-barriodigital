@@ -1,0 +1,104 @@
+@if (showBanner()) {
+  <aside class="cookie-banner" role="dialog" aria-labelledby="cookie-banner-title" aria-live="polite">
+    <div class="cookie-banner__main">
+      <div class="cookie-banner__body">
+        <h2 id="cookie-banner-title" class="cookie-banner__title">
+          Cookies y preferencias de privacidad
+        </h2>
+        <p class="cookie-banner__text">
+          Usamos cookies técnicas necesarias para el servicio. Las de seguimiento son opcionales y
+          solo se activan si las aceptas. Puedes cambiar tu elección cuando quieras.
+        </p>
+        <a class="cookie-banner__doc-link" routerLink="/legal/cookies">Documentación de cookies</a>
+      </div>
+      <div class="cookie-banner__actions">
+        <button type="button" class="cookie-btn" (click)="openConfig()">Configurar cookies</button>
+        <button type="button" class="cookie-btn" (click)="rejectAll()">Rechazar opcionales</button>
+        <button type="button" class="cookie-btn" (click)="acceptAll()">Aceptar todas</button>
+      </div>
+    </div>
+  </aside>
+}
+
+@if (showReopen() && !hideReopenFooter()) {
+  <footer class="cookie-reopen">
+    <button type="button" class="cookie-reopen__link" (click)="openConfig()">Configurar cookies</button>
+  </footer>
+}
+
+@if (showPanel()) {
+  <div class="cookie-backdrop" (click)="closeConfig()" aria-hidden="true"></div>
+  <div
+    class="cookie-panel"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="cookie-panel-title"
+  >
+    <header class="cookie-panel__header">
+      <div class="cookie-panel__heading">
+        <span class="cookie-panel__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.75" />
+            <circle cx="9" cy="10" r="1.25" fill="currentColor" />
+            <circle cx="14" cy="9" r="1" fill="currentColor" />
+            <circle cx="11" cy="14" r="1.1" fill="currentColor" />
+            <circle cx="15.5" cy="13.5" r="1" fill="currentColor" />
+          </svg>
+        </span>
+        <h2 id="cookie-panel-title" class="cookie-panel__title">Configuración de cookies</h2>
+      </div>
+      <button
+        type="button"
+        class="cookie-panel__close"
+        aria-label="Cerrar configuración de cookies"
+        (click)="closeConfig()"
+      >
+        ×
+      </button>
+    </header>
+
+    <div class="cookie-panel__body">
+      <p class="cookie-panel__text">
+        Guardamos tu decisión en este navegador. Las técnicas son necesarias para sesión y
+        seguridad. El seguimiento opcional queda registrado como preferencia; si está desactivado,
+        no cargamos métricas opcionales.
+      </p>
+      <a class="cookie-banner__doc-link" routerLink="/legal/cookies" (click)="closeConfig()">
+        Documentación de cookies
+      </a>
+
+      <ul class="cookie-panel__list">
+        <li class="cookie-panel__item">
+          <div class="cookie-panel__row">
+            <mat-slide-toggle [checked]="true" [disabled]="true" color="primary">
+              Técnicas
+            </mat-slide-toggle>
+            <span class="cookie-panel__always">(Siempre activas)</span>
+          </div>
+          <p class="cookie-panel__hint">Sesión, seguridad, consentimiento y accesibilidad local.</p>
+        </li>
+        <li class="cookie-panel__item">
+          <div class="cookie-panel__row">
+            <mat-slide-toggle
+              [checked]="trackingDraft()"
+              color="primary"
+              (change)="onTrackingChange($event)"
+            >
+              Seguimiento
+            </mat-slide-toggle>
+          </div>
+          <p class="cookie-panel__hint">
+            Preferencia para métricas agregadas de mejora. Hoy no hay scripts de terceros; la
+            preferencia queda lista para cuando se habiliten.
+          </p>
+        </li>
+      </ul>
+    </div>
+
+    <div class="cookie-panel__actions">
+      <button type="button" class="cookie-btn" (click)="rejectAll()">Rechazar opcionales</button>
+      <button type="button" class="cookie-btn" (click)="acceptAll()">Aceptar todas</button>
+      <button type="button" class="cookie-btn" (click)="save()">Guardar</button>
+    </div>
+  </div>
+}
