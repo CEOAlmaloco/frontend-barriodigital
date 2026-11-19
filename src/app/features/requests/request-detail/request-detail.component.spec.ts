@@ -798,7 +798,7 @@ describe('RequestDetailComponent', () => {
       await render(Role.Vecino, () => of({ ...base, status: 'RESUELTO' }));
 
       expect(element.querySelector('app-request-satisfaction')).not.toBeNull();
-      expect(text()).toContain('¿Cómo fue la atención?');
+      expect(text()).toContain('¿Qué tan satisfecho estás con la atención de este trámite?');
       expect(hasButton('Enviar calificación')).toBe(true);
     });
 
@@ -840,7 +840,9 @@ describe('RequestDetailComponent', () => {
         }),
       );
 
-      element.querySelector<HTMLButtonElement>('[aria-label="Nota 5 de 5"]')!.click();
+      element
+        .querySelector<HTMLButtonElement>('[aria-label^="Nota 5 de 5"]')!
+        .click();
       await fixture.whenStable();
       await click(button('Enviar calificación'));
 
