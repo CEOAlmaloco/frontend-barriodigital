@@ -164,12 +164,17 @@ describe('AuthService', () => {
     expect(service.role()).toBeNull();
   });
 
-  it('cierra sesión con logoutRedirect sobre la cuenta activa', async () => {
+  it('cierra sesión con logoutRedirect sobre la cuenta activa y limpia el almacenamiento', async () => {
+    localStorage.setItem('bd.profile.photo.admin-id', 'data:image/png;base64,xx');
+    sessionStorage.setItem('msal.token.keys', 't');
     const service = setup(adminAccount);
 
     await firstValueFrom(service.hasSession());
     service.logout();
 
     expect(msal.logoutRedirect).toHaveBeenCalledWith({ account: adminAccount });
+    expect(localStorage.getItem('bd.profile.photo.admin-id')).toBeNull();
+    expect(sessionStorage.getItem('msal.token.keys')).toBeNull();
+    expect(service.account()).toBeNull();
   });
 });

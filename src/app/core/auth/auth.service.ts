@@ -6,6 +6,7 @@ import { Observable, catchError, map, of, shareReplay, switchMap, tap } from 'rx
 
 import { Role, RoleAccess, resolveAccess } from '../../shared/models/role';
 import { apiScope, loginRequest } from './msal-config';
+import { clearBrowserSessionData } from './session-cleanup';
 import { AccessTokenClaims, decodeJwtPayload } from './token-claims';
 
 /** `pending` mientras se pide el token; `claims` en null si no se pudo leer. */
@@ -97,7 +98,14 @@ export class AuthService {
   }
 
   logout(): void {
-    this.msal.logoutRedirect({ account: this.account() }).subscribe({
+    const account = this.account();
+    // Limpia tokens y datos de usuario/fotos antes del redirect (EP3.5-08).
+    clearBrowserSessionData();
+    this.account.set(null);
+    this.claimsAccountId = null;
+    this.claimsState.set({ status: 'loaded', claims: null });
+    this.claims$ = of(null);
+    this.msal.logoutRedirect({ account }).subscribe({
       error: (error: unknown) => console.error('No se pudo cerrar sesión en Microsoft Entra ID', error),
     });
   }

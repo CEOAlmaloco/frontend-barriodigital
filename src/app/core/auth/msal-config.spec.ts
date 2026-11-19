@@ -28,12 +28,12 @@ import {
 } from './msal-config';
 
 describe('provideMsal', () => {
-  it('guarda la sesión en localStorage para compartirla entre pestañas y ventanas', () => {
+  it('guarda la sesión en sessionStorage para que no sobreviva al cerrar el navegador', () => {
     TestBed.configureTestingModule({ providers: [provideRouter([]), provideMsal()] });
 
     const { cache } = TestBed.inject(MSAL_INSTANCE).getConfiguration();
 
-    expect(cache.cacheLocation).toBe(BrowserCacheLocation.LocalStorage);
+    expect(cache.cacheLocation).toBe(BrowserCacheLocation.SessionStorage);
   });
 });
 

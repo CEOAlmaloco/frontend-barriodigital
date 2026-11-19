@@ -37,8 +37,8 @@ function createMsalInstance(): IPublicClientApplication {
 
   return new PublicClientApplication({
     auth: { clientId, authority, redirectUri, postLogoutRedirectUri },
-    // Compartida entre pestañas y ventanas. MSAL cifra los tokens con una cookie que expira al cerrar el navegador
-    cache: { cacheLocation: BrowserCacheLocation.LocalStorage },
+    // sessionStorage: al cerrar el navegador no queda sesión (equipos compartidos, EP3.5-08 / SEG-07).
+    cache: { cacheLocation: BrowserCacheLocation.SessionStorage },
   });
 }
 
