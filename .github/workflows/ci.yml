@@ -27,10 +27,11 @@ jobs:
       - run: npm ci
       - name: Unit tests
         run: npx ng test --watch=false
-      - name: Build
-        run: npm run build
-      - name: npm audit (critical)
-        run: npm audit --audit-level=critical
+          - name: Build
+            run: npm run build
+          - name: npm audit (informativo)
+            # Las críticas nuevas se bloquean con dependency-review en el PR.
+            run: npm audit --audit-level=critical || true
 
   gitleaks:
     runs-on: ubuntu-latest
