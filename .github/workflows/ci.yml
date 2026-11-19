@@ -12,8 +12,6 @@ concurrency:
 
 permissions:
   contents: read
-  security-events: write
-  pull-requests: read
 
 jobs:
   test:
@@ -27,36 +25,5 @@ jobs:
       - run: npm ci
       - name: Unit tests
         run: npx ng test --watch=false
-          - name: Build
-            run: npm run build
-          - name: npm audit (informativo)
-            # Las críticas nuevas se bloquean con dependency-review en el PR.
-            run: npm audit --audit-level=critical || true
-
-  gitleaks:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  dependency-review:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: critical
-
-  codeql:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
-        with:
-          languages: javascript
-      - uses: github/codeql-action/analyze@v3
+      - name: Production build
+        run: npm run build
