@@ -1,0 +1,45 @@
+<mat-button-toggle-group
+  class="toolbar__range"
+  aria-label="Período"
+  hideSingleSelectionIndicator
+  [value]="range()"
+  (change)="selectRange($event.value)"
+>
+  @for (option of ranges; track option) {
+    <mat-button-toggle [value]="option">{{ rangeLabels[option] }}</mat-button-toggle>
+  }
+</mat-button-toggle-group>
+
+<div class="toolbar__freshness">
+  @if (freshness(); as freshness) {
+    @if (freshness.dataAt) {
+      <span
+        >Datos al <strong>{{ freshness.dataAt | requestDate }}</strong></span
+      >
+    } @else {
+      <span>Aún no hay eventos registrados</span>
+    }
+    <span
+      >Consultado <strong>{{ freshness.consultedAt }}</strong></span
+    >
+  }
+  <span class="toolbar__live" [class.toolbar__live--paused]="paused()">
+    <mat-icon aria-hidden="true">{{ paused() ? 'pause_circle' : 'autorenew' }}</mat-icon>
+    {{
+      paused()
+        ? 'Actualización automática en pausa'
+        : 'Se actualiza cada ' + intervalSeconds() + ' s'
+    }}
+  </span>
+</div>
+
+<div class="toolbar__actions">
+  <button matButton="outlined" type="button" (click)="togglePause.emit()">
+    <mat-icon aria-hidden="true">{{ paused() ? 'play_arrow' : 'pause' }}</mat-icon>
+    {{ paused() ? 'Reanudar' : 'Pausar' }}
+  </button>
+  <button matButton="outlined" type="button" (click)="refresh.emit()">
+    <mat-icon aria-hidden="true">refresh</mat-icon>
+    Actualizar
+  </button>
+</div>

@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import {
   ActivatedRouteSnapshot,
+  CanActivateFn,
   GuardResult,
   Router,
   RouterStateSnapshot,
@@ -10,40 +11,82 @@ import {
 import { MsalGuard } from '@azure/msal-angular';
 import { Observable, Subject, firstValueFrom, of } from 'rxjs';
 
-import { Role } from '../../shared/models/role';
-import { authGuard, roleGuard } from './auth.guard';
+import { Role, RoleAccess } from '../../shared/models/role';
+import { accessGuard, authGuard, noAccessGuard, roleGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 
+const granted = (role: Role): RoleAccess => ({ kind: 'granted', role });
+const DENIED: readonly RoleAccess[] = [
+  { kind: 'none' },
+  { kind: 'multiple', roles: [Role.Admin, Role.Funcionario] },
+  { kind: 'unavailable' },
+];
+
+const runAccessGuard = (
+  guard: CanActivateFn,
+  access$: Observable<RoleAccess>,
+  route = {} as ActivatedRouteSnapshot,
+) => {
+  TestBed.configureTestingModule({
+    providers: [
+      provideRouter([]),
+      { provide: AuthService, useValue: { whenAccessResolved: () => access$ } },
+    ],
+  });
+
+  return firstValueFrom(
+    TestBed.runInInjectionContext(() =>
+      guard(route, {} as RouterStateSnapshot),
+    ) as Observable<GuardResult>,
+  );
+};
+
+const urlOf = (result: GuardResult) => TestBed.inject(Router).serializeUrl(result as UrlTree);
+
 describe('roleGuard', () => {
-  const route = { data: { roles: [Role.Vecino, Role.Funcionario] } } as unknown as ActivatedRouteSnapshot;
+  const route = {
+    data: { roles: [Role.Admin, Role.Auditor] },
+  } as unknown as ActivatedRouteSnapshot;
 
-  const runGuard = (roles$: Observable<string[]>) => {
-    TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: AuthService, useValue: { whenRolesLoaded: () => roles$ } }],
-    });
-
-    return firstValueFrom(
-      TestBed.runInInjectionContext(() => roleGuard(route, {} as RouterStateSnapshot)) as Observable<GuardResult>,
-    );
-  };
-
-  it.each([Role.Vecino, Role.Funcionario])('deja pasar a %s', async (role) => {
-    expect(await runGuard(of([role]))).toBe(true);
+  it.each([Role.Admin, Role.Auditor])('deja pasar a %s', async (role) => {
+    expect(await runAccessGuard(roleGuard, of(granted(role)), route)).toBe(true);
   });
 
-  it.each([Role.Admin, Role.Auditor])('%s vuelve al inicio', async (role) => {
-    const result = await runGuard(of([role]));
-
-    expect(TestBed.inject(Router).serializeUrl(result as UrlTree)).toBe('/inicio');
+  it.each([Role.Vecino, Role.Funcionario])('%s vuelve al inicio', async (role) => {
+    expect(urlOf(await runAccessGuard(roleGuard, of(granted(role)), route))).toBe('/inicio');
   });
 
-  it('espera a que lleguen los roles del token antes de decidir', async () => {
-    const roles$ = new Subject<string[]>();
-    const decision = runGuard(roles$);
+  it.each(DENIED)('sin un rol válido ($kind) lleva a la pantalla sin acceso', async (access) => {
+    expect(urlOf(await runAccessGuard(roleGuard, of(access), route))).toBe('/no-access');
+  });
 
-    roles$.next([Role.Vecino]);
+  it('espera a que se lea el token antes de decidir', async () => {
+    const access$ = new Subject<RoleAccess>();
+    const decision = runAccessGuard(roleGuard, access$, route);
+
+    access$.next(granted(Role.Auditor));
 
     expect(await decision).toBe(true);
+  });
+});
+
+describe('accessGuard', () => {
+  it.each(Object.values(Role))('deja pasar a %s', async (role) => {
+    expect(await runAccessGuard(accessGuard, of(granted(role)))).toBe(true);
+  });
+
+  it.each(DENIED)('$kind lleva a la pantalla sin acceso', async (access) => {
+    expect(urlOf(await runAccessGuard(accessGuard, of(access)))).toBe('/no-access');
+  });
+});
+
+describe('noAccessGuard', () => {
+  it.each(DENIED)('$kind ve la pantalla sin acceso', async (access) => {
+    expect(await runAccessGuard(noAccessGuard, of(access))).toBe(true);
+  });
+
+  it.each(Object.values(Role))('%s con su rol vuelve al inicio', async (role) => {
+    expect(urlOf(await runAccessGuard(noAccessGuard, of(granted(role))))).toBe('/inicio');
   });
 });
 

@@ -1,0 +1,61 @@
+@use 'tokens' as *;
+
+$content-max-width: 1200px;
+
+.reports-layout {
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+  max-width: $content-max-width;
+  margin-inline: auto;
+  padding: $space-6 $space-4;
+
+  @media (min-width: $breakpoint-md) {
+    padding: $space-8 $space-6;
+  }
+
+  @media (min-width: $breakpoint-lg) {
+    padding: $space-12;
+  }
+}
+
+.reports-layout__head {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+
+  h1,
+  p {
+    margin: 0;
+  }
+}
+
+.reports-layout__lead {
+  max-width: $measure-body;
+  color: var(--bd-text-muted);
+}
+
+// Mismas pestañas que Auditoría
+.reports-layout__tabs {
+  --mat-tab-active-label-text-color: var(--bd-primary);
+  --mat-tab-active-focus-label-text-color: var(--bd-primary);
+  --mat-tab-active-hover-label-text-color: var(--bd-primary);
+  --mat-tab-active-indicator-color: var(--bd-primary);
+  --mat-tab-active-focus-indicator-color: var(--bd-primary);
+  --mat-tab-active-hover-indicator-color: var(--bd-primary);
+  --mat-tab-inactive-label-text-color: var(--bd-text-muted);
+  --mat-tab-inactive-hover-label-text-color: var(--bd-text);
+  --mat-tab-inactive-focus-label-text-color: var(--bd-text);
+  --mat-tab-divider-color: var(--bd-border);
+  --mat-tab-container-height: #{$size-touch-target + 4px};
+
+  margin-block-start: -$space-2;
+
+  mat-icon {
+    margin-inline-end: $space-2;
+  }
+}
+
+.reports-layout__panel {
+  display: block;
+}

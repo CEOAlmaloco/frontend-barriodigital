@@ -1,0 +1,87 @@
+@let event = view();
+<div class="detail">
+  @if (event.transition; as transition) {
+    <p class="detail__transition">
+      <span class="detail__label">Estado</span>
+      @if (transition.from) {
+        <app-request-status-badge [status]="transition.from" />
+      } @else {
+        <span class="detail__muted">Sin registro</span>
+      }
+      <mat-icon aria-hidden="true">arrow_forward</mat-icon>
+      <span class="cdk-visually-hidden">a</span>
+      @if (transition.to) {
+        <app-request-status-badge [status]="transition.to" />
+      } @else {
+        <span class="detail__muted">Sin registro</span>
+      }
+    </p>
+  }
+
+  @if (event.fields.length) {
+    <dl class="detail__fields">
+      @for (field of event.fields; track field.label) {
+        <div class="detail__field">
+          <dt>{{ field.label }}</dt>
+          <dd>{{ field.value }}</dd>
+        </div>
+      }
+    </dl>
+  }
+
+  @if (event.interventionReason) {
+    <app-audit-intervention [reason]="event.interventionReason" />
+  }
+
+  @if (event.change; as change) {
+    <app-audit-change-table [change]="change" />
+  }
+
+  <dl class="detail__tech">
+    <div>
+      <dt>ID del evento</dt>
+      <dd>{{ event.event.eventId }}</dd>
+    </div>
+    @if (event.kind === 'config') {
+      <div>
+        <dt>IP de origen</dt>
+        <dd>{{ event.ip ?? event.ipNote }}</dd>
+      </div>
+    }
+    @if (event.event.producer) {
+      <div>
+        <dt>Origen</dt>
+        <dd>{{ event.event.producer }}</dd>
+      </div>
+    }
+    @if (event.event.sequence !== null && event.event.sequence !== undefined) {
+      <div>
+        <dt>Secuencia</dt>
+        <dd>{{ event.event.sequence }}</dd>
+      </div>
+    }
+  </dl>
+
+  <div class="detail__actions">
+    @if (event.actorId && !actorFiltered()) {
+      <button matButton="outlined" type="button" (click)="selectActor()">
+        <mat-icon aria-hidden="true">person_search</mat-icon>
+        Ver eventos de este actor
+      </button>
+    }
+    @if (timelineParams(); as params) {
+      <a matButton="outlined" routerLink="/audit" [queryParams]="params">
+        <mat-icon aria-hidden="true">timeline</mat-icon>
+        Historial del trámite
+      </a>
+    }
+    @if (event.requestId) {
+      <a matButton [routerLink]="['/tramites', event.requestId]">
+        <mat-icon aria-hidden="true">open_in_new</mat-icon>
+        Abrir trámite
+      </a>
+    }
+  </div>
+
+  <app-audit-raw-data [event]="event.event" />
+</div>

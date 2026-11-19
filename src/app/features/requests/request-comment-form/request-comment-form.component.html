@@ -1,0 +1,83 @@
+<form
+  class="comment-form"
+  [formGroup]="form"
+  [attr.aria-labelledby]="titleId"
+  (ngSubmit)="submit()"
+  novalidate
+>
+  <h3 class="comment-form__title" [id]="titleId">Nuevo comentario</h3>
+
+  <mat-form-field class="comment-form__text" subscriptSizing="dynamic">
+    <mat-label>Comentario</mat-label>
+    <textarea
+      #textArea
+      matInput
+      rows="3"
+      required
+      formControlName="text"
+      [maxlength]="maxLength"
+      [readonly]="saving()"
+    ></textarea>
+    <mat-hint>Lo verán tú y el equipo municipal. No se puede editar ni borrar.</mat-hint>
+    <mat-hint align="end" class="comment-form__count">
+      {{ text.value.length }} / {{ maxLength }}
+    </mat-hint>
+    @if (text.hasError('required')) {
+      <mat-error>Escribe el comentario. La foto sola no explica qué cambió.</mat-error>
+    }
+  </mat-form-field>
+
+  <fieldset class="comment-form__image">
+    <legend class="comment-form__legend">Foto (opcional)</legend>
+    <app-request-image-field
+      compact
+      [file]="image.file()"
+      [processing]="image.processing()"
+      [error]="image.error()"
+      [disabled]="saving()"
+      (fileSelected)="selectImage($event)"
+      (removed)="removeImage()"
+    />
+  </fieldset>
+
+  @if (saveError(); as message) {
+    <p class="comment-form__alert" role="alert">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <span>{{ message }}</span>
+    </p>
+  }
+
+  <div class="comment-form__actions">
+    @if (remaining() <= remainingNotice) {
+      <p class="comment-form__remaining">
+        Puedes agregar {{ remaining() }} {{ remaining() === 1 ? 'comentario' : 'comentarios' }} más.
+      </p>
+    }
+    <button matButton type="button" [disabled]="saving()" (click)="cancelled.emit()">
+      Cancelar
+    </button>
+    <button
+      matButton="filled"
+      type="submit"
+      class="comment-form__submit"
+      [disabled]="image.processing() || image.error() !== null"
+      [attr.aria-busy]="saving()"
+    >
+      <span [class.comment-form__submit-label--busy]="saving()">Enviar comentario</span>
+      @if (saving()) {
+        <mat-progress-spinner
+          class="comment-form__spinner"
+          mode="indeterminate"
+          diameter="20"
+          aria-hidden="true"
+        />
+      }
+    </button>
+  </div>
+
+  <p class="cdk-visually-hidden" role="status">
+    @if (saving()) {
+      Enviando comentario.
+    }
+  </p>
+</form>

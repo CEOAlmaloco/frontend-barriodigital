@@ -1,0 +1,119 @@
+@use 'tokens' as *;
+
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  padding: $space-4;
+  border: $border-width solid var(--bd-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-background);
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: comment-form-enter $transition-base;
+  }
+}
+
+.comment-form__title {
+  margin: 0;
+  font-size: $font-body;
+  font-weight: $font-weight-semibold;
+}
+
+.comment-form__text {
+  width: 100%;
+}
+
+.comment-form__count {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.comment-form__image {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+// Etiqueta del grupo: sobre las ayudas en tamaño y color, bajo el título del formulario en peso
+.comment-form__legend {
+  padding: 0;
+  color: var(--bd-text);
+  font-size: $font-body;
+  font-weight: $font-weight-medium;
+}
+
+.comment-form__alert {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-2;
+  margin: 0;
+  padding: $space-2 $space-3;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-error-container);
+  color: var(--bd-text);
+
+  mat-icon {
+    flex: none;
+    color: var(--bd-error);
+  }
+}
+
+// En móvil, el envío queda arriba y a todo el ancho
+.comment-form__actions {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: stretch;
+  gap: $space-2;
+
+  button {
+    min-height: $size-touch-target;
+  }
+
+  @media (min-width: $breakpoint-sm) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+  }
+}
+
+// Mismo patrón que los diálogos de asignación y de tipos: el spinner reemplaza al texto sin cambiar el ancho.
+// El texto queda transparente y no oculto, para que el botón conserve su nombre accesible
+.comment-form__submit {
+  position: relative;
+}
+
+.comment-form__submit-label--busy {
+  opacity: 0;
+}
+
+.comment-form__spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+.comment-form__remaining {
+  margin: 0;
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+  text-align: center;
+
+  @media (min-width: $breakpoint-sm) {
+    margin-inline-end: auto;
+    text-align: start;
+  }
+}
+
+@keyframes comment-form-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-$space-1);
+  }
+}

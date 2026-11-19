@@ -23,6 +23,7 @@ describe('ProcedureTypeDialogComponent', () => {
     active: false,
     dailyQuota: 10,
     remainingQuota: 3,
+    slaBusinessDays: 5,
   };
   let host: ComponentFixture<DialogHost>;
   let ref: MatDialogRef<ProcedureTypeDialogComponent, ProcedureTypeDialogResult>;
@@ -44,6 +45,11 @@ describe('ProcedureTypeDialogComponent', () => {
     return field;
   };
   const form = () => ref.componentInstance['form'];
+  const codeText = () =>
+    overlay()
+      .querySelector('.procedure-type-dialog__code')
+      ?.textContent?.replace(/\s+/g, ' ')
+      .trim();
   const submit = () => ref.componentInstance['submit']();
   const open = async (data: ProcedureTypeDialogData = { mode: 'create' }) => {
     ref = TestBed.inject(MatDialog).open(ProcedureTypeDialogComponent, { data });
@@ -123,6 +129,7 @@ describe('ProcedureTypeDialogComponent', () => {
       value: 'a'.repeat(40),
       label: `${'Á'.repeat(110)}  ¡Bien!`,
       active: false,
+      slaBusinessDays: null,
     });
     expect(service.updateProcedure).not.toHaveBeenCalled();
   });
@@ -145,27 +152,19 @@ describe('ProcedureTypeDialogComponent', () => {
       value: 'semaforo',
       label: 'Á'.repeat(120),
       active: true,
+      slaBusinessDays: null,
     });
   });
 
-  it('edita con código de solo lectura enfocable y sin mutación del objeto de entrada, y exige cambio efectivo', async () => {
+  it('edita con el código como dato, sin mutar el objeto de entrada, y exige cambio efectivo', async () => {
     const original = { ...limited };
     await open({ mode: 'edit', procedure: original });
-    expect(input('value').value).toBe('semaforo');
-    expect(input('value').readOnly).toBe(true);
-    expect(input('value').disabled).toBe(false);
-    expect(input('value').tabIndex).toBe(0);
-    const codeField = input('value').closest('mat-form-field')!;
-    expect(codeField.querySelector('mat-label')?.textContent).toBe('Código');
-    const hint = codeField.querySelector('mat-hint')!;
-    expect(hint.textContent).toBe('El código no se puede modificar');
-    expect(input('value').getAttribute('aria-describedby')).toContain(hint.id);
-    input('value').focus();
-    input('value').select();
-    expect(document.activeElement).toBe(input('value'));
-    expect(input('value').selectionStart).toBe(0);
-    expect(input('value').selectionEnd).toBe('semaforo'.length);
+    expect(overlay().querySelector('h2')?.textContent).toBe('Editar tipo de trámite');
+    expect(codeText()).toBe('Código semaforo');
+    expect(input('value')).toBeNull();
     expect(input('dailyQuota').value).toBe('10');
+    expect(input('slaBusinessDays').value).toBe('5');
+    expect(form().controls.noSla.value).toBe(false);
     expect(input('dailyQuota').disabled).toBe(false);
     expect(form().controls.active.value).toBe(false);
     expect(button('Guardar cambios').disabled).toBe(true);
@@ -193,10 +192,12 @@ describe('ProcedureTypeDialogComponent', () => {
       const result = firstValueFrom(ref.afterClosed());
       submit();
       expect(await result).toEqual({ kind: 'saved', mode: 'edit' });
+      // Editar otro campo conserva el plazo: antes el PUT lo omitía y catalog lo borraba
       expect(service.updateProcedure).toHaveBeenCalledWith('semaforo', {
         label: field === 'label' ? 'Otro nombre' : 'Semáforo',
         active: field === 'active',
         dailyQuota: 10,
+        slaBusinessDays: 5,
       });
       expect(service.createProcedure).not.toHaveBeenCalled();
     },
@@ -220,10 +221,11 @@ describe('ProcedureTypeDialogComponent', () => {
       label: 'Semáforo',
       active: false,
       dailyQuota: null,
+      slaBusinessDays: 5,
     });
   });
 
-  it('bloquea el código al guardar y tras error restaura solo lectura sin cambiar el destino del PUT', async () => {
+  it('bloquea el formulario al guardar y tras un error lo restaura sin cambiar el destino del PUT', async () => {
     const response = new Subject<ProcedureType>();
     service.updateProcedure.mockReturnValueOnce(response);
     await open({ mode: 'edit', procedure: limited });
@@ -231,19 +233,19 @@ describe('ProcedureTypeDialogComponent', () => {
     write('label', 'Otro nombre');
     submit();
     await host.whenStable();
-    expect(input('value').disabled).toBe(true);
-    expect(input('value').readOnly).toBe(true);
+    expect(input('label').disabled).toBe(true);
+    expect(input('slaBusinessDays').disabled).toBe(true);
     expect(service.updateProcedure).toHaveBeenCalledWith('semaforo', {
       label: 'Otro nombre',
       active: false,
       dailyQuota: 10,
+      slaBusinessDays: 5,
     });
     response.error(new HttpErrorResponse({ status: 503 }));
     await host.whenStable();
-    expect(input('value').disabled).toBe(false);
-    expect(input('value').readOnly).toBe(true);
-    expect(input('value').value).toBe('semaforo');
+    expect(codeText()).toBe('Código semaforo');
     expect(input('label').value).toBe('Otro nombre');
+    expect(input('slaBusinessDays').disabled).toBe(false);
     expect(button('Guardar cambios').disabled).toBe(false);
     submit();
     expect(service.updateProcedure).toHaveBeenCalledTimes(2);
@@ -251,6 +253,7 @@ describe('ProcedureTypeDialogComponent', () => {
       label: 'Otro nombre',
       active: false,
       dailyQuota: 10,
+      slaBusinessDays: 5,
     });
     expect(service.updateProcedure.mock.calls[1][1]).not.toHaveProperty('remainingQuota');
   });
@@ -286,6 +289,129 @@ describe('ProcedureTypeDialogComponent', () => {
       label: 'Semáforo',
       active: false,
       dailyQuota: quota,
+      slaBusinessDays: 5,
+    });
+  });
+
+  it('el interruptor Activo se nombra con su etiqueta, se describe con la ayuda y la etiqueta lo alterna', async () => {
+    await open({ mode: 'edit', procedure: limited });
+    const toggle = overlay().querySelector<HTMLButtonElement>('#procedure-type-active-button')!;
+    const label = overlay().querySelector<HTMLLabelElement>('#procedure-type-active-label')!;
+    expect(toggle.getAttribute('role')).toBe('switch');
+    expect(toggle.getAttribute('aria-labelledby')).toBe('procedure-type-active-label');
+    expect(overlay().querySelector('#procedure-type-active-help')?.textContent).toContain(
+      'no se podrá elegir en trámites nuevos',
+    );
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+    label.click();
+    await host.whenStable();
+    expect(form().controls.active.value).toBe(true);
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+  });
+
+  describe('plazo de atención', () => {
+    it('al crear parte en «Sin plazo» y envía el plazo si se define', async () => {
+      await open();
+      expect(form().controls.noSla.value).toBe(true);
+      expect(input('slaBusinessDays').disabled).toBe(true);
+      write('value', 'semaforo');
+      write('label', 'Semáforo');
+      form().controls.noSla.setValue(false);
+      await host.whenStable();
+      write('slaBusinessDays', '3');
+      submit();
+      expect(service.createProcedure).toHaveBeenCalledWith({
+        value: 'semaforo',
+        label: 'Semáforo',
+        active: true,
+        slaBusinessDays: 3,
+      });
+    });
+
+    it('«Sin plazo» vacía y deshabilita el campo, envía null y al desmarcarlo restaura el valor', async () => {
+      await open({ mode: 'edit', procedure: limited });
+      write('slaBusinessDays', '8');
+      form().controls.noSla.setValue(true);
+      await host.whenStable();
+      expect(input('slaBusinessDays').disabled).toBe(true);
+      expect(input('slaBusinessDays').value).toBe('');
+      form().controls.noSla.setValue(false);
+      await host.whenStable();
+      expect(input('slaBusinessDays').value).toBe('8');
+      form().controls.noSla.setValue(true);
+      submit();
+      expect(service.updateProcedure).toHaveBeenCalledWith('semaforo', {
+        label: 'Semáforo',
+        active: false,
+        dailyQuota: 10,
+        slaBusinessDays: null,
+      });
+    });
+
+    it('un tipo sin plazo abre con «Sin plazo» y quitarla exige un valor', async () => {
+      await open({ mode: 'edit', procedure: { ...limited, slaBusinessDays: null } });
+      expect(form().controls.noSla.value).toBe(true);
+      form().controls.noSla.setValue(false);
+      await host.whenStable();
+      expect(input('slaBusinessDays').value).toBe('');
+      expect(button('Guardar cambios').disabled).toBe(true);
+      submit();
+      expect(service.updateProcedure).not.toHaveBeenCalled();
+    });
+
+    it('cambiar solo el plazo cuenta como cambio', async () => {
+      await open({ mode: 'edit', procedure: limited });
+      write('slaBusinessDays', '5');
+      await host.whenStable();
+      expect(button('Guardar cambios').disabled).toBe(true);
+      write('slaBusinessDays', '6');
+      await host.whenStable();
+      expect(button('Guardar cambios').disabled).toBe(false);
+    });
+
+    it.each([0, 121, 1.5, NaN, null])('rechaza el plazo %s', async (days) => {
+      await open({ mode: 'edit', procedure: limited });
+      form().controls.slaBusinessDays.setValue(days);
+      submit();
+      expect(form().controls.slaBusinessDays.invalid).toBe(true);
+      expect(service.updateProcedure).not.toHaveBeenCalled();
+    });
+
+    it.each([1, 120])('acepta el extremo %s', async (days) => {
+      await open({ mode: 'edit', procedure: limited });
+      write('slaBusinessDays', String(days));
+      submit();
+      expect(service.updateProcedure).toHaveBeenCalledWith(
+        'semaforo',
+        expect.objectContaining({ slaBusinessDays: days }),
+      );
+    });
+
+    it('traduce el 400 de rango de catalog a un texto con tildes', async () => {
+      service.updateProcedure.mockReturnValue(
+        throwError(
+          () =>
+            new HttpErrorResponse({
+              status: 400,
+              error: { message: 'El plazo debe ser un entero entre 1 y 120 dias habiles' },
+            }),
+        ),
+      );
+      await open({ mode: 'edit', procedure: limited });
+      write('slaBusinessDays', '9');
+      submit();
+      await host.whenStable();
+      expect(overlay().textContent).toContain(
+        'El plazo debe ser un número entero entre 1 y 120 días hábiles.',
+      );
+    });
+
+    it('explica el plazo y el cupo con toggletips accesibles', async () => {
+      await open({ mode: 'edit', procedure: limited });
+      const tips = Array.from(
+        overlay().querySelectorAll<HTMLButtonElement>('app-info-toggletip button'),
+      ).map((tip) => tip.getAttribute('aria-label'));
+      expect(tips).toEqual(['Más información: cupo diario', 'Más información: plazo de atención']);
     });
   });
 
@@ -334,6 +460,7 @@ describe('ProcedureTypeDialogComponent', () => {
       value: 'nuevo',
       label: 'Nombre',
       active: false,
+      slaBusinessDays: null,
     });
   });
 
@@ -356,10 +483,10 @@ describe('ProcedureTypeDialogComponent', () => {
       await host.whenStable();
       expect(input('label').value).toBe('Otro nombre');
       expect(form().controls.value.enabled).toBe(true);
-      expect(input('value').readOnly).toBe(true);
-      expect(input('value').disabled).toBe(false);
-      expect(input('value').value).toBe('semaforo');
+      expect(codeText()).toBe('Código semaforo');
       expect(form().controls.unlimited.enabled).toBe(true);
+      expect(form().controls.noSla.enabled).toBe(true);
+      expect(input('slaBusinessDays').value).toBe('5');
       expect(input('dailyQuota').disabled).toBe(unlimited);
       expect(input('dailyQuota').value).toBe(unlimited ? '' : '10');
       expect(overlay().querySelectorAll('.procedure-type-dialog__error')).toHaveLength(1);

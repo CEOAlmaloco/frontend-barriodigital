@@ -1,0 +1,79 @@
+@use 'tokens' as *;
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  min-width: 0;
+
+  p,
+  dl,
+  dd {
+    margin: 0;
+  }
+}
+
+.detail__transition {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-2;
+
+  mat-icon {
+    color: var(--bd-text-muted);
+  }
+}
+
+.detail__label,
+.detail__fields dt,
+.detail__muted {
+  color: var(--bd-text-muted);
+}
+
+.detail__label {
+  min-width: 10ch;
+}
+
+.detail__fields {
+  display: grid;
+  gap: $space-2;
+}
+
+.detail__field {
+  display: grid;
+  gap: 0 $space-4;
+
+  @media (min-width: $breakpoint-sm) {
+    grid-template-columns: minmax(10ch, max-content) minmax(0, 1fr);
+  }
+
+  dd {
+    overflow-wrap: anywhere;
+  }
+}
+
+.detail__tech {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-1 $space-6;
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+
+  div {
+    display: flex;
+    gap: $space-2;
+    min-width: 0;
+  }
+
+  dd {
+    color: var(--bd-text);
+    font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    overflow-wrap: anywhere;
+  }
+}
+
+.detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}

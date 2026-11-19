@@ -1,0 +1,61 @@
+@use 'tokens' as *;
+
+$field-basis: 240px;
+$field-max: 360px;
+// Alto del campo outline de Material: el botón se centra en esa línea aunque un campo tenga ayuda debajo
+$field-height: 56px;
+
+// Los campos se alinean arriba: la ayuda de un campo crece hacia abajo sin mover al otro
+:host {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: $space-3 $space-4;
+}
+
+.map-filters__field {
+  flex: 1 1 $field-basis;
+  min-width: 0;
+
+  @media (min-width: $breakpoint-md) {
+    max-width: $field-max;
+  }
+}
+
+.map-filters__hint {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px $space-1;
+  color: var(--bd-text-muted);
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--bd-accent-text);
+    font-size: 16px;
+  }
+}
+
+.map-filters__retry {
+  min-height: 24px;
+  padding: 0 $space-1;
+  border: 0;
+  border-radius: $space-1;
+  background: none;
+  color: var(--bd-primary-dark);
+  cursor: pointer;
+  font: inherit;
+  font-weight: $font-weight-semibold;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: 1px;
+  }
+}
+
+.map-filters__clear {
+  margin-block-start: calc(($field-height - 40px) / 2);
+}

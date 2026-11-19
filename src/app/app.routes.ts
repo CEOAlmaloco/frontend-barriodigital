@@ -1,29 +1,48 @@
 import { Routes } from '@angular/router';
 
-import { authGuard, redirectAuthenticatedGuard, roleGuard } from './core/auth/auth.guard';
+import {
+  accessGuard,
+  authGuard,
+  noAccessGuard,
+  redirectAuthenticatedGuard,
+  roleGuard,
+} from './core/auth/auth.guard';
 import { AuthenticatedLayoutComponent } from './core/layout/authenticated-layout.component';
-import { LoginComponent } from './features/login/login.component';
-import { REQUESTS_ROLES, Role } from './shared/models/role';
+import { OVERSIGHT_ROLES, REPORTS_ROLES, REQUESTS_ROLES, Role } from './shared/models/role';
 
 export const routes: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    component: LoginComponent,
+    loadComponent: () => import('./features/login/login.component').then((m) => m.LoginComponent),
     canActivate: [redirectAuthenticatedGuard],
     title: 'Iniciar sesión | BarrioDigital',
   },
-  // Rutas privadas: van como hijas del layout autenticado, que monta el header y aplica authGuard
+  // Fuera del layout: sin un rol válido no hay navegación que mostrar
+  {
+    path: 'no-access',
+    canActivate: [authGuard, noAccessGuard],
+    loadComponent: () =>
+      import('./features/no-access/no-access.component').then((m) => m.NoAccessComponent),
+    title: 'Sin acceso | BarrioDigital',
+  },
+  // Rutas privadas: hijas del layout autenticado, que monta el header. accessGuard corre después de authGuard
   {
     path: '',
     component: AuthenticatedLayoutComponent,
     canActivate: [authGuard],
+    canActivateChild: [accessGuard],
     children: [
       {
         path: 'inicio',
-        loadComponent: () =>
-          import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+        loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent),
         title: 'Inicio | BarrioDigital',
+      },
+      {
+        path: 'perfil',
+        loadComponent: () =>
+          import('./features/profile/profile.component').then((m) => m.ProfileComponent),
+        title: 'Mi perfil | BarrioDigital',
       },
       {
         path: 'tramites',
@@ -32,6 +51,16 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/requests/requests.component').then((m) => m.RequestsComponent),
         title: 'Trámites | BarrioDigital',
+      },
+      {
+        path: 'tramites/:id',
+        canActivate: [roleGuard],
+        data: { roles: REQUESTS_ROLES },
+        loadComponent: () =>
+          import('./features/requests/request-detail/request-detail.component').then(
+            (m) => m.RequestDetailComponent,
+          ),
+        title: 'Detalle del trámite | BarrioDigital',
       },
       {
         path: 'admin',
@@ -44,15 +73,35 @@ export const routes: Routes = [
       {
         path: 'reports',
         canActivate: [roleGuard],
-        data: { roles: [Role.Admin] },
+        data: { roles: REPORTS_ROLES },
         loadComponent: () =>
-          import('./features/reports/reports.component').then((m) => m.ReportsComponent),
-        title: 'Reportes | BarrioDigital',
+          import('./features/reports/reports-layout/reports-layout.component').then(
+            (m) => m.ReportsLayoutComponent,
+          ),
+        children: [
+          {
+            path: '',
+            pathMatch: 'full',
+            canActivate: [roleGuard],
+            data: { roles: OVERSIGHT_ROLES, deniedRedirect: '/reports/map' },
+            loadComponent: () =>
+              import('./features/reports/reports.component').then((m) => m.ReportsComponent),
+            title: 'Reportes | BarrioDigital',
+          },
+          {
+            path: 'map',
+            loadComponent: () =>
+              import('./features/reports/report-map/report-map.component').then(
+                (m) => m.ReportMapComponent,
+              ),
+            title: 'Mapa de trámites | BarrioDigital',
+          },
+        ],
       },
       {
         path: 'audit',
         canActivate: [roleGuard],
-        data: { roles: [Role.Auditor] },
+        data: { roles: OVERSIGHT_ROLES },
         loadComponent: () =>
           import('./features/audit/audit.component').then((m) => m.AuditComponent),
         title: 'Auditoría | BarrioDigital',

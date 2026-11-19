@@ -1,0 +1,76 @@
+@use 'tokens' as *;
+
+$button-size: 28px;
+
+:host {
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.toggletip__button {
+  position: relative;
+  display: inline-grid;
+  width: $button-size;
+  height: $button-size;
+  place-items: center;
+  margin: -$space-1 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--bd-text-muted);
+  cursor: pointer;
+  transition:
+    background-color $transition-base,
+    color $transition-base;
+
+  // Área táctil de 44 px sin desplazar el texto que acompaña
+  &::after {
+    content: '';
+    position: absolute;
+    inset: calc((#{$size-touch-target} - #{$button-size}) / -2);
+  }
+
+  &:hover,
+  &[aria-expanded='true'] {
+    background-color: var(--bd-primary-container);
+    color: var(--bd-primary-dark);
+  }
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: 1px;
+  }
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// El globo vive en el contenedor de overlays: los tokens de color y de escala de texto vienen de html
+.toggletip__bubble {
+  max-width: min(300px, calc(100vw - #{$space-8}));
+  margin: 0;
+  padding: $space-2 $space-3;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $space-1 + 2px;
+  background-color: var(--bd-text);
+  color: var(--bd-surface);
+  box-shadow: 0 8px 24px rgba(37, 35, 41, 0.24);
+  font-family: var(--bd-font);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+  line-height: $line-height-body;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: toggletip-in $transition-base;
+  }
+}
+
+@keyframes toggletip-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}

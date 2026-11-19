@@ -9,7 +9,7 @@
   padding: $space-6 $space-6 $space-4;
   font-size: $font-h2;
   font-weight: $font-weight-semibold;
-  color: $color-text-primary;
+  color: var(--bd-text);
 }
 
 .rejection-reason-dialog__content {
@@ -18,7 +18,7 @@
   gap: $space-4;
   padding: $space-4 $space-6;
   font-size: $font-body;
-  color: $color-text-primary;
+  color: var(--bd-text);
 }
 
 .rejection-reason-dialog__summary {
@@ -29,12 +29,33 @@
   dt {
     margin-bottom: $space-1;
     font-size: $font-label;
-    color: $color-text-secondary;
+    color: var(--bd-text-muted);
   }
 
   dd {
     margin: 0;
     overflow-wrap: anywhere;
+  }
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-1;
+    margin-inline-start: $space-1;
+    border-radius: $space-1;
+    color: var(--bd-primary);
+    font-weight: $font-weight-medium;
+
+    &:focus-visible {
+      outline: $border-width-strong solid var(--bd-primary-dark);
+      outline-offset: 2px;
+    }
+
+    mat-icon {
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+    }
   }
 }
 

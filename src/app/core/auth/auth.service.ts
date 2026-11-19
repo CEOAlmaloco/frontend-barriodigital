@@ -4,9 +4,12 @@ import { MsalBroadcastService, MsalService } from '@azure/msal-angular';
 import { AccountInfo, AuthenticationResult, InteractionStatus } from '@azure/msal-browser';
 import { Observable, catchError, map, of, shareReplay, switchMap, tap } from 'rxjs';
 
-import { Role } from '../../shared/models/role';
+import { Role, RoleAccess, resolveAccess } from '../../shared/models/role';
 import { apiScope, loginRequest } from './msal-config';
 import { AccessTokenClaims, decodeJwtPayload } from './token-claims';
+
+/** `pending` mientras se pide el token; `claims` en null si no se pudo leer. */
+type ClaimsState = { status: 'pending' } | { status: 'loaded'; claims: AccessTokenClaims | null };
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -14,7 +17,7 @@ export class AuthService {
   private readonly interactionStatus = toSignal(inject(MsalBroadcastService).inProgress$, {
     initialValue: InteractionStatus.Startup,
   });
-  private readonly accessTokenClaims = signal<AccessTokenClaims | null>(null);
+  private readonly claimsState = signal<ClaimsState>({ status: 'pending' });
   private claimsAccountId: string | null = null;
   private claims$: Observable<AccessTokenClaims | null> = of(null);
 
@@ -22,8 +25,16 @@ export class AuthService {
   readonly isAuthenticated = computed(() => this.account() !== null);
   /** Object ID de la cuenta en Entra ID; es el solicitanteId de los trámites. */
   readonly userId = computed(() => this.account()?.localAccountId ?? null);
-  /** App Roles del usuario, leídos del claim roles del accessToken de la API. */
-  readonly roles = computed(() => this.accessTokenClaims()?.roles ?? []);
+  /** Acceso según el claim roles del accessToken de la API; null mientras llega el token. */
+  readonly access = computed<RoleAccess | null>(() => {
+    const state = this.claimsState();
+    return state.status === 'pending' ? null : resolveAccess(tokenRoles(state.claims));
+  });
+  /** Único rol del usuario. Null sin rol, con más de uno o con el token sin leer. */
+  readonly role = computed<Role | null>(() => {
+    const access = this.access();
+    return access?.kind === 'granted' ? access.role : null;
+  });
   readonly isInteractionInProgress = computed(
     () => this.interactionStatus() !== InteractionStatus.None,
   );
@@ -56,14 +67,26 @@ export class AuthService {
     );
   }
 
-  /** Lee el signal roles, así que en plantillas se actualiza solo cuando llegan los claims. */
+  /** Lee el signal role, así que en plantillas se actualiza solo cuando llegan los claims. */
   hasRole(role: Role): boolean {
-    return this.roles().includes(role);
+    return this.role() === role;
   }
 
-  /** Roles una vez leído el accessToken. Los guards lo usan porque corren antes de que llegue el token. */
-  whenRolesLoaded(): Observable<string[]> {
-    return this.claims$.pipe(map((claims) => claims?.roles ?? []));
+  /**
+   * Acceso una vez leído el accessToken. Pasa por hasSession porque los guards de una misma ruta
+   * se suscriben a la vez, y la cuenta (y con ella la petición del token) se sincroniza ahí.
+   */
+  whenAccessResolved(): Observable<RoleAccess> {
+    return this.hasSession().pipe(
+      switchMap(() => this.claims$),
+      map((claims) => resolveAccess(tokenRoles(claims))),
+    );
+  }
+
+  /** Vuelve a pedir el token después de una falla de lectura. */
+  retryAccess(): Observable<RoleAccess> {
+    this.claimsAccountId = null;
+    return this.whenAccessResolved();
   }
 
   login(): void {
@@ -97,7 +120,7 @@ export class AuthService {
     }
 
     this.claimsAccountId = accountId;
-    this.accessTokenClaims.set(null);
+    this.claimsState.set({ status: 'pending' });
 
     if (!account) {
       this.claims$ = of(null);
@@ -107,13 +130,17 @@ export class AuthService {
     this.claims$ = this.msal.acquireTokenSilent({ scopes: [apiScope], account }).pipe(
       map(({ accessToken }) => decodeJwtPayload(accessToken)),
       catchError((error: unknown) => {
-        this.claimsAccountId = null;
         console.error('No se pudieron leer los roles del token de acceso', error);
         return of(null);
       }),
       tap((claims) => {
-        if (this.claimsAccountId === accountId) {
-          this.accessTokenClaims.set(claims);
+        if (this.claimsAccountId !== accountId) {
+          return;
+        }
+        this.claimsState.set({ status: 'loaded', claims });
+        if (claims === null) {
+          // Sin claims legibles, la próxima sincronización vuelve a pedir el token
+          this.claimsAccountId = null;
         }
       }),
       shareReplay(1),
@@ -125,4 +152,9 @@ export class AuthService {
     console.error('No se pudo iniciar sesión con Microsoft Entra ID', error);
     this.loginFailed.set(true);
   }
+}
+
+/** Un token sin el claim roles es una cuenta sin rol; un token ilegible no permite decidir. */
+function tokenRoles(claims: AccessTokenClaims | null): readonly string[] | null {
+  return claims ? (claims.roles ?? []) : null;
 }

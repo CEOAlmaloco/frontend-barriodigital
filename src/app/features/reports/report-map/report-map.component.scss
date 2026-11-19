@@ -1,0 +1,122 @@
+@use 'tokens' as *;
+@use '../report-card' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+
+  // Más específico que la escala global de títulos, que fijaría todos los h2 al tamaño de $font-h2
+  h2 {
+    margin: 0;
+    font-size: calc(#{$font-h3} * var(--bd-text-scale, 1));
+    font-weight: $font-weight-semibold;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.map-page__card {
+  @include report-card;
+}
+
+.map-page__muted {
+  color: var(--bd-text-muted);
+}
+
+.map-page__foot {
+  padding-block-start: $space-3;
+  border-top: $border-width solid var(--bd-border);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+}
+
+.map-page__notice {
+  @include report-notice;
+}
+
+.map-page__state {
+  @include report-state;
+}
+
+.map-page__state-icon {
+  @include report-state-icon;
+}
+
+.map-page__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: $space-4;
+
+  @media (min-width: $breakpoint-lg) {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+}
+
+.map-page__card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-2 $space-3;
+}
+
+.map-page__view {
+  --mat-button-toggle-background-color: var(--bd-surface);
+  --mat-button-toggle-text-color: var(--bd-text);
+  --mat-button-toggle-selected-state-background-color: var(--bd-primary);
+  --mat-button-toggle-selected-state-text-color: var(--bd-on-primary);
+  --mat-button-toggle-divider-color: var(--bd-border-interactive);
+  --mat-button-toggle-height: 40px;
+  --mat-button-toggle-shape: #{$radius-base};
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    margin-inline-end: $space-1;
+    font-size: 18px;
+    vertical-align: -3px;
+  }
+}
+
+.map-page__overlay {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: grid;
+  padding: $space-6;
+  place-items: center;
+  border-radius: $radius-base;
+  background-color: color-mix(in srgb, var(--bd-surface) 70%, transparent);
+}
+
+.map-page__overlay-box,
+.map-page__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-2;
+  text-align: center;
+
+  mat-icon {
+    width: 32px;
+    height: 32px;
+    color: var(--bd-text-muted);
+    font-size: 32px;
+  }
+}
+
+.map-page__overlay-box {
+  max-width: 36ch;
+  padding: $space-6;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-surface);
+  box-shadow: $shadow-elevated;
+}
+
+.map-page__empty {
+  padding-block: $space-8;
+}

@@ -2,11 +2,17 @@ import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/cor
 import { RouterOutlet } from '@angular/router';
 
 import { AuthService } from './core/auth/auth.service';
+import { AccessibilityWidgetComponent } from './shared/components/accessibility-widget/accessibility-widget.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
-  template: '<router-outlet />',
+  imports: [RouterOutlet, AccessibilityWidgetComponent],
+  template: `
+    <div class="app-shell">
+      <router-outlet />
+    </div>
+    <app-accessibility-widget />
+  `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppComponent implements OnInit {

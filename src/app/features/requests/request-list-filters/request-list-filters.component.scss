@@ -1,0 +1,143 @@
+@use 'tokens' as *;
+
+$field-min-width: 180px;
+$sort-min-width: 240px;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  min-width: 0;
+}
+
+.filters__bar {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+}
+
+.filters__search {
+  flex: 1 1 auto;
+  min-width: 0;
+
+  // Sin la cruz nativa del input search: la cruz propia tiene nombre accesible y 40 px
+  input::-webkit-search-cancel-button {
+    appearance: none;
+  }
+}
+
+.filters__toggle {
+  flex: none;
+
+  @media (min-width: $breakpoint-md) {
+    display: none;
+  }
+}
+
+.filters__count {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  margin-inline-start: $space-1;
+  padding-inline: $space-1;
+  place-items: center;
+  border-radius: 10px;
+  background-color: var(--bd-primary);
+  color: var(--bd-on-primary);
+  font-size: 12px;
+  font-weight: $font-weight-semibold;
+  line-height: 1;
+}
+
+// Mobile: el panel se pliega para que el listado quede a la vista. Desde md: siempre visible
+.filters__collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  margin-block-start: -$space-4;
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition:
+      grid-template-rows $transition-entrance,
+      margin $transition-entrance,
+      visibility $transition-entrance;
+  }
+
+  &--open {
+    grid-template-rows: 1fr;
+    visibility: visible;
+    margin-block-start: 0;
+  }
+
+  @media (min-width: $breakpoint-md) {
+    grid-template-rows: 1fr;
+    visibility: visible;
+    margin-block-start: 0;
+  }
+}
+
+.filters__panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: $space-4;
+  min-height: 0;
+  overflow: hidden;
+  // El label flotante del outline sobresale 8 px por arriba
+  padding-block-start: $space-2;
+
+  @media (min-width: $breakpoint-sm) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (min-width: $breakpoint-md) {
+    grid-template-columns: repeat(auto-fit, minmax($field-min-width, 1fr));
+    overflow: visible;
+  }
+}
+
+.filters__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+}
+
+.filters__clear {
+  margin-inline-start: -$space-3;
+}
+
+.filters__sort {
+  flex: 1 1 $sort-min-width;
+  max-width: 100%;
+
+  @media (min-width: $breakpoint-sm) {
+    flex-grow: 0;
+    margin-inline-start: auto;
+  }
+}
+
+// La tabla ordena por columnas: el selector solo acompaña a las tarjetas
+@media (min-width: $breakpoint-md) {
+  :host(:not(.filters--staff)) {
+    .filters__sort {
+      display: none;
+    }
+
+    .filters__footer:not(.filters__footer--clearable) {
+      display: none;
+    }
+  }
+}
+
+@media (min-width: $breakpoint-xl) {
+  :host(.filters--staff) {
+    .filters__sort {
+      display: none;
+    }
+
+    .filters__footer:not(.filters__footer--clearable) {
+      display: none;
+    }
+  }
+}

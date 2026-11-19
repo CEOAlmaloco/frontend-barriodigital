@@ -1,0 +1,69 @@
+@use 'tokens' as *;
+
+// Tarjeta de reportería, compartida por las pestañas Indicadores y Mapa de trámites
+@mixin report-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: $space-4;
+  padding: $space-4;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-surface);
+  box-shadow: $shadow-elevated;
+
+  @media (min-width: $breakpoint-md) {
+    padding: $space-6;
+  }
+}
+
+// Aviso de datos parciales o desactualizados
+@mixin report-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-3;
+  margin: 0;
+  padding: $space-3 $space-4;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-accent-container);
+
+  mat-icon {
+    flex-shrink: 0;
+    color: var(--bd-accent-text);
+  }
+}
+
+// Aviso centrado cuando una fuente no responde, igual que el error del detalle del trámite
+@mixin report-state {
+  align-items: center;
+  padding-block: $space-12;
+  text-align: center;
+
+  h2 {
+    font-size: calc(#{$font-h2} * var(--bd-text-scale, 1));
+  }
+
+  p {
+    max-width: 46ch;
+    margin: 0;
+    color: var(--bd-text-muted);
+  }
+}
+
+@mixin report-state-icon {
+  display: grid;
+  width: $space-12 + $space-2;
+  height: $space-12 + $space-2;
+  place-items: center;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: 50%;
+  background-color: var(--bd-error-container);
+  color: var(--bd-error);
+
+  mat-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 28px;
+  }
+}

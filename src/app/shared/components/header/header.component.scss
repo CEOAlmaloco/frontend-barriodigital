@@ -17,20 +17,53 @@ $header-layer: 10;
   gap: $space-4;
   height: $header-height;
   padding-inline: $space-6;
-  background-color: $color-surface;
-  border-bottom: $border-width solid $color-border;
+  background-color: var(--bd-surface);
+  border-bottom: $border-width solid var(--bd-border);
 
   @media (min-width: $breakpoint-lg) {
     padding-inline: $space-12;
   }
 }
 
-.header__wordmark {
+$logo-height: 32px;
+$symbol-height: 36px;
+
+.header__brand {
+  display: flex;
   flex-shrink: 0;
-  font-size: $font-h3;
-  font-weight: $font-weight-semibold;
-  color: $color-primary;
-  white-space: nowrap;
+  align-items: center;
+  // Área de clic más amplia que el dibujo sin mover el logo
+  padding: $space-1;
+  margin: -$space-1;
+  border-radius: $radius-base;
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: 2px;
+  }
+}
+
+.header__logo {
+  height: $symbol-height;
+}
+
+// Solo el símbolo donde el nombre no cabe: bajo 480 px junto al menú y la cuenta, y entre 768 y 1023 px,
+// cuando la navegación del Admin ya va completa en la barra
+.header__logo--full {
+  display: none;
+  height: $logo-height;
+
+  @media (min-width: $breakpoint-sm) and (max-width: #{$breakpoint-md - 1px}),
+    (min-width: $breakpoint-lg) {
+    display: inline-block;
+  }
+}
+
+.header__logo--symbol {
+  @media (min-width: $breakpoint-sm) and (max-width: #{$breakpoint-md - 1px}),
+    (min-width: $breakpoint-lg) {
+    display: none;
+  }
 }
 
 .header__nav {
@@ -54,8 +87,8 @@ $header-layer: 10;
     display: flex;
     flex-direction: column;
     padding: $space-2 $space-6;
-    background-color: $color-surface;
-    border-bottom: $border-width solid $color-border;
+    background-color: var(--bd-surface);
+    border-bottom: $border-width solid var(--bd-border);
   }
 
   @media (min-width: $breakpoint-md) {
@@ -79,7 +112,7 @@ $header-layer: 10;
   height: 100%;
   padding-block: $space-3;
   font-size: $font-body;
-  color: $color-text-primary;
+  color: var(--bd-text);
   text-decoration: none;
   border-bottom: $border-width-strong solid transparent;
 
@@ -88,14 +121,14 @@ $header-layer: 10;
   }
 
   &:hover {
-    color: $color-primary;
+    color: var(--bd-primary);
   }
 }
 
 .header__link--active {
   font-weight: $font-weight-medium;
-  color: $color-primary;
-  border-bottom-color: $color-primary;
+  color: var(--bd-primary);
+  border-bottom-color: var(--bd-primary);
 }
 
 .header__menu-toggle {
@@ -112,18 +145,98 @@ $header-layer: 10;
   margin-left: auto;
 }
 
-.header__account-name {
+.header__account-identity {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
   min-width: 0;
+  max-width: 12rem;
+  margin: 0;
+  padding: $space-1;
+  line-height: 1.3;
+  color: inherit;
+  text-decoration: none;
+  border-radius: $radius-base;
+
+  @media (min-width: $breakpoint-md) {
+    max-width: 16rem;
+  }
+
+  &:hover .header__account-name,
+  &:focus-visible .header__account-name {
+    color: var(--bd-primary);
+  }
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary);
+    outline-offset: 2px;
+  }
+}
+
+.header__account-identity--active {
+  .header__account-name {
+    color: var(--bd-primary);
+    font-weight: $font-weight-medium;
+  }
+
+  .header__account-avatar {
+    border-color: var(--bd-primary);
+  }
+}
+
+.header__account-avatar {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  font-size: $font-label;
+  font-weight: $font-weight-semibold;
+  color: var(--bd-primary);
+  background-color: var(--bd-primary-container);
+  border: $border-width solid var(--bd-container-border);
+  border-radius: 50%;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.header__account-copy {
+  display: none;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+
+  @media (min-width: $breakpoint-sm) {
+    display: flex;
+  }
+}
+
+.header__account-name,
+.header__account-role {
+  max-width: 100%;
   overflow: hidden;
-  font-size: $font-body-sm;
-  color: $color-text-secondary;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.header__account-name {
+  font-size: $font-body-sm;
+  color: var(--bd-text-muted);
+}
+
+.header__account-role {
+  font-size: $font-label;
+  font-weight: $font-weight-medium;
+  color: var(--bd-primary);
+}
+
 // Tokens de Material en el propio botón: gris en reposo para no competir con el botón primario de la página
 .header__sign-out {
-  --mat-button-text-label-text-color: #{$color-text-secondary};
-  --mat-button-text-state-layer-color: #{$color-text-secondary};
+  --mat-button-text-label-text-color: var(--bd-text-muted);
+  --mat-button-text-state-layer-color: var(--bd-text-muted);
   flex-shrink: 0;
 }

@@ -1,0 +1,120 @@
+@use 'tokens' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+}
+
+.map-list__wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  border: $border-width solid var(--bd-border);
+  border-radius: $radius-base;
+
+  &[aria-busy='true'] {
+    opacity: 0.5;
+  }
+}
+
+.map-list {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+
+  th {
+    padding: $space-3 $space-4;
+    border-bottom: $border-width solid var(--bd-border);
+    color: var(--bd-text-muted);
+    font-weight: $font-weight-semibold;
+    text-align: start;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: $space-3 $space-4;
+    border-bottom: $border-width solid var(--bd-border);
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  tbody tr {
+    @media (prefers-reduced-motion: no-preference) {
+      transition: background-color $transition-base;
+    }
+
+    &:hover {
+      background-color: var(--bd-row-hover);
+    }
+  }
+}
+
+.map-list__folio {
+  white-space: nowrap;
+
+  a {
+    display: inline-flex;
+    min-height: 24px;
+    align-items: center;
+    color: var(--bd-primary);
+    font-weight: $font-weight-semibold;
+    font-variant-numeric: tabular-nums;
+    text-underline-offset: 0.15em;
+
+    &:focus-visible {
+      outline: $border-width-strong solid var(--bd-primary-dark);
+      outline-offset: $border-width-strong;
+      border-radius: $space-1;
+    }
+  }
+}
+
+// Móvil: cada fila es una ficha de dos líneas: folio y estado, y debajo tipo y sector
+@media (max-width: ($breakpoint-md - 1px)) {
+  .map-list {
+    thead {
+      display: none;
+    }
+
+    tbody,
+    tr,
+    td {
+      display: block;
+    }
+
+    tr {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: $space-1 $space-3;
+      padding: $space-3 $space-4;
+      border-bottom: $border-width solid var(--bd-border);
+    }
+
+    tbody tr:last-child {
+      border-bottom: 0;
+    }
+
+    td {
+      padding: 0;
+      border: 0;
+    }
+  }
+
+  .map-list__type {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .map-list__sector {
+    grid-column: 1 / -1;
+    color: var(--bd-text-muted);
+  }
+}
+
+.map-list__paginator {
+  border-radius: $radius-base;
+}

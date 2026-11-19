@@ -4,11 +4,12 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { BrandLogoVerticalComponent } from '../../shared/components/brand-logo/brand-logo-vertical.component';
 import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-login',
-  imports: [MatButton, MatProgressSpinner],
+  imports: [BrandLogoVerticalComponent, MatButton, MatProgressSpinner],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -1,0 +1,181 @@
+@use 'tokens' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+
+  @media (min-width: $breakpoint-md) {
+    gap: $space-6;
+  }
+}
+
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4 $space-6;
+  padding: $space-6 $space-4;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-primary-container);
+
+  @media (min-width: $breakpoint-md) {
+    padding: $space-6 $space-8;
+  }
+
+  p {
+    margin: $space-1 0 0;
+    color: var(--bd-text-muted);
+  }
+}
+
+.cta__text {
+  min-width: 0;
+  flex: 1 1 20rem;
+}
+
+// Más específico que la escala global de títulos
+.cta .cta__title {
+  margin: 0;
+  font-size: calc(#{$font-h3} * var(--bd-text-scale, 1));
+  font-weight: $font-weight-semibold;
+  text-wrap: balance;
+
+  @media (min-width: $breakpoint-md) {
+    font-size: calc(20px * var(--bd-text-scale, 1));
+  }
+}
+
+.cta__action {
+  --mat-button-filled-container-height: 48px;
+
+  flex: 1 1 100%;
+
+  @media (min-width: $breakpoint-sm) {
+    flex: none;
+  }
+}
+
+// Mobile: los conteos arriba, a mano; desde lg acompañan a la lista
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: $space-4;
+
+  @media (min-width: $breakpoint-lg) {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: $space-6;
+  }
+}
+
+.layout__list {
+  order: 1;
+
+  @media (min-width: $breakpoint-lg) {
+    order: 0;
+  }
+}
+
+.stats {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $space-3;
+  list-style: none;
+
+  @media (min-width: $breakpoint-lg) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: $space-4;
+  }
+}
+
+.stat {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  gap: 2px;
+  padding: $space-4;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-surface);
+  box-shadow: $shadow-elevated;
+  color: inherit;
+  text-decoration: none;
+
+  @media (min-width: $breakpoint-md) {
+    padding: $space-4 $space-6;
+  }
+}
+
+.stat--link {
+  transition: background-color $transition-base;
+
+  &:hover {
+    background-color: var(--bd-row-hover);
+  }
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: $space-1;
+  }
+}
+
+.stat__label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-2;
+  color: var(--bd-text-muted);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+  font-weight: $font-weight-medium;
+
+  mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.stat__value {
+  font-size: calc(#{$font-h2} * var(--bd-text-scale, 1));
+  font-weight: $font-weight-semibold;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+
+  @media (min-width: $breakpoint-md) {
+    font-size: calc(#{$font-h1} * var(--bd-text-scale, 1));
+  }
+}
+
+.stat__value--empty {
+  color: var(--bd-text-muted);
+}
+
+.stat__meta {
+  color: var(--bd-text-muted);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+}
+
+.stat__bone {
+  display: block;
+  width: 40%;
+  height: $space-8;
+  margin-block-start: $space-1;
+  border-radius: $space-1;
+  background-color: var(--bd-border);
+  opacity: 0.6;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: stat-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes stat-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}

@@ -1,0 +1,60 @@
+@use 'tokens' as *;
+
+.gestion-form {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.gestion-form__title {
+  margin: 0;
+}
+
+.gestion-form__hint,
+.gestion-form__counter {
+  color: var(--bd-text-muted);
+}
+
+.gestion-form__pair,
+.gestion-form__when {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 $space-3;
+
+  @media (min-width: $breakpoint-sm) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.gestion-form__when {
+  @media (min-width: $breakpoint-sm) {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  }
+}
+
+.gestion-form__intervention {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  padding: $space-3;
+  border-radius: $radius-base;
+  background-color: var(--bd-accent-container);
+}
+
+.gestion-form__counter {
+  display: flex;
+  justify-content: space-between;
+  gap: $space-2;
+  font-size: $font-body-sm;
+}
+
+.gestion-form__error {
+  color: var(--bd-error);
+}
+
+.gestion-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: $space-2;
+}

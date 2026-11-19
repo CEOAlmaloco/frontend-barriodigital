@@ -1,0 +1,16 @@
+@use 'tokens' as *;
+
+// Flecha de un enlace que lleva a otra vista dentro de la app: avanza al pasar el cursor.
+// Los enlaces que abren otra pestaña (open_in_new) no la usan: no hay avance dentro de la app.
+@mixin forward-arrow($size: 18px) {
+  mat-icon {
+    width: $size;
+    height: $size;
+    font-size: $size;
+    transition: transform $transition-base;
+  }
+
+  &:hover mat-icon {
+    transform: translateX(2px);
+  }
+}

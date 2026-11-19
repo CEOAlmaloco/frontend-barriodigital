@@ -1,0 +1,684 @@
+import { Clipboard } from '@angular/cdk/clipboard';
+import { HttpErrorResponse } from '@angular/common/http';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { MatIcon } from '@angular/material/icon';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Title } from '@angular/platform-browser';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Subject, catchError, combineLatest, map, of, startWith, switchMap, tap } from 'rxjs';
+
+import { AuthService } from '../../../core/auth/auth.service';
+import { CatalogService } from '../../../core/catalog/catalog.service';
+import { ReportService } from '../../../core/report/report.service';
+import { openImagePreview } from '../../../shared/components/image-preview-dialog/image-preview-dialog.component';
+import { Request, RequestStatus, RequestTransitions } from '../../../shared/models/request.model';
+import { OVERSIGHT_ROLES, Role } from '../../../shared/models/role';
+import { assignmentFailure } from '../assignment-errors';
+import { formatDuration } from '../duration';
+import { procedureTypeLabel } from '../procedure-label';
+import { businessDaysLabel } from '../sla-format';
+import {
+  RequestAssignDialogComponent,
+  RequestAssignDialogData,
+  RequestAssignDialogResult,
+} from '../request-assign-dialog/request-assign-dialog.component';
+import {
+  AttentionAction,
+  AttentionSla,
+  RequestAttentionPanelComponent,
+} from '../request-attention-panel/request-attention-panel.component';
+import {
+  CommentFailure,
+  RequestCommentFormComponent,
+} from '../request-comment-form/request-comment-form.component';
+import {
+  RequestGestionDialogComponent,
+  RequestGestionDialogData,
+  RequestGestionDialogResult,
+} from '../request-gestion-dialog/request-gestion-dialog.component';
+import { RequestDatePipe } from '../request-date.pipe';
+import { RequestDetailSkeletonComponent } from '../request-detail-skeleton/request-detail-skeleton.component';
+import { RequestDuplicatePanelComponent } from '../request-duplicate-panel/request-duplicate-panel.component';
+import { RequestLocationMapComponent } from '../request-location-map.component';
+import { isComparableSector, mapUrl, sectorLabel } from '../request-location';
+import { RequestProgressComponent } from '../request-progress/request-progress.component';
+import { RequestSatisfactionComponent } from '../request-satisfaction/request-satisfaction.component';
+import { RequestStatusBadgeComponent } from '../request-status-badge/request-status-badge.component';
+import {
+  RequestStatusDialogComponent,
+  RequestStatusDialogData,
+  RequestStatusDialogResult,
+} from '../request-status-dialog/request-status-dialog.component';
+import { RequestTimelineComponent } from '../request-timeline/request-timeline.component';
+import { COMMENT_MAX_COUNT, isClosedStatus } from '../requests.constants';
+import { RequestActivity, RequestsService } from '../requests.service';
+
+type PageState = 'loading' | 'ready' | 'error' | 'not-found';
+type LoadState = 'loading' | 'ready' | 'error';
+
+const NOTIFIED_STATUSES: readonly RequestStatus[] = [
+  'ADMITIDO',
+  'EN_TERRENO',
+  'RESUELTO',
+  'RECHAZADO',
+];
+
+@Component({
+  selector: 'app-request-detail',
+  imports: [
+    MatButton,
+    MatIcon,
+    MatIconButton,
+    RequestAttentionPanelComponent,
+    RequestCommentFormComponent,
+    RequestDetailSkeletonComponent,
+    RequestDuplicatePanelComponent,
+    RequestLocationMapComponent,
+    RequestProgressComponent,
+    RequestSatisfactionComponent,
+    RequestStatusBadgeComponent,
+    RequestDatePipe,
+    RequestTimelineComponent,
+    RouterLink,
+  ],
+  templateUrl: './request-detail.component.html',
+  styleUrl: './request-detail.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class RequestDetailComponent {
+  private readonly route = inject(ActivatedRoute);
+  private readonly auth = inject(AuthService);
+  private readonly requestsService = inject(RequestsService);
+  private readonly catalogService = inject(CatalogService);
+  private readonly reportService = inject(ReportService);
+  private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly titleService = inject(Title);
+  private readonly clipboard = inject(Clipboard);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
+  private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
+  private readonly commentTrigger = viewChild('commentTrigger', { read: ElementRef });
+  private readonly historyTitle = viewChild<ElementRef<HTMLElement>>('historyTitle');
+
+  private readonly reload$ = new Subject<void>();
+  private readonly activityReload$ = new Subject<void>();
+  private readonly slaReload$ = new Subject<string>();
+  private currentId: string | null = null;
+  private openedDialog: MatDialogRef<unknown, unknown> | null = null;
+  private attachmentFor: string | null = null;
+
+  protected readonly state = signal<PageState>('loading');
+  protected readonly request = signal<Request | null>(null);
+  protected readonly activity = signal<RequestActivity | null>(null);
+  protected readonly activityState = signal<LoadState>('loading');
+  protected readonly transitions = signal<RequestTransitions | null>(null);
+  protected readonly transitionsState = signal<LoadState>('loading');
+  protected readonly attachmentUrl = signal<string | null>(null);
+  protected readonly attachmentState = signal<LoadState>('loading');
+  protected readonly taking = signal(false);
+  protected readonly composerOpen = signal(false);
+  private readonly attachmentExtension = signal('png');
+
+  /** Único rol del usuario (EP3-04, sección 4); accessGuard impide llegar aquí sin uno. */
+  protected readonly viewer = computed(() => this.auth.role());
+  protected readonly isStaff = computed(() => this.viewer() !== null && this.viewer() !== Role.Vecino);
+  protected readonly isAuditor = computed(() => this.viewer() === Role.Auditor);
+  protected readonly isClosed = computed(() => {
+    const request = this.request();
+    return request !== null && isClosedStatus(request.status);
+  });
+  protected readonly isResponsible = computed(() => {
+    const assignee = this.request()?.assigneeId;
+    return this.viewer() === Role.Funcionario && !!assignee && assignee === this.auth.userId();
+  });
+  protected readonly canOperate = computed(
+    () => !this.isClosed() && (this.viewer() === Role.Admin || this.isResponsible()),
+  );
+  /** Solo el Vecino, en RESUELTO y si aún no calificó (EP3-78). */
+  protected readonly canRate = computed(() => {
+    const request = this.request();
+    return (
+      this.viewer() === Role.Vecino &&
+      request?.status === 'RESUELTO' &&
+      request.satisfactionScore == null
+    );
+  });
+  protected readonly ratedScore = computed(() => this.request()?.satisfactionScore ?? null);
+  protected readonly allowedStatuses = computed(() => {
+    const request = this.request();
+    return request ? (this.transitions()?.[request.status] ?? []) : [];
+  });
+  protected readonly backLink = { path: '/tramites', label: 'Trámites' } as const;
+  protected readonly typeLabel = computed(() => {
+    const request = this.request();
+    return request
+      ? procedureTypeLabel(
+          request.procedureType,
+          request.procedureLabel,
+          this.catalogService.labels(),
+        )
+      : '';
+  });
+  protected readonly folio = computed(() => this.request()?.folio?.trim() || null);
+  protected readonly auditLink = computed(() => {
+    const viewer = this.viewer();
+    const request = this.request();
+    if (!request || !viewer || !OVERSIGHT_ROLES.includes(viewer)) return null;
+    const folio = this.folio();
+    return folio ? { view: 'timeline', folio } : { view: 'timeline', requestId: request.id };
+  });
+  /** Sin el historial no se sabe cuántos comentarios quedan: el botón espera a que cargue. */
+  protected readonly commentsLeft = computed(() => {
+    const activity = this.activity();
+    if (this.viewer() !== Role.Vecino || this.isClosed() || !activity) {
+      return null;
+    }
+    const used = activity.eventos.filter((event) => event.kind === 'COMENTARIO').length;
+    return Math.max(COMMENT_MAX_COUNT - used, 0);
+  });
+  protected readonly commentMaxCount = COMMENT_MAX_COUNT;
+  protected readonly stages = computed(() => this.activity()?.tiempos.etapas ?? []);
+  protected readonly sector = computed(() => sectorLabel(this.request()?.sector));
+  protected readonly hasComparableSector = computed(() =>
+    isComparableSector(this.request()?.sector),
+  );
+  /** Herramienta operativa: el Auditor queda fuera (EP3-75, sección 2). */
+  protected readonly canReviewDuplicates = computed(
+    () => this.viewer() === Role.Funcionario || this.viewer() === Role.Admin,
+  );
+  protected readonly hasPoint = computed(() => {
+    const request = this.request();
+    return request?.latitude != null && request.longitude != null;
+  });
+  protected readonly mapLink = computed(() => {
+    const request = this.request();
+    return request ? mapUrl(request) : null;
+  });
+  protected readonly deadline = computed(() => {
+    const days = this.request()?.slaBusinessDays;
+    return days == null || days <= 0 ? null : businessDaysLabel(days);
+  });
+  /** Estado del plazo de report, solo para el staff (EP3-07, sección 4). Carga y falla aparte del trámite. */
+  protected readonly sla = signal<AttentionSla>({
+    state: 'loading',
+    item: null,
+    fetchedAt: new Date(),
+  });
+  protected readonly times = computed(() => {
+    const activity = this.activity();
+    if (!activity || !this.isStaff()) {
+      return [];
+    }
+    const { tiempos, contacto } = activity;
+    const items: { label: string; value: string }[] = [];
+    const add = (label: string, seconds: number | null | undefined) => {
+      if (seconds != null) items.push({ label, value: formatDuration(seconds) });
+    };
+    add('Desde el ingreso', tiempos.desdeElIngresoSegundos);
+    add('Hasta el cierre', tiempos.totalResolucionSegundos);
+    add('Primera atención', tiempos.primeraAtencionSegundos);
+    add('Primera asignación', tiempos.primeraAsignacionSegundos);
+    if (contacto && contacto.intentos > 0) {
+      items.push({ label: 'Intentos de contacto', value: String(contacto.intentos) });
+    }
+    return items;
+  });
+  protected readonly nextContact = computed(() => {
+    const contacto = this.activity()?.contacto;
+    return this.isStaff() && contacto?.siguienteAccion ? contacto : null;
+  });
+
+  constructor() {
+    // Sin esperarlo: el trámite se muestra con el nombre guardado hasta que llegue el catálogo
+    this.catalogService.loadLabels();
+    this.slaReload$
+      .pipe(
+        tap(() => this.sla.update((current) => ({ ...current, state: 'loading' }))),
+        switchMap((id) =>
+          this.reportService.getSlaBatch([id]).pipe(
+            map(({ items }) => items[0] ?? null),
+            catchError(() => of(undefined)),
+          ),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe((item) =>
+        this.sla.set(
+          item === undefined
+            ? { state: 'unavailable', item: null, fetchedAt: new Date() }
+            : { state: 'ready', item, fetchedAt: new Date() },
+        ),
+      );
+
+    this.activityReload$
+      .pipe(
+        switchMap(() => {
+          this.activityState.set(this.activity() ? 'ready' : 'loading');
+          return this.requestsService
+            .getActividad(this.currentId ?? '')
+            .pipe(catchError(() => of(null)));
+        }),
+        takeUntilDestroyed(),
+      )
+      .subscribe((activity) => {
+        if (activity) {
+          this.activity.set(activity);
+          this.activityState.set('ready');
+        } else if (!this.activity()) {
+          this.activityState.set('error');
+        }
+      });
+
+    combineLatest([
+      this.route.paramMap.pipe(map((params) => params.get('id') ?? '')),
+      this.reload$.pipe(startWith(undefined)),
+    ])
+      .pipe(
+        switchMap(([id]) => {
+          const sameRequest = id === this.currentId && this.state() === 'ready';
+          if (!sameRequest) {
+            this.resetFor(id);
+          }
+          return this.requestsService.getRequest(id).pipe(
+            map((request) => ({ request, error: null as unknown, sameRequest })),
+            catchError((error: unknown) => of({ request: null, error, sameRequest })),
+          );
+        }),
+        takeUntilDestroyed(),
+      )
+      .subscribe(({ request, error, sameRequest }) => {
+        if (request) {
+          this.show(request, !sameRequest);
+          return;
+        }
+        if (error instanceof HttpErrorResponse && error.status === 404) {
+          this.request.set(null);
+          this.state.set('not-found');
+          this.titleService.setTitle('Trámite no encontrado | BarrioDigital');
+        } else if (sameRequest) {
+          this.snackBar.open('No se pudo actualizar el trámite. Inténtalo de nuevo.', undefined, {
+            duration: 4000,
+          });
+        } else {
+          this.state.set('error');
+        }
+      });
+
+    this.destroyRef.onDestroy(() => {
+      this.openedDialog?.close();
+      this.revokeAttachment();
+    });
+  }
+
+  protected retry(): void {
+    this.state.set('loading');
+    this.reload$.next();
+  }
+
+  protected loadActivity(): void {
+    this.activityReload$.next();
+  }
+
+  /** El Vecino no ve el estado del plazo: report le respondería 403. */
+  protected loadSla(): void {
+    if (this.isStaff() && this.currentId) {
+      this.slaReload$.next(this.currentId);
+    }
+  }
+
+  protected loadTransitions(): void {
+    this.transitionsState.set('loading');
+    this.requestsService
+      .getTransitions()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (transitions) => {
+          this.transitions.set(transitions);
+          this.transitionsState.set('ready');
+        },
+        error: () => this.transitionsState.set('error'),
+      });
+  }
+
+  protected loadAttachment(): void {
+    const id = this.currentId;
+    if (!id) {
+      return;
+    }
+    this.attachmentState.set('loading');
+    this.requestsService
+      .getAttachment(id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (image) => {
+          if (id !== this.currentId) {
+            return;
+          }
+          if (image.type !== 'image/jpeg' && image.type !== 'image/png') {
+            this.attachmentState.set('error');
+            return;
+          }
+          this.revokeAttachment();
+          this.attachmentFor = id;
+          this.attachmentExtension.set(image.type === 'image/jpeg' ? 'jpg' : 'png');
+          this.attachmentUrl.set(URL.createObjectURL(image));
+          this.attachmentState.set('ready');
+        },
+        error: () => {
+          if (id === this.currentId) {
+            this.attachmentState.set('error');
+          }
+        },
+      });
+  }
+
+  protected copyFolio(): void {
+    const folio = this.folio();
+    if (!folio) {
+      return;
+    }
+    const copied = this.clipboard.copy(folio);
+    this.snackBar.open(copied ? 'Folio copiado.' : 'No se pudo copiar el folio.', undefined, {
+      duration: 2500,
+    });
+  }
+
+  protected onRated(request: Request): void {
+    this.request.set(request);
+    this.afterChange('Gracias. Guardamos tu calificación.');
+  }
+
+  protected take(): void {
+    const request = this.request();
+    if (!request || this.taking() || this.openedDialog) {
+      return;
+    }
+    this.taking.set(true);
+    this.requestsService
+      .take(request.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (taken) => {
+          this.taking.set(false);
+          this.request.set(taken);
+          this.afterChange('Tomaste el trámite. Ahora eres responsable.');
+        },
+        error: (error: unknown) => {
+          this.taking.set(false);
+          const { message, refresh } = assignmentFailure(error, 'take');
+          this.snackBar.open(message, undefined, { duration: 5000 });
+          if (refresh) {
+            this.reload$.next();
+            this.loadActivity();
+          }
+        },
+      });
+  }
+
+  protected openStatusDialog(action: AttentionAction): void {
+    const request = this.request();
+    if (
+      !request ||
+      this.openedDialog ||
+      !this.canOperate() ||
+      !this.allowedStatuses().includes(action.status)
+    ) {
+      return;
+    }
+    const ref = this.dialog.open<
+      RequestStatusDialogComponent,
+      RequestStatusDialogData,
+      RequestStatusDialogResult
+    >(RequestStatusDialogComponent, {
+      data: {
+        request,
+        status: action.status,
+        procedureTypeLabel: this.typeLabel(),
+        requireInterventionReason: this.viewer() === Role.Admin,
+        context: 'detail',
+      },
+      autoFocus: 'first-heading',
+      panelClass: 'request-dialog',
+      restoreFocus: false,
+      ariaDescribedBy: 'request-status-description',
+    });
+    this.openedDialog = ref;
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        this.openedDialog = null;
+        if (result?.kind === 'saved') {
+          this.request.set(result.request);
+          this.afterChange(
+            NOTIFIED_STATUSES.includes(result.request.status)
+              ? 'Estado actualizado. El aviso al vecino se procesa en segundo plano.'
+              : 'Estado actualizado.',
+          );
+        } else if (result?.kind === 'reload') {
+          this.reload$.next();
+          this.loadActivity();
+          this.focusHeading();
+        } else {
+          this.restoreFocus(action.trigger);
+        }
+      });
+  }
+
+  protected openAssignDialog(trigger: HTMLButtonElement): void {
+    const request = this.request();
+    if (!request || this.openedDialog || this.isClosed()) {
+      return;
+    }
+    const ref = this.dialog.open<
+      RequestAssignDialogComponent,
+      RequestAssignDialogData,
+      RequestAssignDialogResult
+    >(RequestAssignDialogComponent, {
+      data: {
+        request,
+        procedureTypeLabel: this.typeLabel(),
+        currentUserId: this.auth.userId(),
+      },
+      autoFocus: 'first-heading',
+      panelClass: 'request-dialog',
+      restoreFocus: false,
+      width: '34rem',
+      maxWidth: 'calc(100vw - 2rem)',
+      ariaDescribedBy: 'request-assign-description',
+    });
+    this.openedDialog = ref;
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        this.openedDialog = null;
+        if (result?.kind === 'saved') {
+          this.request.set(result.request);
+          const name = result.request.assigneeName?.trim() || 'el funcionario elegido';
+          this.afterChange(`Trámite ${result.reassigned ? 'reasignado' : 'asignado'} a ${name}.`);
+          return;
+        }
+        if (result?.kind === 'reload') {
+          this.snackBar.open(result.message, undefined, { duration: 5000 });
+          this.reload$.next();
+          this.loadActivity();
+        }
+        this.restoreFocus(trigger);
+      });
+  }
+
+  protected openGestionDialog(trigger: HTMLButtonElement): void {
+    const request = this.request();
+    if (!request || this.openedDialog || !this.canOperate()) {
+      return;
+    }
+    const ref = this.dialog.open<
+      RequestGestionDialogComponent,
+      RequestGestionDialogData,
+      RequestGestionDialogResult
+    >(RequestGestionDialogComponent, {
+      data: { requestId: request.id, requireInterventionReason: this.viewer() === Role.Admin },
+      autoFocus: 'first-heading',
+      panelClass: 'request-dialog',
+      restoreFocus: false,
+      width: '36rem',
+      maxWidth: 'calc(100vw - 2rem)',
+    });
+    this.openedDialog = ref;
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        this.openedDialog = null;
+        if (result?.kind === 'saved') {
+          this.activity.set(result.activity);
+          this.activityState.set('ready');
+          this.snackBar.open('Gestión registrada.', undefined, { duration: 3000 });
+          this.restoreFocus(trigger);
+          return;
+        }
+        if (result?.kind === 'reload') {
+          this.reload$.next();
+        }
+        this.loadActivity();
+        this.restoreFocus(trigger);
+      });
+  }
+
+  protected openComposer(): void {
+    this.composerOpen.set(true);
+  }
+
+  protected closeComposer(): void {
+    this.composerOpen.set(false);
+    this.focusCommentTrigger();
+  }
+
+  /** La respuesta trae el historial con el comentario: no hace falta volver a pedirlo. */
+  protected commentSaved(activity: RequestActivity): void {
+    this.activity.set(activity);
+    this.activityState.set('ready');
+    this.composerOpen.set(false);
+    this.snackBar.open('Comentario agregado.', undefined, { duration: 3000 });
+    this.focusCommentTrigger();
+  }
+
+  /** Cerrado, tope alcanzado o sin acceso: el trámite se recarga y la pantalla muestra lo que permite ahora. */
+  protected commentFailed(failure: CommentFailure): void {
+    if (!failure.requiresReload) {
+      return;
+    }
+    this.composerOpen.set(false);
+    this.snackBar.open(failure.message, undefined, { duration: 5000 });
+    this.reload$.next();
+    this.loadActivity();
+    this.focusHeading();
+  }
+
+  protected openPreview(): void {
+    const url = this.attachmentUrl();
+    if (!url || this.openedDialog) {
+      return;
+    }
+    const ref = openImagePreview(this.dialog, {
+      title: 'Imagen adjunta',
+      url,
+      alt: 'Imagen adjunta al trámite',
+      downloadName: `evidencia.${this.attachmentExtension()}`,
+    });
+    this.openedDialog = ref;
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.openedDialog = null;
+      });
+  }
+
+  private resetFor(id: string): void {
+    this.currentId = id;
+    this.state.set('loading');
+    this.request.set(null);
+    this.activity.set(null);
+    this.activityState.set('loading');
+    this.composerOpen.set(false);
+    this.revokeAttachment();
+    this.attachmentState.set('loading');
+    // En paralelo con el trámite: basta el id de la ruta
+    this.loadSla();
+  }
+
+  private show(request: Request, firstLoad: boolean): void {
+    this.request.set(request);
+    this.state.set('ready');
+    this.titleService.setTitle(`${this.folio() ?? 'Detalle del trámite'} | BarrioDigital`);
+    if (firstLoad) {
+      this.loadActivity();
+      this.focusHeading();
+    }
+    if (request.hasAttachment && this.attachmentFor !== request.id) {
+      this.loadAttachment();
+    }
+    if (this.canOperate() && this.transitionsState() !== 'ready') {
+      this.loadTransitions();
+    }
+  }
+
+  /** Tras una acción la respuesta ya trae el trámite; el historial y los tiempos se vuelven a pedir. */
+  private afterChange(message: string): void {
+    this.snackBar.open(message, undefined, { duration: 3500 });
+    this.titleService.setTitle(`${this.folio() ?? 'Detalle del trámite'} | BarrioDigital`);
+    this.loadActivity();
+    this.loadSla();
+    if (this.canOperate() && this.transitionsState() !== 'ready') {
+      this.loadTransitions();
+    }
+    this.focusHeading();
+  }
+
+  private restoreFocus(trigger: HTMLButtonElement): void {
+    if (trigger.isConnected && trigger.getClientRects().length) {
+      trigger.focus({ preventScroll: true });
+    } else {
+      this.focusHeading();
+    }
+  }
+
+  /** Si el botón ya no está, porque se alcanzó el tope, el foco queda en el título del historial. */
+  private focusCommentTrigger(): void {
+    afterNextRender(() => (this.commentTrigger() ?? this.historyTitle())?.nativeElement.focus(), {
+      injector: this.injector,
+    });
+  }
+
+  private focusHeading(): void {
+    afterNextRender(() => this.heading()?.nativeElement.focus({ preventScroll: true }), {
+      injector: this.injector,
+    });
+  }
+
+  private revokeAttachment(): void {
+    const url = this.attachmentUrl();
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
+    this.attachmentUrl.set(null);
+    this.attachmentFor = null;
+  }
+}

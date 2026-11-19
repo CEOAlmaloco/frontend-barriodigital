@@ -43,7 +43,12 @@ describe('LoginComponent', () => {
   });
 
   it('en estado inicial muestra solo el botón habilitado, sin spinner ni error', () => {
-    expect(element.querySelector('h1')?.textContent).toContain('BarrioDigital');
+    const title = element.querySelector('h1')!;
+    expect(title.textContent?.trim()).toBe('BarrioDigital');
+    expect(title.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(element.querySelector('.login__subtitle')?.textContent).toBe(
+      'Trámites comunales, más cerca de ti',
+    );
     expect(button().disabled).toBe(false);
     expect(element.querySelector('mat-progress-spinner')).toBeNull();
     expect(element.querySelector('.login__error')).toBeNull();

@@ -1,0 +1,123 @@
+@use 'tokens' as *;
+
+$icon-size: 20px;
+// Alinea el resumen y el detalle con el texto, no con el ícono
+$text-inset: $icon-size + $space-2;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  margin-top: $space-2;
+  padding-top: $space-4;
+  border-top: $border-width solid var(--bd-border);
+}
+
+.privacy-notice__lead {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-2;
+  margin: 0;
+  color: var(--bd-text-muted);
+}
+
+.privacy-notice__icon {
+  flex: none;
+  width: $icon-size;
+  height: $icon-size;
+  font-size: $icon-size;
+  color: var(--bd-secondary);
+}
+
+.privacy-notice__details {
+  margin-inline-start: $text-inset - $space-2;
+}
+
+.privacy-notice__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  min-height: $size-touch-target;
+  padding-inline: $space-2;
+  border-radius: $radius-base;
+  color: var(--bd-primary);
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  list-style: none;
+  transition: background-color $transition-base;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &:hover {
+    background-color: var(--bd-primary-container);
+  }
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: 2px;
+  }
+}
+
+.privacy-notice__chevron {
+  width: $icon-size;
+  height: $icon-size;
+  font-size: $icon-size;
+  transition: transform $transition-base;
+}
+
+.privacy-notice__details[open] .privacy-notice__chevron {
+  transform: rotate(180deg);
+}
+
+.privacy-notice__content {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  margin: $space-2 0 0 $space-2;
+  padding-inline-start: $space-4;
+  border-inline-start: $border-width-strong solid var(--bd-border);
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: privacy-notice-reveal $transition-base;
+  }
+}
+
+@keyframes privacy-notice-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-#{$space-1});
+  }
+}
+
+.privacy-notice__groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: $space-4 $space-6;
+  margin: 0;
+
+  dt {
+    margin-bottom: $space-1;
+    color: var(--bd-text);
+    font-weight: $font-weight-semibold;
+  }
+
+  dd {
+    margin: 0;
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+    margin: 0;
+    padding-inline-start: $space-4;
+  }
+}
+
+.privacy-notice__legal {
+  margin: 0;
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+}

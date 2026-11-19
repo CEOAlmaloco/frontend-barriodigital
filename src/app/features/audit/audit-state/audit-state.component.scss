@@ -1,0 +1,38 @@
+@use 'tokens' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-12 $space-4;
+  text-align: center;
+}
+
+.state__icon {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: 50%;
+  background-color: var(--bd-secondary-container);
+  color: var(--bd-secondary);
+}
+
+.state__icon--error {
+  background-color: var(--bd-error-container);
+  color: var(--bd-error);
+}
+
+.state__title {
+  margin: $space-2 0 0;
+  font-size: calc(#{$font-h3} * var(--bd-text-scale, 1));
+  font-weight: $font-weight-semibold;
+}
+
+.state__text {
+  max-width: 52ch;
+  margin: 0 0 $space-2;
+  color: var(--bd-text-muted);
+}

@@ -1,0 +1,160 @@
+@if (wide()) {
+  <div class="results__table-wrapper">
+    <table
+      mat-table
+      class="results__table"
+      multiTemplateDataRows
+      [dataSource]="views()"
+      [trackBy]="trackEvent"
+    >
+      <ng-container matColumnDef="when">
+        <th mat-header-cell *matHeaderCellDef>Fecha y hora</th>
+        <td mat-cell *matCellDef="let view" class="results__when">
+          <time [attr.datetime]="view.event.occurredAt">
+            {{ view.date }}<span class="results__time">{{ view.time }}</span>
+          </time>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="event">
+        <th mat-header-cell *matHeaderCellDef>Evento</th>
+        <td mat-cell *matCellDef="let view">
+          <ng-container *ngTemplateOutlet="eventCell; context: { $implicit: view }" />
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="actor">
+        <th mat-header-cell *matHeaderCellDef>Actor</th>
+        <td mat-cell *matCellDef="let view">
+          <span class="results__actor">
+            <span class="results__actor-name">{{ view.actorName }}</span>
+            <span class="results__muted">{{ view.actorRole }}</span>
+          </span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="ip">
+        <th mat-header-cell *matHeaderCellDef>IP de origen</th>
+        <td mat-cell *matCellDef="let view">
+          @if (view.ip) {
+            <span class="results__ip">{{ view.ip }}</span>
+          } @else {
+            <span class="results__muted">{{ view.ipNote }}</span>
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="expand">
+        <th mat-header-cell *matHeaderCellDef>
+          <span class="cdk-visually-hidden">Detalle</span>
+        </th>
+        <td mat-cell *matCellDef="let view" class="results__expand-cell">
+          <button
+            mat-icon-button
+            type="button"
+            class="results__expand"
+            [attr.aria-expanded]="expanded() === view.event.eventId"
+            [attr.aria-controls]="'audit-detail-' + view.event.eventId"
+            [attr.aria-label]="'Detalle de ' + view.title + ', ' + view.date + ' ' + view.time"
+            (click)="toggle.emit(view)"
+          >
+            <mat-icon aria-hidden="true">expand_more</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="detail">
+        <td
+          mat-cell
+          *matCellDef="let view"
+          [attr.colspan]="columns.length"
+          class="results__detail-cell"
+        >
+          @if (expanded() === view.event.eventId) {
+            <div class="results__detail" [id]="'audit-detail-' + view.event.eventId">
+              <app-audit-event-detail
+                [view]="view"
+                [actorFiltered]="filteredActorId() === view.actorId"
+                (filterActor)="filterActor.emit($event)"
+              />
+            </div>
+          }
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr
+        mat-row
+        *matRowDef="let view; columns: columns"
+        class="results__row"
+        [class.results__row--open]="expanded() === view.event.eventId"
+        (click)="rowClick($event, view)"
+      ></tr>
+      <tr
+        mat-row
+        *matRowDef="let view; columns: ['detail']"
+        class="results__detail-row"
+        [class.results__detail-row--open]="expanded() === view.event.eventId"
+      ></tr>
+    </table>
+  </div>
+} @else {
+  <ul class="results__list">
+    @for (view of views(); track view.event.eventId) {
+      <li class="results__item" [class.results__item--open]="expanded() === view.event.eventId">
+        <button
+          type="button"
+          class="results__item-toggle"
+          [attr.aria-expanded]="expanded() === view.event.eventId"
+          [attr.aria-controls]="'audit-detail-' + view.event.eventId"
+          (click)="toggle.emit(view)"
+        >
+          <span class="results__item-main">
+            <span class="results__event-title">{{ view.title }}</span>
+            <span class="results__item-meta">
+              <time [attr.datetime]="view.event.occurredAt">{{ view.date }} {{ view.time }}</time>
+              <span>{{ view.actorName }} · {{ view.actorRole }}</span>
+            </span>
+          </span>
+          <mat-icon class="results__chevron" aria-hidden="true">expand_more</mat-icon>
+        </button>
+        <div class="results__item-tags">
+          <app-audit-event-tags [view]="view" />
+          <ng-container *ngTemplateOutlet="eventResource; context: { $implicit: view }" />
+        </div>
+        @if (expanded() === view.event.eventId) {
+          <div class="results__detail" [id]="'audit-detail-' + view.event.eventId">
+            <app-audit-event-detail
+              [view]="view"
+              [actorFiltered]="filteredActorId() === view.actorId"
+              (filterActor)="filterActor.emit($event)"
+            />
+          </div>
+        }
+      </li>
+    }
+  </ul>
+}
+
+<ng-template #eventCell let-view>
+  <span class="results__event">
+    <span class="results__event-title">
+      {{ view.title }}
+      <app-audit-event-tags [view]="view" />
+    </span>
+    <ng-container *ngTemplateOutlet="eventResource; context: { $implicit: view }" />
+  </span>
+</ng-template>
+
+<ng-template #eventResource let-view>
+  @if (view.folio) {
+    <span class="results__resource">
+      Folio
+      <a routerLink="/audit" [queryParams]="{ view: 'timeline', folio: view.folio }">{{
+        view.folio
+      }}</a>
+    </span>
+  } @else if (view.resource) {
+    <span class="results__resource">{{ view.resource }}</span>
+  }
+</ng-template>

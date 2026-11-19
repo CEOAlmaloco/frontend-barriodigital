@@ -15,20 +15,36 @@ import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
+import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltip } from '@angular/material/tooltip';
 import { Subject, catchError, of, switchMap, tap } from 'rxjs';
 
 import { CatalogService } from '../../core/catalog/catalog.service';
 import { ProcedureType } from '../../shared/models/procedure-type.model';
+import { businessDaysLabel } from '../requests/sla-format';
+import { AdminKafkaPanelComponent } from './admin-kafka-panel/admin-kafka-panel.component';
+import { AdminMqPanelComponent } from './admin-mq-panel/admin-mq-panel.component';
 import {
   ProcedureTypeDialogComponent,
   ProcedureTypeDialogData,
   ProcedureTypeDialogResult,
 } from './procedure-type-dialog/procedure-type-dialog.component';
 
+type AdminSection = 'catalog' | 'rabbitmq' | 'kafka';
+
 @Component({
   selector: 'app-admin',
-  imports: [MatButton, MatIconButton, MatIcon, MatProgressSpinner, MatTableModule, MatTooltip],
+  imports: [
+    AdminKafkaPanelComponent,
+    AdminMqPanelComponent,
+    MatButton,
+    MatIconButton,
+    MatIcon,
+    MatProgressSpinner,
+    MatTableModule,
+    MatTabsModule,
+    MatTooltip,
+  ],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -38,7 +54,7 @@ export class AdminComponent {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly listTitle = viewChild.required<ElementRef<HTMLElement>>('listTitle');
+  private readonly listTitle = viewChild<ElementRef<HTMLElement>>('listTitle');
   private readonly reload$ = new Subject<void | 'manual'>();
   private catalogDialog: MatDialogRef<
     ProcedureTypeDialogComponent,
@@ -46,11 +62,34 @@ export class AdminComponent {
   > | null = null;
   private readonly savedOperation = signal<'create' | 'edit' | null>(null);
 
-  protected readonly columns = ['codigo', 'nombre', 'estado', 'cupo', 'disponible', 'acciones'];
+  protected readonly section = signal<AdminSection>('catalog');
+
+  protected readonly columns = [
+    'codigo',
+    'nombre',
+    'estado',
+    'cupo',
+    'disponible',
+    'plazo',
+    'acciones',
+  ];
   protected readonly catalog = signal<ProcedureType[]>([]);
   protected readonly hasCatalog = signal(false);
   protected readonly loadState = signal<'loading' | 'ready' | 'error'>('loading');
   protected readonly isRefreshing = signal(false);
+  protected readonly catalogActive = computed(
+    () => this.catalog().filter((type) => type.active).length,
+  );
+  protected readonly catalogWithQuota = computed(
+    () => this.catalog().filter((type) => typeof type.dailyQuota === 'number').length,
+  );
+  protected readonly catalogExhausted = computed(
+    () =>
+      this.catalog().filter((type) => {
+        const available = this.availableQuota(type);
+        return available === 'Agotado' || available === 0;
+      }).length,
+  );
   protected readonly loadError = computed(() => {
     switch (this.savedOperation()) {
       case 'create':
@@ -88,6 +127,14 @@ export class AdminComponent {
       });
     this.destroyRef.onDestroy(() => this.catalogDialog?.close());
     this.reload$.next();
+  }
+
+  protected selectSection(section: AdminSection): void {
+    this.section.set(section);
+  }
+
+  protected slaLabel({ slaBusinessDays }: ProcedureType): string {
+    return slaBusinessDays == null ? 'Sin plazo' : businessDaysLabel(slaBusinessDays);
   }
 
   protected availableQuota({ dailyQuota, remainingQuota }: ProcedureType): number | string {
@@ -157,7 +204,7 @@ export class AdminComponent {
           result?.kind === 'reload' ||
           dialogComponent.requiresReload()
         ) {
-          this.listTitle().nativeElement.focus({ preventScroll: true });
+          this.listTitle()?.nativeElement.focus({ preventScroll: true });
           if (result?.kind === 'saved') {
             this.savedOperation.set(result.mode);
             this.snackBar.open(
@@ -170,7 +217,7 @@ export class AdminComponent {
         } else if (trigger.isConnected && trigger.getClientRects().length) {
           trigger.focus({ preventScroll: true });
         } else {
-          this.listTitle().nativeElement.focus({ preventScroll: true });
+          this.listTitle()?.nativeElement.focus({ preventScroll: true });
         }
       });
   }

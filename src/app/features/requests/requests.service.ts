@@ -3,10 +3,17 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import { Page } from '../../shared/models/page.model';
 import {
+  AssignRequestPayload,
+  Assignee,
   ChangeRequestStatusPayload,
   CreateRequestPayload,
+  DuplicateCandidate,
+  DuplicateSearch,
+  RateRequestPayload,
   Request,
+  RequestStatus,
   RequestTransitions,
 } from '../../shared/models/request.model';
 
@@ -25,22 +32,47 @@ export class RequestsService {
   private readonly http = inject(HttpClient);
   private readonly url = `${environment.bffBaseUrl}/api/requests`;
 
-  /** Al Vecino el servidor le devuelve solo sus trámites, ordenados por fecha de creación descendente. */
-  getRequests(filters?: { status?: string; from?: string; to?: string }): Observable<Request[]> {
-    let params = new HttpParams();
-    for (const [key, value] of Object.entries(filters ?? {})) {
-      if (value) {
-        params = params.set(key, value);
-      }
-    }
-
+  /**
+   * Página de trámites (EP3-30). Al Vecino el servidor le devuelve solo los suyos, también al
+   * buscar y filtrar. Un parámetro vacío no se envía.
+   */
+  getRequests(params: Record<string, string> = {}): Observable<Page<Request>> {
     return this.http
-      .get<RequestResponse[]>(this.url, { params })
-      .pipe(map((requests) => requests.map(toRequest)));
+      .get<Page<RequestResponse>>(this.url, { params: toHttpParams(params) })
+      .pipe(map((page) => ({ ...page, content: page.content.map(toRequest) })));
+  }
+
+  /** CSV del listado (EP3-63), con la misma visibilidad por rol que el GET paginado. */
+  exportRequests(params: Record<string, string> = {}): Observable<Blob> {
+    return this.http.get(`${this.url}/export`, {
+      params: toHttpParams(params),
+      responseType: 'blob',
+    });
+  }
+
+  /** Un trámite ajeno para el Vecino responde 404, igual que uno inexistente. */
+  getRequest(id: string): Observable<Request> {
+    return this.http
+      .get<RequestResponse>(`${this.url}/${encodeURIComponent(id)}`)
+      .pipe(map(toRequest));
   }
 
   createRequest(payload: CreateRequestPayload): Observable<Request> {
     return this.http.post<RequestResponse>(this.url, payload).pipe(map(toRequest));
+  }
+
+  createRequestWithAttachment(
+    payload: CreateRequestPayload,
+    attachment: File,
+  ): Observable<Request> {
+    const formData = new FormData();
+    formData.append('request', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+    formData.append('attachment', attachment, 'evidencia');
+    return this.http.post<RequestResponse>(this.url, formData).pipe(map(toRequest));
+  }
+
+  getAttachment(id: string): Observable<Blob> {
+    return this.http.get(`${this.url}/${id}/attachment`, { responseType: 'blob' });
   }
 
   getTransitions(): Observable<RequestTransitions> {
@@ -50,6 +82,172 @@ export class RequestsService {
   changeStatus(id: string, payload: ChangeRequestStatusPayload): Observable<Request> {
     return this.http.put<RequestResponse>(`${this.url}/${id}/status`, payload).pipe(map(toRequest));
   }
+
+  /** El Vecino titular califica un trámite RESUELTO una sola vez (EP3-74). */
+  rate(id: string, payload: RateRequestPayload): Observable<Request> {
+    return this.http
+      .post<RequestResponse>(`${this.url}/${id}/rating`, payload)
+      .pipe(map(toRequest));
+  }
+
+  /** Trámites abiertos parecidos antes del alta; solo el Vecino. */
+  findDuplicates(search: DuplicateSearch): Observable<DuplicateCandidate[]> {
+    let params = new HttpParams().set('procedureType', search.procedureType);
+    if (search.latitude !== undefined && search.longitude !== undefined) {
+      params = params
+        .set('latitude', String(search.latitude))
+        .set('longitude', String(search.longitude));
+    }
+    if (search.sector) {
+      params = params.set('sector', search.sector);
+    }
+    return this.http.get<DuplicateCandidate[]>(`${this.url}/duplicates`, { params });
+  }
+
+  /** Posibles duplicados de un trámite ya ingresado; solo el Funcionario y el Admin. */
+  findRequestDuplicates(id: string): Observable<DuplicateCandidate[]> {
+    return this.http.get<DuplicateCandidate[]>(`${this.url}/${id}/duplicates`);
+  }
+
+  /** El Funcionario se asigna un trámite sin responsable. */
+  take(id: string): Observable<Request> {
+    return this.http.post<RequestResponse>(`${this.url}/${id}/take`, null).pipe(map(toRequest));
+  }
+
+  /** Primera asignación (Admin) o reasignación (Admin o el Funcionario responsable). */
+  assign(id: string, payload: AssignRequestPayload): Observable<Request> {
+    return this.http
+      .put<RequestResponse>(`${this.url}/${id}/assignee`, payload)
+      .pipe(map(toRequest));
+  }
+
+  /** Funcionarios que pueden ser responsables, ordenados por nombre. */
+  getAssignees(): Observable<Assignee[]> {
+    return this.http.get<Assignee[]>(`${this.url}/assignees`);
+  }
+
+  getActividad(id: string): Observable<RequestActivity> {
+    return this.http.get<RequestActivity>(`${this.url}/${id}/actividad`);
+  }
+
+  registerGestion(id: string, payload: RegisterGestionPayload): Observable<RequestActivity> {
+    return this.http.post<RequestActivity>(`${this.url}/${id}/gestiones`, payload);
+  }
+
+  /** Comentario del Vecino titular (EP3-64). Con imagen viaja como multipart, igual que el alta. */
+  addComment(id: string, text: string, attachment?: File | null): Observable<RequestActivity> {
+    const url = `${this.url}/${encodeURIComponent(id)}/comments`;
+    const comment = { text };
+    if (!attachment) {
+      return this.http.post<RequestActivity>(url, comment);
+    }
+    const formData = new FormData();
+    formData.append('comment', new Blob([JSON.stringify(comment)], { type: 'application/json' }));
+    formData.append('attachment', attachment, 'evidencia');
+    return this.http.post<RequestActivity>(url, formData);
+  }
+
+  /** commentId es el id del evento del historial. Uno sin foto o de otro trámite responde 404. */
+  getCommentAttachment(id: string, commentId: string): Observable<Blob> {
+    return this.http.get(
+      `${this.url}/${encodeURIComponent(id)}/comments/${encodeURIComponent(commentId)}/attachment`,
+      { responseType: 'blob' },
+    );
+  }
+
+  /** Preferencia de avisos por correo del usuario autenticado (EP3-65). */
+  getNotificationPreferences(): Observable<NotificationPreferences> {
+    return this.http.get<NotificationPreferences>(`${this.url}/me/notification-preferences`);
+  }
+
+  /** Guarda si el usuario recibe avisos por correo (EP3-65). */
+  updateNotificationPreferences(emailEnabled: boolean): Observable<NotificationPreferences> {
+    return this.http.put<NotificationPreferences>(`${this.url}/me/notification-preferences`, {
+      emailEnabled,
+    });
+  }
+}
+
+/** Preferencia de aviso del caller (EP3-65). Sin fila en requests → emailEnabled true. */
+export interface NotificationPreferences {
+  emailEnabled: boolean;
+}
+
+export interface RequestActivity {
+  requestId: string;
+  eventos: RequestActivityEvent[];
+  tiempos: RequestActivityTimes;
+  contacto: RequestActivityContact | null;
+  limites: string[];
+}
+
+export type RequestActivityKind =
+  | 'CREADO'
+  | 'ESTADO'
+  | 'GESTION'
+  | 'ASIGNACION'
+  | 'CALIFICACION'
+  | 'COMENTARIO';
+
+/** Al Vecino, requests le entrega el actor de staff como "Municipalidad" y nunca el motivo de intervención. */
+export interface RequestActivityEvent {
+  id: string;
+  occurredAt: string;
+  kind: RequestActivityKind;
+  visibility: 'PUBLICO' | 'INTERNO';
+  actorId: string | null;
+  actorName: string | null;
+  actorRole?: string | null;
+  summary: string;
+  fromStatus: RequestStatus | null;
+  toStatus: RequestStatus | null;
+  reason: string | null;
+  channel: string | null;
+  result: string | null;
+  note: string | null;
+  nextAttemptAt: string | null;
+  interventionReason?: string | null;
+  assigneeId?: string | null;
+  assigneeName?: string | null;
+  previousAssigneeId?: string | null;
+  previousAssigneeName?: string | null;
+  /** Solo un COMENTARIO con foto lo trae en true. */
+  hasAttachment?: boolean;
+}
+
+export interface RequestActivityTimes {
+  primeraAtencionSegundos: number | null;
+  primeraAsignacionSegundos?: number | null;
+  gestionMunicipalSegundos: number | null;
+  desdeElIngresoSegundos: number | null;
+  totalResolucionSegundos: number | null;
+  etapas: { estado: RequestStatus; desde: string; hasta: string | null; segundos: number }[];
+  noCalculado: string[];
+}
+
+export interface RequestActivityContact {
+  intentos: number;
+  ultimoIntento: string | null;
+  siguienteIntento: string | null;
+  siguienteAccion: string | null;
+}
+
+export interface RegisterGestionPayload {
+  channel: string;
+  result: string;
+  note?: string;
+  nextAttemptAt?: string;
+  interventionReason?: string;
+}
+
+function toHttpParams(params: Record<string, string>): HttpParams {
+  let httpParams = new HttpParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value) {
+      httpParams = httpParams.set(key, value);
+    }
+  }
+  return httpParams;
 }
 
 function toRequest({
@@ -62,6 +260,21 @@ function toRequest({
   createdAt,
   solicitanteId,
   solicitanteNombre,
+  sector,
+  locationReference,
+  latitude,
+  longitude,
+  locationPrecision,
+  hasAttachment,
+  folio,
+  procedureLabel,
+  solicitanteEmail,
+  hasAssignee,
+  assigneeId,
+  assigneeName,
+  slaBusinessDays,
+  satisfactionScore,
+  satisfactionComment,
 }: RequestResponse): Request {
   return {
     id,
@@ -73,5 +286,20 @@ function toRequest({
     createdAt,
     solicitanteId,
     solicitanteNombre,
+    sector,
+    locationReference,
+    latitude,
+    longitude,
+    locationPrecision,
+    ...(hasAttachment === true ? { hasAttachment: true } : {}),
+    ...(folio !== undefined ? { folio } : {}),
+    ...(procedureLabel !== undefined ? { procedureLabel } : {}),
+    ...(solicitanteEmail !== undefined ? { solicitanteEmail } : {}),
+    ...(hasAssignee !== undefined ? { hasAssignee } : {}),
+    ...(assigneeId !== undefined ? { assigneeId } : {}),
+    ...(assigneeName !== undefined ? { assigneeName } : {}),
+    ...(slaBusinessDays !== undefined ? { slaBusinessDays } : {}),
+    ...(satisfactionScore !== undefined ? { satisfactionScore } : {}),
+    ...(satisfactionComment !== undefined ? { satisfactionComment } : {}),
   };
 }

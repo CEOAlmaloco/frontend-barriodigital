@@ -1,0 +1,89 @@
+<p class="image-field__hint" [id]="hintId">Una imagen JPEG, PNG o WebP de hasta 5 MB.</p>
+<p class="image-field__caution" [id]="cautionId">
+  <mat-icon class="image-field__caution-icon" aria-hidden="true">warning_amber</mat-icon>
+  <span>
+    Evita incluir rostros o patentes. Si aparecen, recorta la imagen antes de adjuntarla.
+  </span>
+</p>
+
+<input #picker type="file" hidden [accept]="accept" (change)="pick()" />
+
+@if (file(); as selected) {
+  <div class="image-field__selected">
+    @if (previewUrl(); as url) {
+      <button
+        type="button"
+        class="image-field__thumb"
+        aria-label="Ampliar la imagen seleccionada"
+        (click)="openPreview()"
+      >
+        <img [src]="url" alt="" />
+        <span class="image-field__zoom" aria-hidden="true">
+          <mat-icon>zoom_in</mat-icon>
+        </span>
+      </button>
+    }
+    <div class="image-field__meta">
+      <p class="image-field__file">
+        <span class="image-field__name">{{ selected.name }}</span>
+        <span class="image-field__size">{{ fileSize() }}</span>
+      </p>
+      <div class="image-field__actions">
+        <button
+          #change
+          matButton
+          type="button"
+          aria-label="Cambiar imagen"
+          [attr.aria-describedby]="describedBy()"
+          [disabled]="disabled()"
+          (click)="openPicker()"
+        >
+          <mat-icon aria-hidden="true">sync</mat-icon>
+          Cambiar
+        </button>
+        <span class="image-field__divider" aria-hidden="true"></span>
+        <button
+          matButton
+          type="button"
+          aria-label="Quitar imagen"
+          [disabled]="disabled()"
+          (click)="remove()"
+        >
+          <mat-icon aria-hidden="true">delete_outline</mat-icon>
+          Quitar
+        </button>
+      </div>
+    </div>
+  </div>
+} @else {
+  <button
+    #choose
+    matButton="outlined"
+    type="button"
+    class="image-field__choose"
+    [attr.aria-describedby]="describedBy()"
+    [disabled]="disabled() || processing()"
+    (click)="openPicker()"
+  >
+    <mat-icon aria-hidden="true">add_photo_alternate</mat-icon>
+    Elegir imagen
+  </button>
+}
+
+<div class="image-field__status" aria-live="polite">
+  @if (processing()) {
+    <p class="image-field__processing">
+      <mat-progress-spinner mode="indeterminate" [diameter]="16" aria-hidden="true" />
+      Procesando imagen…
+    </p>
+  } @else if (file(); as selected) {
+    <span class="cdk-visually-hidden">Imagen lista: {{ selected.name }}, {{ fileSize() }}.</span>
+  }
+</div>
+
+@if (error(); as message) {
+  <p class="image-field__error" [id]="errorId" role="alert">
+    <mat-icon aria-hidden="true">error_outline</mat-icon>
+    <span>{{ message }}</span>
+  </p>
+}

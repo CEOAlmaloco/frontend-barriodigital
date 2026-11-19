@@ -1,0 +1,100 @@
+<section
+  class="kpis"
+  aria-labelledby="home-kpis-title"
+  [attr.aria-busy]="view().status === 'loading'"
+>
+  <div class="kpis__bar">
+    <h2 id="home-kpis-title" class="kpis__title">Indicadores de la comuna</h2>
+    <div class="kpis__controls">
+      @if (ready(); as ready) {
+        <p class="kpis__freshness">
+          @if (ready.data.lastEventAt) {
+            <span
+              >Datos al <strong>{{ ready.data.lastEventAt | requestDate }}</strong></span
+            >
+          } @else {
+            <span>Aún no hay eventos registrados</span>
+          }
+          <span
+            >Consultado <strong>{{ formatClock(ready.fetchedAt) }}</strong></span
+          >
+        </p>
+      }
+      <span class="kpis__live" [class.kpis__live--paused]="paused()">
+        <mat-icon aria-hidden="true">{{ paused() ? 'pause_circle' : 'autorenew' }}</mat-icon>
+        {{ paused() ? 'Actualización automática en pausa' : 'Se actualiza cada 5 s' }}
+      </span>
+      <div class="kpis__actions">
+        <button matButton="outlined" type="button" (click)="togglePause()">
+          <mat-icon aria-hidden="true">{{ paused() ? 'play_arrow' : 'pause' }}</mat-icon>
+          {{ paused() ? 'Reanudar' : 'Pausar' }}
+        </button>
+        <a class="home-link" routerLink="/reports">
+          Ver reportes<mat-icon aria-hidden="true">arrow_forward</mat-icon>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  @if (ready(); as ready) {
+    @if (ready.stale) {
+      <p class="kpis__notice">
+        <mat-icon aria-hidden="true">warning</mat-icon>
+        <span>
+          <strong>No se pudieron actualizar los indicadores.</strong>
+          Se muestran los datos consultados a las {{ formatClock(ready.fetchedAt) }}.
+          {{ retryHint() }}
+        </span>
+      </p>
+    }
+    <app-report-kpi-tiles [kpis]="ready.data" [range]="range" />
+  } @else if (failure(); as failure) {
+    <div class="kpis__error">
+      @switch (failure.kind) {
+        @case ('unavailable') {
+          <app-home-state
+            icon="cloud_off"
+            tone="error"
+            heading="Indicadores no disponibles"
+            [message]="'El servicio de reportes no responde. ' + retryHint()"
+          >
+            <ng-container *ngTemplateOutlet="retryButton" />
+          </app-home-state>
+        }
+        @case ('forbidden') {
+          <app-home-state
+            icon="lock"
+            tone="error"
+            heading="Sin acceso a los indicadores"
+            message="Tu rol no permite consultar esta información."
+          />
+        }
+        @default {
+          <app-home-state
+            icon="wifi_off"
+            tone="error"
+            heading="No se pudieron cargar los indicadores"
+            [message]="'Revisa tu conexión. ' + retryHint()"
+          >
+            <ng-container *ngTemplateOutlet="retryButton" />
+          </app-home-state>
+        }
+      }
+    </div>
+  } @else {
+    <app-report-kpi-tiles [kpis]="null" [range]="range" />
+  }
+</section>
+
+<ng-template #retryButton>
+  <button
+    matButton="outlined"
+    type="button"
+    class="kpis__retry"
+    [attr.aria-disabled]="source.state().loading"
+    (click)="source.state().loading || retry()"
+  >
+    <mat-icon aria-hidden="true">refresh</mat-icon>
+    Reintentar
+  </button>
+</ng-template>

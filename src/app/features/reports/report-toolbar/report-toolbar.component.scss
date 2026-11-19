@@ -1,0 +1,80 @@
+@use 'tokens' as *;
+@use '../report-card' as *;
+
+:host {
+  @include report-card;
+
+  flex-flow: row wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3 $space-4;
+}
+
+.toolbar__range {
+  --mat-button-toggle-background-color: var(--bd-surface);
+  --mat-button-toggle-text-color: var(--bd-text);
+  --mat-button-toggle-selected-state-background-color: var(--bd-primary);
+  --mat-button-toggle-selected-state-text-color: var(--bd-on-primary);
+  --mat-button-toggle-divider-color: var(--bd-border-interactive);
+  --mat-button-toggle-height: #{$size-touch-target};
+  --mat-button-toggle-shape: #{$radius-base};
+
+  @media (max-width: $breakpoint-sm) {
+    width: 100%;
+
+    .mat-button-toggle {
+      flex: 1;
+    }
+  }
+}
+
+.toolbar__freshness {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-2 $space-4;
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+
+  strong {
+    color: var(--bd-text);
+    font-weight: $font-weight-semibold;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.toolbar__live {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  padding: 2px $space-2;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: 999px;
+  background-color: var(--bd-secondary-container);
+  color: var(--bd-secondary);
+  font-weight: $font-weight-semibold;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.toolbar__live--paused {
+  background-color: var(--bd-accent-container);
+  color: var(--bd-accent-text);
+}
+
+.toolbar__actions {
+  display: flex;
+  gap: $space-2;
+
+  @media (max-width: $breakpoint-sm) {
+    width: 100%;
+
+    button {
+      flex: 1;
+    }
+  }
+}

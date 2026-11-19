@@ -1,0 +1,23 @@
+<ol class="progress" aria-label="Avance del trámite">
+  @for (step of steps(); track step.status) {
+    <li
+      class="progress__step progress__step--{{ step.state }}"
+      [attr.aria-current]="step.state === 'current' || step.state === 'stopped' ? 'step' : null"
+    >
+      <span class="progress__dot" aria-hidden="true">
+        @if (step.state === 'done') {
+          <mat-icon>check</mat-icon>
+        } @else if (step.state === 'stopped') {
+          <mat-icon>close</mat-icon>
+        }
+      </span>
+      <span class="progress__label">
+        <span>{{ step.label }}</span>
+        <span class="cdk-visually-hidden">, {{ stateText[step.state] }}</span>
+        @if (step.since; as since) {
+          <time class="progress__since" [attr.datetime]="since">{{ since | requestDate: 'short' }}</time>
+        }
+      </span>
+    </li>
+  }
+</ol>

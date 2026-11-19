@@ -1,0 +1,159 @@
+@use 'tokens' as *;
+
+$plot-height: 180px;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  min-width: 0;
+}
+
+.trend {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: $space-2;
+}
+
+.trend__y {
+  position: relative;
+  height: $plot-height;
+  min-width: 3ch;
+}
+
+.trend__y-tick,
+.trend__x-tick {
+  color: var(--bd-text-muted);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+  font-variant-numeric: tabular-nums;
+}
+
+.trend__y-tick {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+  line-height: 1;
+}
+
+.trend__plot {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: $plot-height;
+  padding-inline: 2px;
+  border-bottom: $border-width solid var(--bd-border-interactive);
+  // Líneas guía en cada cuarto del eje
+  background-image: linear-gradient(var(--bd-border) $border-width, transparent $border-width);
+  background-size: 100% 25%;
+}
+
+.trend__bar {
+  flex: 1;
+  min-width: 0;
+  border-radius: 3px 3px 0 0;
+  background-color: var(--bd-primary);
+}
+
+// Rayado y no otro color: se distingue también en escala de grises y en los modos de contraste
+.trend__bar--current {
+  border: $border-width solid var(--bd-primary);
+  border-bottom: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--bd-primary) 0 3px,
+    transparent 3px 6px
+  );
+}
+
+.trend__x {
+  display: flex;
+  grid-column: 2;
+  gap: 3px;
+  margin-top: $space-2;
+  padding-inline: 2px;
+}
+
+.trend__x-tick {
+  flex: 1;
+  min-width: 0;
+  overflow: visible;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.trend__x-tick--minor {
+  @media (max-width: $breakpoint-md) {
+    visibility: hidden;
+  }
+}
+
+.trend__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-1 $space-4;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--bd-text-muted);
+  font-size: $font-body-sm;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+  }
+}
+
+.trend__swatch {
+  width: $space-3;
+  height: $space-3;
+  border: $border-width solid var(--bd-primary);
+  border-radius: 2px;
+  background-color: var(--bd-primary);
+}
+
+// Mismo rayado que la barra en curso
+.trend__swatch--current {
+  background: repeating-linear-gradient(-45deg, var(--bd-primary) 0 2px, transparent 2px 4px);
+}
+
+.trend__table summary {
+  width: fit-content;
+  color: var(--bd-primary-dark);
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+}
+
+.trend__table-scroll {
+  max-height: 20rem;
+  margin-top: $space-2;
+  overflow: auto;
+}
+
+.trend__table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend__table :is(th, td) {
+  padding: $space-2 $space-3;
+  border-bottom: $border-width solid var(--bd-border);
+  text-align: left;
+}
+
+.trend__table :is(th, td):last-child {
+  text-align: right;
+}
+
+.trend__empty p {
+  margin: 0;
+}
+
+.trend__empty-title {
+  font-weight: $font-weight-semibold;
+}
+
+.trend__empty-text {
+  color: var(--bd-text-muted);
+}

@@ -1,0 +1,186 @@
+<section class="audit__card timeline__search" aria-labelledby="timeline-search-title">
+  <h2 id="timeline-search-title" class="cdk-visually-hidden">Buscar por folio</h2>
+  <form class="timeline__form" novalidate (submit)="submit($event)">
+    <mat-form-field class="timeline__field" subscriptSizing="dynamic">
+      <mat-label>Folio</mat-label>
+      <input
+        matInput
+        [formControl]="folio"
+        autocomplete="off"
+        autocapitalize="characters"
+        spellcheck="false"
+        enterkeyhint="search"
+        maxlength="20"
+        placeholder="BD-2026-000123"
+      />
+      <button
+        mat-icon-button
+        matIconSuffix
+        type="submit"
+        class="timeline__submit-icon"
+        aria-label="Consultar"
+        [disabled]="loading()"
+      >
+        <mat-icon aria-hidden="true">search</mat-icon>
+      </button>
+      <mat-hint>Formato BD-AAAA-NNNNNN, como figura en el comprobante.</mat-hint>
+      @if (folio.hasError('required')) {
+        <mat-error>Ingresa un folio.</mat-error>
+      } @else if (folio.hasError('format')) {
+        <mat-error>Usa el formato BD-AAAA-NNNNNN.</mat-error>
+      }
+    </mat-form-field>
+    <button matButton="filled" type="submit" class="timeline__submit" [disabled]="loading()">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      Consultar
+    </button>
+  </form>
+</section>
+
+<p class="cdk-visually-hidden" role="status">{{ announcement() }}</p>
+
+@if (failureText(); as failure) {
+  <section class="audit__card">
+    <app-audit-state
+      [error]="true"
+      [level]="2"
+      [icon]="failure.icon"
+      [heading]="failure.heading"
+      [message]="failure.message"
+    >
+      @if (failure.retry) {
+        <button matButton="filled" type="button" (click)="retry()">
+          <mat-icon aria-hidden="true">refresh</mat-icon>
+          Reintentar
+        </button>
+      }
+    </app-audit-state>
+  </section>
+} @else if (state().status !== 'idle') {
+  <section
+    class="audit__card timeline__results"
+    aria-labelledby="timeline-title"
+    [attr.aria-busy]="loading()"
+  >
+    <div class="timeline__head">
+      <h2 id="timeline-title" class="timeline__title" tabindex="-1" #heading>
+        @if (subject(); as folio) {
+          <span class="timeline__folio">{{ folio }}</span>
+        } @else {
+          Trámite sin folio
+        }
+        @if (procedure() || lastStatus()) {
+          <span class="timeline__subtitle">
+            @if (procedure(); as label) {
+              <span>{{ label }}</span>
+            }
+            @if (lastStatus(); as status) {
+              <app-request-status-badge [status]="status" />
+            }
+          </span>
+        }
+      </h2>
+      @if (page() !== null) {
+        <div class="timeline__actions">
+          <app-audit-refresh
+            [consultedAt]="consultedAt()"
+            [loading]="loading()"
+            (refresh)="refresh()"
+          />
+          @if (requestId(); as id) {
+            <a matButton="outlined" [routerLink]="['/tramites', id]">
+              <mat-icon aria-hidden="true">open_in_new</mat-icon>
+              Abrir trámite
+            </a>
+          }
+        </div>
+      }
+    </div>
+
+    @if (loading() && page() !== null) {
+      <mat-progress-bar
+        mode="indeterminate"
+        class="timeline__progress"
+        aria-label="Cargando el historial"
+      />
+    }
+
+    @if (page(); as current) {
+      @if (views().length === 0) {
+        <app-audit-state
+          icon="history_toggle_off"
+          heading="Sin eventos registrados"
+          [message]="
+            subject()
+              ? 'El folio no existe o el trámite es anterior al registro de auditoría.'
+              : 'El trámite es anterior al registro de auditoría.'
+          "
+        />
+      } @else {
+        <p class="timeline__count">{{ countText() }}</p>
+        <ol class="timeline" aria-label="Eventos del trámite, del más antiguo al más reciente">
+          @for (view of views(); track view.event.eventId) {
+            <li class="timeline__item">
+              <span class="timeline__dot timeline__dot--{{ view.tone }}" aria-hidden="true">
+                <mat-icon>{{ view.icon }}</mat-icon>
+              </span>
+              <div class="timeline__body">
+                <p class="timeline__headline">
+                  <span>{{ view.headline }}</span>
+                  <app-audit-event-tags [view]="view" [kind]="false" />
+                </p>
+                <p class="timeline__meta">
+                  <time [attr.datetime]="view.event.occurredAt"
+                    >{{ view.date }} {{ view.time }}</time
+                  >
+                  <span aria-hidden="true">·</span>
+                  <span class="timeline__actor">{{ view.actorName }}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{{ view.actorRole }}</span>
+                </p>
+                @if (view.fields.length) {
+                  <dl class="timeline__fields">
+                    @for (field of view.fields; track field.label) {
+                      <div>
+                        <dt>{{ field.label }}</dt>
+                        <dd>{{ field.value }}</dd>
+                      </div>
+                    }
+                  </dl>
+                }
+                @if (view.interventionReason) {
+                  <app-audit-intervention [reason]="view.interventionReason" />
+                }
+                <app-audit-raw-data [event]="view.event" />
+              </div>
+            </li>
+          }
+        </ol>
+        @if (current.totalElements > current.size) {
+          <mat-paginator
+            class="timeline__paginator"
+            aria-label="Páginas del historial"
+            [length]="current.totalElements"
+            [pageIndex]="query().page"
+            [pageSize]="query().size"
+            [pageSizeOptions]="pageSizes"
+            showFirstLastButtons
+            (page)="changePage($event)"
+          />
+        }
+      }
+    } @else {
+      <ol class="timeline timeline--skeleton" aria-hidden="true">
+        @for (row of [1, 2, 3]; track row) {
+          <li class="timeline__item">
+            <span class="timeline__dot timeline__dot--neutral"></span>
+            <div class="timeline__body">
+              <span class="timeline__bone"></span>
+              <span class="timeline__bone timeline__bone--short"></span>
+            </div>
+          </li>
+        }
+      </ol>
+    }
+  </section>
+}

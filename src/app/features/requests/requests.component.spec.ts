@@ -6,11 +6,15 @@ import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSelect } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
+import { Router, provideRouter } from '@angular/router';
 import { Observable, Subject, Subscriber, firstValueFrom, of, throwError } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { CatalogService } from '../../core/catalog/catalog.service';
+import { ReportService } from '../../core/report/report.service';
 import { ProcedureType } from '../../shared/models/procedure-type.model';
+import { SlaBatch } from '../../shared/models/report.model';
+import { Page } from '../../shared/models/page.model';
 import { Request, RequestStatus, RequestTransitions } from '../../shared/models/request.model';
 import { Role } from '../../shared/models/role';
 import {
@@ -20,6 +24,20 @@ import {
 import { RequestsComponent } from './requests.component';
 import { RequestsService } from './requests.service';
 
+/** Texto por nodo, como lo recorre un lector de pantalla: sin las ligaduras de los íconos. */
+const words = (node: Node | null | undefined): string => {
+  if (!node) return '';
+  const copy = node.cloneNode(true) as Element;
+  copy.querySelectorAll('mat-icon').forEach((icon) => icon.remove());
+  const walker = document.createTreeWalker(copy, NodeFilter.SHOW_TEXT);
+  const parts: string[] = [];
+  while (walker.nextNode()) {
+    const text = walker.currentNode.textContent?.trim();
+    if (text) parts.push(text);
+  }
+  return parts.join(' ');
+};
+
 describe('RequestsComponent', () => {
   const catalog: ProcedureType[] = [
     {
@@ -28,6 +46,7 @@ describe('RequestsComponent', () => {
       active: true,
       dailyQuota: 10,
       remainingQuota: 4,
+      slaBusinessDays: null,
     },
     {
       value: 'otro',
@@ -35,6 +54,7 @@ describe('RequestsComponent', () => {
       active: true,
       dailyQuota: null,
       remainingQuota: null,
+      slaBusinessDays: null,
     },
     {
       value: 'historico',
@@ -42,6 +62,7 @@ describe('RequestsComponent', () => {
       active: false,
       dailyQuota: 5,
       remainingQuota: 0,
+      slaBusinessDays: null,
     },
   ];
   const mine: Request = {
@@ -54,6 +75,9 @@ describe('RequestsComponent', () => {
     createdAt: '2026-09-01T12:00:00.000Z',
     solicitanteId: 'vecino-actual',
     solicitanteNombre: 'Ana María Soto',
+    hasAssignee: true,
+    assigneeId: 'funcionario-actual',
+    assigneeName: 'Pedro Levi Manquepi',
   };
   const other: Request = {
     ...mine,
@@ -63,31 +87,66 @@ describe('RequestsComponent', () => {
     solicitanteNombre: 'Luis Pérez',
   };
 
+  const page = (content: Request[]): Page<Request> => ({
+    content,
+    page: 0,
+    size: 20,
+    totalElements: content.length,
+    totalPages: content.length ? 1 : 0,
+  });
+
   let service: {
     getRequests: ReturnType<typeof vi.fn>;
     createRequest: ReturnType<typeof vi.fn>;
+    getAttachment: ReturnType<typeof vi.fn>;
     getTransitions: ReturnType<typeof vi.fn>;
     changeStatus: ReturnType<typeof vi.fn>;
+    exportRequests: ReturnType<typeof vi.fn>;
+    findDuplicates: ReturnType<typeof vi.fn>;
+    take?: ReturnType<typeof vi.fn>;
   };
   let fixture: ComponentFixture<RequestsComponent>;
   let element: HTMLElement;
   let catalogService: { getProcedures: ReturnType<typeof vi.fn> };
+  let reportService: { getSlaBatch: ReturnType<typeof vi.fn> };
+  /** Respuesta de report por omisión: un trámite vencido y otro sin plazo. */
+  const slaBatch = (ids: readonly string[]): SlaBatch => ({
+    items: ids.map((requestId) =>
+      requestId === 'propio'
+        ? { requestId, slaStatus: 'VENCIDO', dueDate: '2026-09-08' }
+        : { requestId, slaStatus: 'SIN_PLAZO', dueDate: null },
+    ),
+    lastEventAt: '2026-09-09T12:00:00Z',
+  });
+  let getSlaBatch: (ids: readonly string[]) => Observable<SlaBatch>;
+  beforeEach(() => {
+    getSlaBatch = (ids) => of(slaBatch(ids));
+  });
 
   const render = async (
     role: Role,
-    getRequests: () => Observable<Request[]> = () => of([mine, other]),
+    getRequests: () => Observable<Page<Request>> = () => of(page([mine, other])),
     getTransitions: () => Observable<RequestTransitions> = () =>
       throwError(() => new Error('acciones no disponibles')),
     getProcedures: () => Observable<ProcedureType[]> = () => of(catalog),
+    initialUrl?: string,
   ) => {
     catalogService = { getProcedures: vi.fn(getProcedures) };
+    reportService = { getSlaBatch: vi.fn((ids: readonly string[]) => getSlaBatch(ids)) };
     service = {
       getRequests: vi.fn(getRequests),
       createRequest: vi.fn(() => of(mine)),
+      getAttachment: vi.fn(() => of(new Blob(['image'], { type: 'image/png' }))),
       getTransitions: vi.fn(getTransitions),
       changeStatus: vi.fn(),
+      exportRequests: vi.fn(() => of(new Blob(['csv'], { type: 'text/csv' }))),
+      findDuplicates: vi.fn(() => of([])),
     };
-    const auth = { hasRole: (userRole: string) => userRole === role };
+    const auth = {
+      role: () => role,
+      hasRole: (userRole: string) => userRole === role,
+      userId: () => (role === Role.Vecino ? 'vecino-actual' : 'funcionario-actual'),
+    };
 
     await TestBed.configureTestingModule({
       imports: [RequestsComponent],
@@ -95,15 +154,42 @@ describe('RequestsComponent', () => {
         { provide: RequestsService, useValue: service },
         { provide: AuthService, useValue: auth },
         { provide: CatalogService, useValue: catalogService },
+        { provide: ReportService, useValue: reportService },
+        provideRouter([]),
       ],
     }).compileComponents();
 
+    if (initialUrl) {
+      await TestBed.inject(Router).navigateByUrl(initialUrl);
+    }
     fixture = TestBed.createComponent(RequestsComponent);
     element = fixture.nativeElement;
     await fixture.whenStable();
   };
 
   const text = () => element.textContent ?? '';
+  const openDetails = async (root: ParentNode, requestId?: string) => {
+    const trigger = [...root.querySelectorAll<HTMLButtonElement>('.requests__details')].find(
+      (button) => !requestId || button.getAttribute('aria-label')?.includes(requestId),
+    );
+    if (!trigger) {
+      throw new Error('No está el menú del trámite');
+    }
+    trigger.click();
+    await fixture.whenStable();
+    return trigger;
+  };
+  const menuAction = (label: string) => {
+    const overlay = TestBed.inject(OverlayContainer).getContainerElement();
+    const item = [...overlay.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) =>
+        (button.querySelector('.mat-mdc-menu-item-text') ?? button).textContent?.trim() === label,
+    );
+    if (!item) {
+      throw new Error(`No está la acción ${label}`);
+    }
+    return item;
+  };
   const headers = () =>
     Array.from(element.querySelectorAll('th'), (header) => header.textContent?.trim());
   const submitButton = () => element.querySelector<HTMLButtonElement>('.requests__submit');
@@ -116,13 +202,13 @@ describe('RequestsComponent', () => {
       .map((label) => label.nextElementSibling?.textContent?.trim()),
   });
 
-  it('Vecino: ve el formulario, sin filtros, y lo que entrega el servidor sin volver a filtrarlo', async () => {
+  it('Vecino: ve el formulario, los filtros y lo que entrega el servidor sin volver a filtrarlo', async () => {
     await render(Role.Vecino);
 
     expect(element.querySelector('.requests__card')).not.toBeNull();
     expect(element.querySelector('#requests-list-title')?.textContent).toContain('Mis trámites');
-    expect(element.querySelector('.requests__filters')).toBeNull();
-    expect(service.getRequests).toHaveBeenCalledWith(undefined);
+    expect(element.querySelector('.requests__filters')).not.toBeNull();
+    expect(service.getRequests).toHaveBeenCalledWith({});
     expect(text()).toContain('Rama sobre el cable');
     expect(text()).toContain('Bache de otro vecino');
     expect(headers()).toEqual(['Tipo', 'Descripción', 'Estado', 'Fecha']);
@@ -131,7 +217,212 @@ describe('RequestsComponent', () => {
     expect(text()).not.toContain(other.solicitanteNombre);
   });
 
-  it('Funcionario: sin formulario, con filtros y Solicitante después de Descripción en tabla y tarjetas', async () => {
+  describe('posibles duplicados en el alta (EP3-79)', () => {
+    const candidate = {
+      id: null,
+      folio: 'BD-2026-000123',
+      procedureType: 'alumbrado',
+      procedureLabel: 'Iluminación municipal',
+      status: 'EN_GESTION' as const,
+      sector: 'ralco',
+      distanceMeters: null,
+      createdDate: '2026-11-11',
+      hasAssignee: null,
+      mine: false,
+    };
+    const waitForSearch = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 550));
+      fixture.detectChanges();
+      await fixture.whenStable();
+    };
+
+    it('con tipo y sector consulta, avisa dentro de Ubicación y no bloquea el ingreso', async () => {
+      await render(Role.Vecino);
+      service.findDuplicates.mockReturnValue(of([candidate]));
+      fixture.componentInstance['createForm'].setValue({
+        procedureType: 'alumbrado',
+        description: 'Luminaria apagada',
+        address: 'Calle 1',
+      });
+      fixture.componentInstance['locationForm'].controls.sector.setValue('ralco');
+      await waitForSearch();
+
+      expect(service.findDuplicates).toHaveBeenCalledWith({
+        procedureType: 'alumbrado',
+        sector: 'ralco',
+      });
+      const warning = element.querySelector('.requests__location app-request-duplicate-warning');
+      expect(words(warning)).toContain('Hay 1 trámite abierto que podría estar relacionado');
+      expect(words(warning)).toContain('BD-2026-000123');
+      expect(submitButton()?.disabled).toBe(false);
+
+      submitButton()?.click();
+      await fixture.whenStable();
+      expect(service.createRequest).toHaveBeenCalled();
+    });
+
+    it('sin punto y con "Otro sector" no consulta', async () => {
+      await render(Role.Vecino);
+      fixture.componentInstance['createForm'].controls.procedureType.setValue('alumbrado');
+      fixture.componentInstance['locationForm'].controls.sector.setValue('otro');
+      await waitForSearch();
+
+      expect(service.findDuplicates).not.toHaveBeenCalled();
+    });
+
+    it('el personal no tiene el aviso', async () => {
+      await render(Role.Funcionario);
+
+      expect(element.querySelector('app-request-duplicate-warning')).toBeNull();
+      expect(service.findDuplicates).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('privacidad en el alta', () => {
+    const imagePicker = () =>
+      element.querySelector<HTMLInputElement>('app-request-image-field input[type="file"]')!;
+    const pickImage = async (file: File) => {
+      Object.defineProperty(imagePicker(), 'files', { value: [file], configurable: true });
+      imagePicker().dispatchEvent(new Event('change'));
+      await fixture.whenStable();
+    };
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    it('Vecino: el aviso va justo antes de ingresar y la advertencia dentro del bloque de imagen', async () => {
+      await render(Role.Vecino);
+
+      const notice = element.querySelector('app-request-privacy-notice');
+      expect(notice?.nextElementSibling).toBe(submitButton());
+      const caution = element.querySelector('.requests__attachment .image-field__caution');
+      expect(caution?.textContent).toMatch(/rostros/i);
+      expect(caution?.textContent).toMatch(/patentes/i);
+    });
+
+    it('el personal no ve el formulario ni el aviso', async () => {
+      await render(Role.Funcionario);
+
+      expect(element.querySelector('app-request-privacy-notice')).toBeNull();
+      expect(element.querySelector('app-request-image-field')).toBeNull();
+    });
+
+    it('una imagen sobre 5 MB muestra el error y bloquea el ingreso', async () => {
+      await render(Role.Vecino);
+      const large = new File(['x'], 'grande.jpg', { type: 'image/jpeg' });
+      Object.defineProperty(large, 'size', { value: 6 * 1024 * 1024 });
+
+      await pickImage(large);
+
+      expect(element.querySelector('app-request-image-field [role="alert"]')?.textContent).toContain(
+        'La imagen no puede superar 5 MB.',
+      );
+      expect(submitButton()?.disabled).toBe(true);
+    });
+
+    it('una imagen válida queda con miniatura, y Quitar vuelve al estado inicial', async () => {
+      vi.stubGlobal(
+        'createImageBitmap',
+        vi.fn(async () => ({ width: 800, height: 600, close: vi.fn() })),
+      );
+      vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:miniatura');
+      const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+      await render(Role.Vecino);
+
+      await pickImage(new File(['x'], 'bache.jpg', { type: 'image/jpeg' }));
+      await fixture.whenStable();
+
+      expect(element.querySelector('.image-field__thumb img')?.getAttribute('src')).toBe(
+        'blob:miniatura',
+      );
+      expect(element.querySelector('.image-field__name')?.textContent).toBe('bache.jpg');
+      expect(submitButton()?.disabled).toBe(false);
+
+      element.querySelector<HTMLButtonElement>('button[aria-label="Quitar imagen"]')!.click();
+      await fixture.whenStable();
+
+      expect(element.querySelector('.image-field__thumb')).toBeNull();
+      expect(revoke).toHaveBeenCalledWith('blob:miniatura');
+    });
+  });
+
+  describe('estado del plazo (EP3-53)', () => {
+    const read = (node: Element) => words(node);
+    const slaCells = () =>
+      Array.from(element.querySelectorAll('td.mat-column-estado .requests__sla'), read);
+    const cardSla = () =>
+      Array.from(
+        element.querySelectorAll('.requests__item .requests__fields > div:first-child'),
+        read,
+      );
+
+    it('el staff consulta una sola vez por página y ve el estado junto al estado del trámite', async () => {
+      await render(Role.Funcionario);
+
+      expect(reportService.getSlaBatch).toHaveBeenCalledTimes(1);
+      expect(reportService.getSlaBatch).toHaveBeenCalledWith(['propio', 'ajeno']);
+      const [overdue, noSla] = slaCells();
+      expect(overdue).toMatch(/^Plazo: Vencido Venció el 8 sep/);
+      expect(noSla).toBe('Plazo: Sin plazo');
+      expect(cardSla()[0]).toMatch(/^Plazo Vencido Venció el 8 sep/);
+    });
+
+    it('el Auditor también lo ve, sin acciones', async () => {
+      await render(Role.Auditor);
+      expect(reportService.getSlaBatch).toHaveBeenCalledTimes(1);
+      expect(slaCells()).toHaveLength(2);
+    });
+
+    it('el Vecino no consulta report ni ve el plazo en el listado', async () => {
+      await render(Role.Vecino);
+      expect(reportService.getSlaBatch).not.toHaveBeenCalled();
+      expect(headers()).toContain('Estado');
+      expect(element.querySelector('.requests__sla, app-sla-indicator')).toBeNull();
+    });
+
+    it('un trámite que report no conoce muestra "—" con su nombre accesible', async () => {
+      getSlaBatch = (ids) =>
+        of({
+          items: ids.map((requestId) => ({ requestId, slaStatus: null, dueDate: null })),
+          lastEventAt: null,
+        });
+      await render(Role.Admin);
+      const unknown = element.querySelector(
+        'td.mat-column-estado [aria-label="Sin información de plazo"]',
+      );
+      expect(unknown?.textContent?.trim()).toBe('—');
+    });
+
+    it('report caído: el listado se muestra, el plazo dice "No disponible" y se reintenta solo el plazo', async () => {
+      getSlaBatch = () => throwError(() => new HttpErrorResponse({ status: 503 }));
+      await render(Role.Funcionario);
+
+      expect(text()).toContain('Bache de otro vecino');
+      expect(slaCells()).toEqual(['Plazo: No disponible', 'Plazo: No disponible']);
+      const notice = element.querySelector('.requests__sla-notice')!;
+      expect(notice.textContent).toContain('No se pudo consultar el estado de los plazos.');
+
+      getSlaBatch = (ids) => of(slaBatch(ids));
+      notice.querySelector('button')!.click();
+      await fixture.whenStable();
+      expect(service.getRequests).toHaveBeenCalledTimes(1);
+      expect(reportService.getSlaBatch).toHaveBeenCalledTimes(2);
+      expect(element.querySelector('.requests__sla-notice')).toBeNull();
+      expect(slaCells()[0]).toMatch(/^Plazo: Vencido/);
+    });
+
+    it('una página nueva pide los plazos de sus propios trámites', async () => {
+      await render(Role.Funcionario);
+      service.getRequests.mockReturnValue(of(page([{ ...other, id: 'tercero' }])));
+      fixture.componentInstance['changeQueue']('none');
+      await fixture.whenStable();
+      expect(reportService.getSlaBatch).toHaveBeenLastCalledWith(['tercero']);
+    });
+  });
+
+  it('Funcionario: sin formulario, con filtros, Solicitante y Responsable en tabla y tarjetas', async () => {
     await render(Role.Funcionario);
 
     expect(element.querySelector('.requests__card')).toBeNull();
@@ -144,7 +435,8 @@ describe('RequestsComponent', () => {
       'Tipo',
       'Descripción',
       'Solicitante',
-      'Estado',
+      'Responsable',
+      'Estado y plazo',
       'Fecha',
       'Acciones',
     ]);
@@ -154,10 +446,63 @@ describe('RequestsComponent', () => {
     });
     expect(
       Array.from(element.querySelectorAll('.requests__fields dt'))
-        .slice(0, 5)
+        .slice(0, 4)
         .map((label) => label.textContent?.trim()),
-    ).toEqual(['Tipo', 'Descripción', 'Solicitante', 'Estado', 'Fecha']);
+    ).toEqual(['Plazo', 'Solicitante', 'Responsable', 'Fecha']);
     expect(text()).not.toContain('otro-vecino');
+  });
+
+  it('Funcionario: abre la preview desde el navegador y libera la URL al cerrar', async () => {
+    const requestWithImage = { ...mine, hasAttachment: true };
+    const objectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:request-preview');
+    const revokeUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    await render(Role.Funcionario, () => of(page([requestWithImage])));
+
+    await openDetails(element, requestWithImage.id);
+    menuAction('Vista previa de imagen').click();
+    await fixture.whenStable();
+
+    expect(service.getAttachment).toHaveBeenCalledWith(requestWithImage.id);
+    expect(objectUrl).toHaveBeenCalledOnce();
+    const overlay = TestBed.inject(OverlayContainer).getContainerElement();
+    const image = overlay.querySelector<HTMLImageElement>(
+      'img[alt="Imagen adjunta del trámite propio"]',
+    );
+    expect(image?.src).toBe('blob:request-preview');
+    expect(overlay.textContent).toContain('Imagen adjunta del trámite');
+
+    const closed = firstValueFrom(TestBed.inject(MatDialog).openDialogs[0].afterClosed());
+    const closeButton = [...overlay.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent?.trim() === 'Cerrar',
+    );
+    closeButton?.click();
+    await closed;
+    expect(revokeUrl).toHaveBeenCalledWith('blob:request-preview');
+
+    objectUrl.mockRestore();
+    revokeUrl.mockRestore();
+  });
+
+  it('Funcionario: la fila no repite la ubicación y el menú ofrece el mapa en otra pestaña', async () => {
+    const request: Request = {
+      ...mine,
+      sector: 'ralco',
+      locationReference: 'Frente a la plaza',
+      latitude: -37.933,
+      longitude: -71.317,
+      locationPrecision: 'APROXIMADO',
+    };
+    await render(Role.Funcionario, () => of(page([request])));
+
+    expect(text()).not.toContain('Frente a la plaza');
+    await openDetails(element, request.id);
+    const overlay = TestBed.inject(OverlayContainer).getContainerElement();
+    const mapLink = [...overlay.querySelectorAll<HTMLAnchorElement>('a[mat-menu-item]')].find(
+      (link) => link.textContent?.includes('Ver en el mapa'),
+    );
+    expect(mapLink?.href).toContain('mlat=-37.933&mlon=-71.317');
+    expect(mapLink?.rel).toBe('noopener noreferrer');
+    expect(mapLink?.getAttribute('aria-label')).toContain('se abre en otra pestaña');
   });
 
   it.each([
@@ -176,7 +521,7 @@ describe('RequestsComponent', () => {
   ])('presenta $name como $expected en ambas vistas', async ({ name, expected }) => {
     const request: Request = { ...mine, solicitanteNombre: name };
     if (name === undefined) delete request.solicitanteNombre;
-    await render(Role.Funcionario, () => of([request]));
+    await render(Role.Funcionario, () => of(page([request])));
 
     expect(solicitanteNames()).toEqual({ table: [expected], cards: [expected] });
     expect(element.querySelector('td.mat-column-solicitante b')).toBeNull();
@@ -185,7 +530,7 @@ describe('RequestsComponent', () => {
   it('Funcionario: pide el listado con los filtros elegidos', async () => {
     await render(Role.Funcionario);
 
-    fixture.componentInstance['filters'].setValue({
+    fixture.componentInstance['filters'].patchValue({
       status: 'RESUELTO',
       from: new Date(2026, 8, 1),
       to: null,
@@ -198,8 +543,68 @@ describe('RequestsComponent', () => {
     });
   });
 
+  it('Funcionario: Hasta anterior a Desde no se consulta', async () => {
+    await render(Role.Funcionario);
+
+    fixture.componentInstance['filters'].patchValue({
+      status: '',
+      from: new Date(2026, 9, 8),
+      to: new Date(2017, 5, 22),
+    });
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance['filters'].controls.to.value).toBeNull();
+    expect(service.getRequests).toHaveBeenLastCalledWith({ from: '2026-10-08' });
+
+    fixture.componentInstance['filters'].patchValue({
+      status: '',
+      from: new Date(2026, 9, 8),
+      to: new Date(2026, 9, 8),
+    });
+    await fixture.whenStable();
+
+    expect(service.getRequests).toHaveBeenLastCalledWith({
+      from: '2026-10-08',
+      to: '2026-10-08',
+    });
+  });
+
+  it('Funcionario: no consulta fechas anteriores a la municipalidad', async () => {
+    await render(Role.Funcionario);
+
+    fixture.componentInstance['filters'].patchValue({
+      status: '',
+      from: new Date(1123, 0, 1),
+      to: new Date(1123, 5, 22),
+    });
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance['filters'].getRawValue()).toEqual({
+      status: '',
+      open: '',
+      procedureType: '',
+      sector: '',
+      from: null,
+      to: null,
+    });
+    expect(service.getRequests).toHaveBeenLastCalledWith({});
+
+    const installation = new Date(2004, 11, 6);
+    fixture.componentInstance['filters'].patchValue({
+      status: '',
+      from: installation,
+      to: installation,
+    });
+    await fixture.whenStable();
+
+    expect(service.getRequests).toHaveBeenLastCalledWith({
+      from: '2004-12-06',
+      to: '2004-12-06',
+    });
+  });
+
   it('muestra la etiqueta del tipo y, si el código no está en la lista, el código crudo', async () => {
-    await render(Role.Vecino, () => of([mine, { ...other, procedureType: 'desconocido' }]));
+    await render(Role.Vecino, () => of(page([mine, { ...other, procedureType: 'desconocido' }])));
 
     for (const container of ['.requests__table', '.requests__cards']) {
       expect(element.querySelector(container)?.textContent).toContain('Iluminación municipal');
@@ -234,7 +639,7 @@ describe('RequestsComponent', () => {
   it('si falla la carga ofrece Reintentar y vuelve a pedir el listado', async () => {
     let attempts = 0;
     await render(Role.Vecino, () =>
-      attempts++ === 0 ? throwError(() => new Error('sin red')) : of([]),
+      attempts++ === 0 ? throwError(() => new Error('sin red')) : of(page([])),
     );
 
     expect(text()).toContain('No pudimos cargar la información de trámites. Intenta nuevamente.');
@@ -267,7 +672,7 @@ describe('RequestsComponent', () => {
       };
       await render(
         Role.Funcionario,
-        () => of([{ ...mine, status }]),
+        () => of(page([{ ...mine, status }])),
         () => of(transitions),
       );
 
@@ -286,11 +691,11 @@ describe('RequestsComponent', () => {
       await render(
         Role.Funcionario,
         () =>
-          of([
+          of(page([
             mine,
             { ...other, status: 'RESUELTO' },
             { ...mine, id: 'rechazado', status: 'RECHAZADO' },
-          ]),
+          ])),
         () =>
           state === 'loading'
             ? new Subject<RequestTransitions>()
@@ -310,35 +715,41 @@ describe('RequestsComponent', () => {
     async (role) => {
       const reason = 'Primera línea.\n' + 'TextoSinEspacios'.repeat(30);
       await render(role, () =>
-        of([
+        of(page([
           { ...mine, status: 'RECHAZADO', rejectionReason: reason },
           { ...other, status: 'RECHAZADO', rejectionReason: '   ' },
           { ...mine, id: 'no-rechazado', rejectionReason: 'Motivo de otro estado' },
-        ]),
+        ])),
       );
       const overlay = TestBed.inject(OverlayContainer).getContainerElement();
 
       for (const container of ['.requests__table', '.requests__cards']) {
-        const triggers = element.querySelectorAll<HTMLButtonElement>(
-          `${container} .requests__rejection-reason`,
-        );
-        expect(triggers).toHaveLength(1);
+        const scope = element.querySelector(container)!;
+        const triggers = scope.querySelectorAll<HTMLButtonElement>('.requests__details');
+        expect(triggers).toHaveLength(3);
         const trigger = triggers[0];
-        expect(trigger.textContent?.trim()).toBe('Ver motivo');
-        expect(trigger.tagName).toBe('BUTTON');
-        expect(trigger.parentElement?.classList.contains('requests__state')).toBe(true);
-        expect(trigger.previousElementSibling?.classList.contains('badge')).toBe(true);
+        expect(trigger.querySelector('mat-icon')?.textContent?.trim()).toBe('more_vert');
+        expect(trigger.closest('.requests__state')?.querySelector('.badge')).not.toBeNull();
         expect(trigger.getAttribute('aria-label')).toContain(mine.id);
-        expect(trigger.getAttribute('aria-label')).toContain('Ver motivo del rechazo');
+        expect(trigger.getAttribute('aria-label')).toContain('Más información del trámite');
+        expect(scope.textContent).not.toContain('Ver motivo');
         expect(element.textContent).not.toContain(reason);
         vi.spyOn(trigger, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
         trigger.click();
+        await fixture.whenStable();
+        const reasonItem = menuAction('Ver motivo');
+        expect(menuAction('Actividad')).not.toBeNull();
+        expect(reasonItem.getAttribute('aria-label')).toContain('Ver motivo del rechazo');
+        reasonItem.click();
         await fixture.whenStable();
 
         const dialogRef = TestBed.inject(MatDialog).openDialogs[0];
         expect(dialogRef.disableClose).toBe(false);
         expect(
-          overlay.querySelector('.cdk-overlay-pane')?.classList.contains('request-dialog'),
+          overlay
+            .querySelector('mat-dialog-container')
+            ?.closest('.cdk-overlay-pane')
+            ?.classList.contains('request-dialog'),
         ).toBe(true);
         expect(overlay.textContent).toContain('Motivo del rechazo');
         expect(overlay.textContent).toContain('Iluminación municipal');
@@ -349,7 +760,7 @@ describe('RequestsComponent', () => {
         expect(overlay.querySelector('dd.rejection-reason-dialog__reason')).not.toBeNull();
         expect(overlay.querySelector('.rejection-reason-dialog__reason')?.textContent).toBe(reason);
         const closed = firstValueFrom(dialogRef.afterClosed());
-        overlay.querySelector<HTMLButtonElement>('button')!.click();
+        overlay.querySelector<HTMLButtonElement>('mat-dialog-container button')!.click();
         await closed;
         await fixture.whenStable();
 
@@ -369,9 +780,10 @@ describe('RequestsComponent', () => {
     'el diálogo de lectura permite cerrar con %s sin recargar',
     async (closeWith) => {
       await render(Role.Vecino, () =>
-        of([{ ...mine, status: 'RECHAZADO', rejectionReason: 'Antecedentes incompletos.' }]),
+        of(page([{ ...mine, status: 'RECHAZADO', rejectionReason: 'Antecedentes incompletos.' }])),
       );
-      element.querySelector<HTMLButtonElement>('.requests__rejection-reason')!.click();
+      await openDetails(element);
+      menuAction('Ver motivo').click();
       await fixture.whenStable();
       const overlay = TestBed.inject(OverlayContainer).getContainerElement();
       const closed = firstValueFrom(TestBed.inject(MatDialog).openDialogs[0].afterClosed());
@@ -383,7 +795,8 @@ describe('RequestsComponent', () => {
             new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }),
           );
       } else {
-        overlay.querySelector<HTMLElement>('.cdk-overlay-backdrop')!.click();
+        const backdrops = overlay.querySelectorAll<HTMLElement>('.cdk-overlay-backdrop');
+        backdrops[backdrops.length - 1]!.click();
       }
       await closed;
       await fixture.whenStable();
@@ -407,7 +820,7 @@ describe('RequestsComponent', () => {
     const controls = () => fixture.componentInstance['createForm'].controls;
 
     it('ofrece solo activos, conserva labels históricos y no selecciona el primer tipo', async () => {
-      await render(Role.Vecino, () => of([{ ...mine, procedureType: 'historico' }]));
+      await render(Role.Vecino, () => of(page([{ ...mine, procedureType: 'historico' }])));
       const select = fixture.debugElement.query(By.directive(MatSelect))
         .componentInstance as MatSelect;
       expect(select.options.map((option) => option.value)).toEqual(['alumbrado', 'otro']);
@@ -430,7 +843,7 @@ describe('RequestsComponent', () => {
             : state === 'error'
               ? throwError(() => new Error('sin red'))
               : of(state === 'empty' ? [] : [catalog[2]]);
-        await render(Role.Vecino, () => of([mine]), undefined, getProcedures);
+        await render(Role.Vecino, () => of(page([mine])), undefined, getProcedures);
         fillForm();
         submitDirectly();
         expect(controls().procedureType.disabled).toBe(true);
@@ -529,7 +942,7 @@ describe('RequestsComponent', () => {
       };
       await render(
         Role.Funcionario,
-        () => of([mine]),
+        () => of(page([mine])),
         () => of(transitions),
         () => throwError(() => new Error('sin red')),
       );
@@ -579,7 +992,7 @@ describe('RequestsComponent', () => {
       };
       await render(
         Role.Funcionario,
-        () => of([mine, request]),
+        () => of(page([mine, request])),
         () => of(transitions),
       );
       const trigger = element.querySelector<HTMLButtonElement>('.request-actions__primary')!;
@@ -601,7 +1014,8 @@ describe('RequestsComponent', () => {
       statusDialog.close();
       await statusClosed;
       await fixture.whenStable();
-      element.querySelector<HTMLButtonElement>('.requests__rejection-reason')!.click();
+      await openDetails(element, 'historico-rechazado');
+      menuAction('Ver motivo').click();
       await fixture.whenStable();
       expect(overlay.textContent).toContain('Nuevo label histórico');
       const reasonDialog = TestBed.inject(MatDialog).openDialogs[0];
@@ -739,7 +1153,7 @@ describe('RequestsComponent', () => {
       expect(text().split(message)).toHaveLength(2);
       expect(recovery().classList.contains('requests__status')).toBe(true);
       expect(element.querySelector('.requests__table')).toBeNull();
-      const requestsResponse = new Subject<Request[]>();
+      const requestsResponse = new Subject<Page<Request>>();
       const catalogResponse = new Subject<ProcedureType[]>();
       const transitionsResponse = new Subject<RequestTransitions>();
       service.getRequests.mockReturnValue(requestsResponse);
@@ -754,7 +1168,7 @@ describe('RequestsComponent', () => {
       expect(spinner()?.getAttribute('aria-label')).toBe('Cargando información de trámites');
       expect(recovery().querySelector('button')).toBeNull();
       expect(text()).not.toContain(message);
-      complete(requestsResponse, [mine]);
+      complete(requestsResponse, page([mine]));
       await fixture.whenStable();
       expect(recovery().classList.contains('requests__recovery--compact')).toBe(true);
       expect(element.querySelector('.requests__table')?.textContent).toContain(mine.description);
@@ -782,7 +1196,7 @@ describe('RequestsComponent', () => {
       async (query) => {
         await render(
           Role.Funcionario,
-          () => of([mine]),
+          () => of(page([mine])),
           query === 'transitions' ? fail : () => of(transitions),
           query === 'catalog' ? fail : () => of(catalog),
         );
@@ -799,6 +1213,17 @@ describe('RequestsComponent', () => {
       },
     );
 
+    it('nombre del tipo: catálogo actual, luego el guardado y al final el código', async () => {
+      await render(Role.Funcionario);
+      const label = (procedureType: string, procedureLabel: string | null) =>
+        fixture.componentInstance['getTipoLabel']({ ...mine, procedureType, procedureLabel });
+
+      // Renombrado: el catálogo manda sobre el nombre guardado al crear
+      expect(label('alumbrado', 'Alumbrado público')).toBe('Iluminación municipal');
+      expect(label('tipo-retirado', 'Retiro de escombros')).toBe('Retiro de escombros');
+      expect(label('tipo-retirado', null)).toBe('tipo-retirado');
+    });
+
     it('conserva campos y labels; Vecino nunca consulta transiciones y las asociaciones accesibles siguen presentes', async () => {
       await render(Role.Vecino);
       const payload = { procedureType: 'alumbrado', description: 'Poste', address: 'Calle 2' };
@@ -808,7 +1233,13 @@ describe('RequestsComponent', () => {
       fixture.componentInstance['loadCatalog']();
       fixture.componentInstance['loadRequests']();
       await fixture.whenStable();
-      expect(fixture.componentInstance['getTipoLabel']('alumbrado')).toBe('Iluminación municipal');
+      expect(
+        fixture.componentInstance['getTipoLabel']({
+          ...mine,
+          procedureType: 'alumbrado',
+          procedureLabel: null,
+        }),
+      ).toBe('Iluminación municipal');
       expect(fixture.componentInstance['createForm'].getRawValue()).toEqual(payload);
       const checkDescriptions = () => {
         const select = element.querySelector('[formControlName="procedureType"]')!;
@@ -822,7 +1253,7 @@ describe('RequestsComponent', () => {
       };
       checkDescriptions();
       catalogService.getProcedures.mockReturnValue(of(catalog));
-      service.getRequests.mockReturnValue(of([mine]));
+      service.getRequests.mockReturnValue(of(page([mine])));
       retry();
       await fixture.whenStable();
       expect(fixture.componentInstance['createForm'].getRawValue()).toEqual(payload);
@@ -836,9 +1267,9 @@ describe('RequestsComponent', () => {
     });
 
     it('conserva filtros y el aviso de cambio guardado hasta que se recupere el listado', async () => {
-      await render(Role.Funcionario, () => of([mine]), fail);
-      const filters = { status: 'INGRESADO', from: new Date(2026, 8, 1), to: null };
-      fixture.componentInstance['filters'].setValue(filters);
+      await render(Role.Funcionario, () => of(page([mine])), fail);
+      const filters = { status: 'INGRESADO' as const, from: new Date(2026, 8, 1), to: null };
+      fixture.componentInstance['filters'].patchValue(filters);
       service.getRequests.mockReturnValue(fail());
       fixture.componentInstance['loadRequests'](true);
       catalogService.getProcedures.mockReturnValue(fail());
@@ -851,8 +1282,8 @@ describe('RequestsComponent', () => {
       await fixture.whenStable();
       expect(text()).toContain(savedMessage);
       expect(fixture.componentInstance['statusChangeReloadFailed']()).toBe(true);
-      expect(fixture.componentInstance['filters'].getRawValue()).toEqual(filters);
-      service.getRequests.mockReturnValue(of([]));
+      expect(fixture.componentInstance['filters'].getRawValue()).toMatchObject(filters);
+      service.getRequests.mockReturnValue(of(page([])));
       retry();
       await fixture.whenStable();
       expect(service.getRequests).toHaveBeenLastCalledWith({
@@ -868,7 +1299,7 @@ describe('RequestsComponent', () => {
     });
 
     it('mantiene un único spinner inicial de 40 y luego uno compacto de 20 sin ocultar el listado', async () => {
-      const requestsResponse = new Subject<Request[]>();
+      const requestsResponse = new Subject<Page<Request>>();
       const catalogResponse = new Subject<ProcedureType[]>();
       const transitionsResponse = new Subject<RequestTransitions>();
       await render(
@@ -883,10 +1314,10 @@ describe('RequestsComponent', () => {
       expect(element.querySelectorAll('mat-progress-spinner')).toHaveLength(1);
       expect(diameter()).toBe(40);
       expect(text()).not.toContain('Cargando');
-      complete(requestsResponse, []);
+      complete(requestsResponse, page([]));
       await fixture.whenStable();
       expect(diameter()).toBe(20);
-      expect(text()).toContain('No hay trámites que coincidan con el filtro seleccionado.');
+      expect(text()).toContain('Aún no hay trámites ingresados.');
       complete(catalogResponse, catalog);
       complete(transitionsResponse, transitions);
       await fixture.whenStable();
@@ -895,7 +1326,7 @@ describe('RequestsComponent', () => {
     });
 
     it('reintenta fallos sin cancelar otra consulta en curso', async () => {
-      const requestsResponse = new Subject<Request[]>();
+      const requestsResponse = new Subject<Page<Request>>();
       await render(Role.Vecino, () => requestsResponse, undefined, fail);
       catalogService.getProcedures.mockReturnValue(of(catalog));
       fixture.componentInstance['retryFailedLoads']();
@@ -903,7 +1334,7 @@ describe('RequestsComponent', () => {
       expect(requestsResponse.observed).toBe(true);
       expect(service.getRequests).toHaveBeenCalledTimes(1);
       expect(catalogService.getProcedures).toHaveBeenCalledTimes(2);
-      complete(requestsResponse, [mine]);
+      complete(requestsResponse, page([mine]));
       await fixture.whenStable();
       expect(recovery().hidden).toBe(true);
       expect(service.getTransitions).not.toHaveBeenCalled();
@@ -912,11 +1343,12 @@ describe('RequestsComponent', () => {
     it('conserva el diálogo abierto y su label al recuperar el catálogo sin reenviar operaciones', async () => {
       await render(
         Role.Funcionario,
-        () => of([{ ...mine, status: 'RECHAZADO', rejectionReason: 'Motivo' }]),
+        () => of(page([{ ...mine, status: 'RECHAZADO', rejectionReason: 'Motivo' }])),
         () => of(transitions),
         fail,
       );
-      element.querySelector<HTMLButtonElement>('.requests__rejection-reason')!.click();
+      await openDetails(element);
+      menuAction('Ver motivo').click();
       await fixture.whenStable();
       const dialog = TestBed.inject(MatDialog).openDialogs[0];
       const focused = document.activeElement;
@@ -940,7 +1372,7 @@ describe('RequestsComponent', () => {
       async (role) => {
         await render(
           role,
-          () => of([]),
+          () => of(page([])),
           () => of(transitions),
           () => of([]),
         );
@@ -956,8 +1388,8 @@ describe('RequestsComponent', () => {
 
     it('cancelar la recarga por filtros no termina el indicador de las otras consultas; destruir cancela el resto', async () => {
       await render(Role.Funcionario, fail, fail, fail);
-      const requestsResponse = new Subject<Request[]>();
-      const replacement = new Subject<Request[]>();
+      const requestsResponse = new Subject<Page<Request>>();
+      const replacement = new Subject<Page<Request>>();
       const catalogResponse = new Subject<ProcedureType[]>();
       const transitionsResponse = new Subject<RequestTransitions>();
       service.getRequests.mockReturnValueOnce(requestsResponse).mockReturnValueOnce(replacement);
@@ -966,7 +1398,7 @@ describe('RequestsComponent', () => {
       retry();
       fixture.componentInstance['filters'].patchValue({ status: 'INGRESADO' });
       expect(requestsResponse.observed).toBe(false);
-      complete(replacement, [mine]);
+      complete(replacement, page([mine]));
       await fixture.whenStable();
       expect(fixture.componentInstance['isRecovering']()).toBe(true);
       expect(spinner()).not.toBeNull();
@@ -1011,7 +1443,7 @@ describe('RequestsComponent', () => {
     beforeEach(async () => {
       await render(
         Role.Funcionario,
-        () => of([mine, other]),
+        () => of(page([mine, other])),
         () => of(transitions),
       );
     });
@@ -1034,10 +1466,10 @@ describe('RequestsComponent', () => {
           },
           rejectionReason: status === 'RECHAZADO' ? reason.trim() : null,
         };
-        service.getRequests.mockReturnValue(of([request, other]));
+        service.getRequests.mockReturnValue(of(page([request, other])));
         fixture.componentInstance['loadRequests']();
         await fixture.whenStable();
-        service.getRequests.mockReturnValueOnce(new Subject<Request[]>());
+        service.getRequests.mockReturnValueOnce(new Subject<Page<Request>>());
         service.changeStatus.mockReturnValueOnce(of(saved));
         const openSnackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open');
         const dialogRef = await openDialog(status, request);
@@ -1060,7 +1492,7 @@ describe('RequestsComponent', () => {
         expect(service.changeStatus).toHaveBeenCalledTimes(1);
         expect(document.activeElement).toBe(element.querySelector('#requests-list-title'));
 
-        service.getRequests.mockReturnValueOnce(of([saved, other]));
+        service.getRequests.mockReturnValueOnce(of(page([saved, other])));
         fixture.componentInstance['loadRequests']();
         await fixture.whenStable();
         expect(openSnackBar).toHaveBeenCalledTimes(1);
@@ -1082,7 +1514,7 @@ describe('RequestsComponent', () => {
     it('conserva el nombre del creador en ambas vistas después del cambio de estado y la recarga', async () => {
       const saved: Request = { ...mine, status: 'ADMITIDO' };
       service.changeStatus.mockReturnValueOnce(of(saved));
-      service.getRequests.mockReturnValueOnce(of([saved, other]));
+      service.getRequests.mockReturnValueOnce(of(page([saved, other])));
       const callsBeforeDialog = service.getRequests.mock.calls.length;
       const dialogRef = await openDialog('ADMITIDO');
       const closed = firstValueFrom(dialogRef.afterClosed());
@@ -1242,7 +1674,8 @@ describe('RequestsComponent', () => {
       expect(counter.textContent?.trim()).toBe('3 / 500');
       expect(textarea.getAttribute('aria-describedby')).toContain(counter.id);
       expect(textarea.getAttribute('aria-describedby')).toContain(error.id);
-      expect(overlay().querySelector('mat-hint')).toBeNull();
+      // El contador va fuera del campo; la ayuda de la plantilla es de otro campo
+      expect(textarea.closest('mat-form-field')!.querySelector('mat-hint')).toBeNull();
       expect(service.changeStatus).not.toHaveBeenCalled();
       dialogRef.close();
       await fixture.whenStable();
@@ -1276,7 +1709,7 @@ describe('RequestsComponent', () => {
     it.each([404, 409])(
       'HTTP %s: bloquea el reenvío y permite recargar con los filtros actuales',
       async (status) => {
-        fixture.componentInstance['filters'].setValue({
+        fixture.componentInstance['filters'].patchValue({
           status: 'INGRESADO',
           from: new Date(2026, 8, 1),
           to: new Date(2026, 8, 30),
@@ -1400,8 +1833,8 @@ describe('RequestsComponent', () => {
     it.each([0, 500])(
       'HTTP %s: conserva el motivo y permite reintentar el cambio',
       async (status) => {
-        const filters = { status: 'INGRESADO', from: new Date(2026, 8, 1), to: null };
-        fixture.componentInstance['filters'].setValue(filters);
+        const filters = { status: 'INGRESADO' as const, from: new Date(2026, 8, 1), to: null };
+        fixture.componentInstance['filters'].patchValue(filters);
         await fixture.whenStable();
         const callsBeforeDialog = service.getRequests.mock.calls.length;
         const saved: Request = { ...mine, status: 'RECHAZADO', rejectionReason: reason.trim() };
@@ -1434,13 +1867,13 @@ describe('RequestsComponent', () => {
         });
         expect(text()).toContain('El cambio se guardó, pero no pudimos actualizar la lista.');
         expect(fixture.componentInstance['requests']()).toEqual([mine, other]);
-        expect(fixture.componentInstance['filters'].getRawValue()).toEqual(filters);
+        expect(fixture.componentInstance['filters'].getRawValue()).toMatchObject(filters);
         expect(service.getRequests).toHaveBeenLastCalledWith({
           status: 'INGRESADO',
           from: '2026-09-01',
         });
 
-        service.getRequests.mockReturnValueOnce(of([]));
+        service.getRequests.mockReturnValueOnce(of(page([])));
         fixture.componentInstance['retryFailedLoads']();
         await fixture.whenStable();
         expect(service.getRequests).toHaveBeenCalledTimes(callsBeforeDialog + 2);
@@ -1453,5 +1886,570 @@ describe('RequestsComponent', () => {
         expect(text()).not.toContain('El cambio se guardó, pero no pudimos actualizar la lista.');
       },
     );
+  });
+
+  describe('listado paginado (EP3-48)', () => {
+    const settle = async () => {
+      await fixture.whenStable();
+      await new Promise((resolve) => setTimeout(resolve));
+      await fixture.whenStable();
+    };
+    const currentUrl = () => TestBed.inject(Router).url;
+
+    it.each([Role.Vecino, Role.Funcionario])(
+      '%s: filtra por tipo y sector, y lo refleja en la URL',
+      async (role) => {
+        await render(role);
+
+        fixture.componentInstance['filters'].patchValue({
+          procedureType: 'alumbrado',
+          sector: 'villa-ralco',
+        });
+        await settle();
+
+        expect(service.getRequests).toHaveBeenLastCalledWith({
+          procedureType: 'alumbrado',
+          sector: 'villa-ralco',
+        });
+        expect(currentUrl()).toBe('/?procedureType=alumbrado&sector=villa-ralco');
+      },
+    );
+
+    it('restaura búsqueda, filtros, orden y página desde la URL compartida', async () => {
+      await render(
+        Role.Funcionario,
+        undefined,
+        undefined,
+        undefined,
+        '/?q=poste&status=EN_GESTION&from=2026-11-01&sort=folio,asc&page=1&size=10',
+      );
+
+      expect(service.getRequests).toHaveBeenCalledOnce();
+      expect(service.getRequests).toHaveBeenCalledWith({
+        q: 'poste',
+        status: 'EN_GESTION',
+        from: '2026-11-01',
+        sort: 'folio,asc',
+        page: '1',
+        size: '10',
+      });
+      expect(fixture.componentInstance['search'].value).toBe('poste');
+      expect(fixture.componentInstance['filters'].getRawValue()).toMatchObject({
+        status: 'EN_GESTION',
+        from: new Date(2026, 10, 1),
+      });
+    });
+
+    it('espera una pausa breve antes de buscar y no consulta por espacios', async () => {
+      await render(Role.Vecino);
+      vi.useFakeTimers();
+      try {
+        const calls = service.getRequests.mock.calls.length;
+
+        fixture.componentInstance['search'].setValue('BD-2026');
+        vi.advanceTimersByTime(200);
+        fixture.componentInstance['search'].setValue('BD-2026-000123');
+        vi.advanceTimersByTime(349);
+        expect(service.getRequests).toHaveBeenCalledTimes(calls);
+
+        vi.advanceTimersByTime(1);
+        expect(service.getRequests).toHaveBeenCalledTimes(calls + 1);
+        expect(service.getRequests).toHaveBeenLastCalledWith({ q: 'BD-2026-000123' });
+
+        fixture.componentInstance['search'].setValue('  BD-2026-000123  ');
+        vi.advanceTimersByTime(400);
+        expect(service.getRequests).toHaveBeenCalledTimes(calls + 1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('cambiar de página conserva los filtros; cambiar un filtro vuelve a la primera página', async () => {
+      await render(Role.Funcionario, () =>
+        of({ ...page([mine, other]), totalElements: 45, totalPages: 3 }),
+      );
+      fixture.componentInstance['filters'].patchValue({ status: 'INGRESADO' });
+      await settle();
+
+      fixture.componentInstance['changePage']({ pageIndex: 2, pageSize: 20, length: 45 });
+      await settle();
+      expect(service.getRequests).toHaveBeenLastCalledWith({ status: 'INGRESADO', page: '2' });
+      expect(currentUrl()).toBe('/?status=INGRESADO&page=2');
+
+      fixture.componentInstance['filters'].patchValue({ sector: 'ralco' });
+      await settle();
+      expect(service.getRequests).toHaveBeenLastCalledWith({
+        status: 'INGRESADO',
+        sector: 'ralco',
+      });
+    });
+
+    it('muestra el paginador con el total del servidor y el folio en tabla y tarjetas', async () => {
+      await render(Role.Vecino, () =>
+        of({
+          ...page([{ ...mine, folio: 'BD-2026-000123' }, other]),
+          totalElements: 57,
+          totalPages: 3,
+        }),
+      );
+
+      expect(element.querySelector('mat-paginator')).not.toBeNull();
+      expect(element.querySelector('.requests__total')?.textContent).toContain('57 trámites');
+      expect(
+        Array.from(element.querySelectorAll('td.mat-column-tipo .requests__folio'), (cell) =>
+          cell.textContent?.trim(),
+        ),
+      ).toEqual(['BD-2026-000123', 'Sin folio']);
+      expect(element.querySelector('.requests__cards')?.textContent).toContain('BD-2026-000123');
+    });
+
+    it('ordena al pulsar el encabezado de la columna y vuelve a la primera página', async () => {
+      await render(Role.Vecino, undefined, undefined, undefined, '/?page=2');
+
+      element
+        .querySelector<HTMLElement>('th.mat-column-tipo .mat-sort-header-container')
+        ?.click();
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({ sort: 'folio,asc' });
+      expect(currentUrl()).toBe('/?sort=folio,asc');
+    });
+
+    it('una página fuera de rango salta a la última con resultados', async () => {
+      let call = 0;
+      await render(
+        Role.Funcionario,
+        () =>
+          call++ === 0
+            ? of({ ...page([]), page: 9, totalElements: 30, totalPages: 2 })
+            : of({ ...page([mine]), page: 1, totalElements: 30, totalPages: 2 }),
+        undefined,
+        undefined,
+        '/?page=9',
+      );
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({ page: '1' });
+      expect(text()).toContain('Rama sobre el cable');
+    });
+
+    it('sin coincidencias ofrece limpiar búsqueda y filtros', async () => {
+      await render(Role.Vecino, () => of(page([])), undefined, undefined, '/?q=xyz&sector=ralco');
+
+      expect(text()).toContain('Ningún trámite coincide con la búsqueda o los filtros.');
+      Array.from(element.querySelectorAll('button'))
+        .find((button) => button.textContent?.trim() === 'Limpiar búsqueda y filtros')
+        ?.click();
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({});
+      expect(fixture.componentInstance['search'].value).toBe('');
+      expect(currentUrl()).toBe('/');
+    });
+
+    it('una navegación externa a /tramites sin parámetros reinicia la vista', async () => {
+      await render(Role.Funcionario, undefined, undefined, undefined, '/?status=RESUELTO');
+
+      await TestBed.inject(Router).navigateByUrl('/');
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({});
+      expect(fixture.componentInstance['filters'].controls.status.value).toBe('');
+    });
+  });
+
+  describe('exportación CSV (EP3-70)', () => {
+    const exportButton = () =>
+      Array.from(element.querySelectorAll<HTMLButtonElement>('app-request-export button')).find(
+        (button) => button.textContent?.includes('Exportar CSV'),
+      );
+
+    let spies: { mockRestore: () => void }[] = [];
+
+    beforeEach(() => {
+      spies = [
+        vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:csv'),
+        vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined),
+      ];
+    });
+
+    afterEach(() => spies.forEach((spy) => spy.mockRestore()));
+
+    it.each([Role.Vecino, Role.Funcionario, Role.Admin, Role.Auditor])(
+      '%s: exporta con los filtros de la URL, sin página ni tamaño',
+      async (role) => {
+        await render(
+          role,
+          undefined,
+          undefined,
+          undefined,
+          '/?q=poste&status=EN_GESTION&sort=folio,asc&page=1&size=10',
+        );
+
+        exportButton()!.click();
+        await fixture.whenStable();
+
+        expect(service.exportRequests).toHaveBeenCalledWith({
+          q: 'poste',
+          status: 'EN_GESTION',
+          sort: 'folio,asc',
+        });
+      },
+    );
+
+    it('al Vecino no le envía la bandeja aunque venga en la URL', async () => {
+      await render(Role.Vecino, undefined, undefined, undefined, '/?assignee=me&sector=ralco');
+
+      exportButton()!.click();
+      await fixture.whenStable();
+
+      expect(service.exportRequests).toHaveBeenCalledWith({ sector: 'ralco' });
+    });
+
+    it('el Funcionario exporta su bandeja', async () => {
+      await render(Role.Funcionario, undefined, undefined, undefined, '/?assignee=me');
+
+      exportButton()!.click();
+      await fixture.whenStable();
+
+      expect(service.exportRequests).toHaveBeenCalledWith({ assignee: 'me' });
+    });
+
+    it('sin resultados no ofrece exportar', async () => {
+      await render(Role.Funcionario, () => of(page([])));
+
+      expect(exportButton()).toBeUndefined();
+    });
+
+    it('mientras carga por primera vez no ofrece exportar', async () => {
+      await render(Role.Funcionario, () => new Subject<Page<Request>>());
+
+      expect(exportButton()).toBeUndefined();
+    });
+
+    it('sobre 5.000 trámites lo bloquea con el motivo', async () => {
+      await render(Role.Admin, () => of({ ...page([mine]), totalElements: 6412, totalPages: 321 }));
+
+      expect(exportButton()!.getAttribute('aria-disabled')).toBe('true');
+      expect(text()).toContain(
+        'Son más de 5.000 trámites. Filtra por fecha o estado para exportar.',
+      );
+    });
+  });
+
+  describe('asignación y bandeja (EP3-47)', () => {
+    const settle = async () => {
+      await fixture.whenStable();
+      await new Promise((resolve) => setTimeout(resolve));
+      await fixture.whenStable();
+    };
+    const unassigned: Request = {
+      ...mine,
+      id: 'sin-responsable',
+      hasAssignee: false,
+      assigneeId: null,
+      assigneeName: null,
+    };
+    const ofColleague: Request = {
+      ...mine,
+      id: 'de-ana',
+      hasAssignee: true,
+      assigneeId: 'oid-ana',
+      assigneeName: 'Ana Huenchullán Rivas',
+    };
+    const actionTexts = () =>
+      Array.from(element.querySelectorAll('td.mat-column-acciones'), (cell) =>
+        cell.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+    const assigneeTexts = () =>
+      Array.from(element.querySelectorAll('td.mat-column-responsable .assignee__name'), (cell) =>
+        cell.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+    const queueLabels = () =>
+      Array.from(element.querySelectorAll('app-request-queue .queue .mat-button-toggle-label-content'), (label) =>
+        label.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+
+    it('Funcionario: el responsable se ve en la fila y la acción depende de quién lo atiende', async () => {
+      service.take = vi.fn();
+      await render(Role.Funcionario, () => of(page([mine, unassigned, ofColleague])));
+
+      expect(assigneeTexts()).toEqual([
+        'Pedro Levi Manquepi Tú(tú)',
+        'Sin asignar',
+        'Ana Huenchullán Rivas',
+      ]);
+      const actions = actionTexts();
+      expect(actions[1]).toContain('Tomar');
+      expect(actions[2]).toContain('Solo lectura');
+      expect(actions[0]).not.toContain('Tomar');
+    });
+
+    it('Funcionario: tomar avisa con el folio, recarga y muestra el spinner solo en esa fila', async () => {
+      const response = new Subject<Request>();
+      await render(Role.Funcionario, () => of(page([{ ...unassigned, folio: 'BD-2026-000401' }])));
+      Object.assign(service, { take: vi.fn(() => response) });
+      const openSnackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open');
+      const calls = service.getRequests.mock.calls.length;
+
+      const takeButton = [...element.querySelectorAll<HTMLButtonElement>('td button')].find(
+        (button) => button.textContent?.includes('Tomar'),
+      )!;
+      takeButton.click();
+      await fixture.whenStable();
+      expect(takeButton.disabled).toBe(true);
+      expect(takeButton.getAttribute('aria-label')).toBe('Tomando el trámite BD-2026-000401');
+
+      response.next({ ...unassigned, ...mine, folio: 'BD-2026-000401' });
+      response.complete();
+      await settle();
+
+      expect(openSnackBar).toHaveBeenCalledWith(
+        'Tomaste el trámite BD-2026-000401. Ahora eres responsable.',
+        undefined,
+        { duration: 4000 },
+      );
+      expect(service.getRequests).toHaveBeenCalledTimes(calls + 1);
+    });
+
+    it('Funcionario: si otra persona tomó el trámite lo explica y recarga', async () => {
+      await render(Role.Funcionario, () => of(page([unassigned])));
+      Object.assign(service, {
+        take: vi.fn(() =>
+          throwError(
+            () =>
+              new HttpErrorResponse({
+                status: 409,
+                error: { message: 'El tramite ya tiene responsable' },
+              }),
+          ),
+        ),
+      });
+      const openSnackBar = vi.spyOn(TestBed.inject(MatSnackBar), 'open');
+      const calls = service.getRequests.mock.calls.length;
+
+      [...element.querySelectorAll<HTMLButtonElement>('td button')]
+        .find((button) => button.textContent?.includes('Tomar'))!
+        .click();
+      await settle();
+
+      expect(openSnackBar).toHaveBeenCalledWith(
+        'Otra persona tomó este trámite. Actualizamos la información.',
+        undefined,
+        { duration: 5000 },
+      );
+      expect(service.getRequests).toHaveBeenCalledTimes(calls + 1);
+    });
+
+    it('Funcionario: el responsable reasigna desde el menú de acciones', async () => {
+      await render(
+        Role.Funcionario,
+        () => of(page([mine])),
+        () =>
+          of({
+            INGRESADO: ['ADMITIDO', 'RECHAZADO'],
+            ADMITIDO: [],
+            EN_GESTION: [],
+            EN_TERRENO: [],
+            RESUELTO: [],
+            RECHAZADO: [],
+          }),
+      );
+      const open = vi.spyOn(TestBed.inject(MatDialog), 'open');
+
+      element
+        .querySelector<HTMLButtonElement>('td [aria-label="Más acciones para el trámite propio"]')!
+        .click();
+      await fixture.whenStable();
+      menuAction('Reasignar').click();
+      await fixture.whenStable();
+
+      expect(open).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          data: expect.objectContaining({ request: mine, currentUserId: 'funcionario-actual' }),
+        }),
+      );
+      TestBed.inject(MatDialog).closeAll();
+    });
+
+    it('Funcionario: la bandeja filtra por mis asignados y sin asignar, y queda en la URL', async () => {
+      await render(Role.Funcionario);
+
+      expect(queueLabels()).toEqual(['inbox Todos', 'person Mis asignados', 'person_off Sin asignar']);
+      [...element.querySelectorAll<HTMLButtonElement>('app-request-queue button')][1].click();
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({ assignee: 'me' });
+      expect(TestBed.inject(Router).url).toBe('/?assignee=me');
+    });
+
+    it('el enlace de /inicio llega con la situación: open va al GET y cuenta como filtro', async () => {
+      await render(
+        Role.Funcionario,
+        undefined,
+        undefined,
+        undefined,
+        '/?assignee=me&open=true&sort=createdAt,asc',
+      );
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({
+        assignee: 'me',
+        open: 'true',
+        sort: 'createdAt,asc',
+      });
+      expect(element.querySelector('.filters__count')?.textContent).toContain('1');
+
+      // Un estado de la otra situación daría siempre una lista vacía: se limpia al elegir la situación
+      const filters = fixture.componentInstance['filters'];
+      filters.patchValue({ open: '', status: 'RESUELTO' });
+      await fixture.whenStable();
+      filters.patchValue({ open: 'true' });
+      await fixture.whenStable();
+      expect(filters.controls.status.value).toBe('');
+      expect(service.getRequests).toHaveBeenLastCalledWith({
+        assignee: 'me',
+        open: 'true',
+        sort: 'createdAt,asc',
+      });
+    });
+
+    const contactToggle = () =>
+      element.querySelector<HTMLButtonElement>('app-request-queue .contact button')!;
+    const emptyButton = (label: string) =>
+      [...element.querySelectorAll<HTMLButtonElement>('.requests__empty-state button')].find(
+        (button) => button.textContent?.trim() === label,
+      )!;
+
+    it('Funcionario: contacto pendiente se combina con la bandeja y queda en la URL', async () => {
+      await render(Role.Funcionario, undefined, undefined, undefined, '/?assignee=me&page=2');
+
+      expect(contactToggle().getAttribute('aria-pressed')).toBe('false');
+      contactToggle().click();
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({ assignee: 'me', contactDue: 'true' });
+      expect(TestBed.inject(Router).url).toBe('/?assignee=me&contactDue=true');
+      expect(contactToggle().getAttribute('aria-pressed')).toBe('true');
+
+      contactToggle().click();
+      await settle();
+      expect(service.getRequests).toHaveBeenLastCalledWith({ assignee: 'me' });
+    });
+
+    it('Admin: llega con contacto pendiente desde la URL', async () => {
+      await render(Role.Admin, undefined, undefined, undefined, '/?contactDue=true');
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({ contactDue: 'true' });
+      expect(contactToggle().getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('contacto pendiente sin resultados lo dice según la bandeja y permite quitarlo', async () => {
+      await render(
+        Role.Funcionario,
+        () => of(page([])),
+        undefined,
+        undefined,
+        '/?assignee=me&contactDue=true',
+      );
+
+      expect(text()).toContain('No hay contactos pendientes entre tus asignados.');
+      emptyButton('Quitar filtro').click();
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({ assignee: 'me' });
+    });
+
+    it('contacto pendiente con otros filtros no afirma que no quede ninguno, y limpiar lo quita', async () => {
+      await render(
+        Role.Funcionario,
+        () => of(page([])),
+        undefined,
+        undefined,
+        '/?assignee=none&contactDue=true&sector=ralco',
+      );
+
+      expect(text()).toContain('No hay contactos pendientes con la búsqueda o los filtros actuales.');
+      emptyButton('Limpiar búsqueda y filtros').click();
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({ assignee: 'none' });
+    });
+
+    it('"Limpiar filtros" del panel también quita contacto pendiente', async () => {
+      await render(Role.Auditor, undefined, undefined, undefined, '/?contactDue=true&status=INGRESADO');
+
+      element.querySelector<HTMLButtonElement>('.filters__clear')!.click();
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({});
+      expect(contactToggle().getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('bandeja vacía de mis asignados invita a tomar uno sin asignar', async () => {
+      await render(Role.Funcionario, () => of(page([])), undefined, undefined, '/?assignee=me');
+
+      expect(text()).toContain('No tienes trámites asignados.');
+      [...element.querySelectorAll<HTMLButtonElement>('.requests__empty-state button')][0].click();
+      await settle();
+
+      expect(service.getRequests).toHaveBeenLastCalledWith({ assignee: 'none' });
+    });
+
+    it('"Nuevo trámite" del inicio deja el foco en el formulario de alta', async () => {
+      await render(Role.Vecino, undefined, undefined, undefined, '/#nuevo-tramite');
+      await fixture.whenStable();
+
+      expect(document.activeElement?.id).toBe('new-request-title');
+    });
+
+    it('Admin: asigna o reasigna desde la fila, sin "Mis asignados"', async () => {
+      await render(Role.Admin, () => of(page([unassigned, ofColleague])));
+
+      expect(queueLabels()).toEqual(['inbox Todos', 'person_off Sin asignar']);
+      const actions = actionTexts();
+      expect(actions[0]).toContain('Asignar');
+      expect(actions[1]).toContain('Reasignar');
+      expect(element.querySelector('.requests__card')).toBeNull();
+      expect(element.querySelector('#new-request-title')).toBeNull();
+    });
+
+    it('Auditor: ve el responsable y la bandeja, sin columna de acciones', async () => {
+      await render(Role.Auditor, () => of(page([unassigned, ofColleague])));
+
+      expect(headers()).not.toContain('Acciones');
+      expect(headers()).toContain('Responsable');
+      expect(element.querySelector('app-request-actions')).toBeNull();
+      expect(element.querySelector('#new-request-title')).toBeNull();
+      expect(queueLabels()).toEqual(['inbox Todos', 'person_off Sin asignar']);
+    });
+
+    it('Vecino: no ve responsable ni filtros rápidos, y assignee o contactDue en la URL se ignoran', async () => {
+      await render(Role.Vecino, undefined, undefined, undefined, '/?assignee=none&contactDue=true');
+
+      expect(service.getRequests).toHaveBeenCalledWith({});
+      expect(element.querySelector('app-request-queue')).toBeNull();
+      expect(headers()).not.toContain('Responsable');
+      expect(text()).not.toContain('Pedro Levi Manquepi');
+    });
+
+    it('Ver más aparece solo para descripciones largas y abre el texto completo', async () => {
+      const long = { ...mine, description: 'Rama caída '.repeat(12).trim() };
+      await render(Role.Vecino, () => of(page([long, other])));
+
+      const buttons = [
+        ...element.querySelectorAll<HTMLButtonElement>('.requests__table .description__more'),
+      ];
+      expect(buttons).toHaveLength(1);
+      expect(buttons[0].getAttribute('aria-label')).toBe(
+        'Ver la descripción completa del trámite propio',
+      );
+      buttons[0].click();
+      await fixture.whenStable();
+      expect(TestBed.inject(OverlayContainer).getContainerElement().textContent).toContain(
+        long.description,
+      );
+      TestBed.inject(MatDialog).closeAll();
+    });
   });
 });

@@ -1,0 +1,20 @@
+@use 'tokens' as *;
+
+:host {
+  display: flex;
+  gap: $space-3;
+  padding: $space-3 $space-4;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-accent-container);
+  overflow-wrap: anywhere;
+}
+
+mat-icon {
+  flex-shrink: 0;
+  color: var(--bd-accent-text);
+}
+
+p {
+  margin: 0;
+}

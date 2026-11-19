@@ -1,0 +1,30 @@
+@switch (state()) {
+  @case ('error') {
+    <div class="comment-photo__error" role="alert">
+      <mat-icon aria-hidden="true">broken_image</mat-icon>
+      <span>No se pudo cargar la foto.</span>
+      <button matButton type="button" (click)="load()">Reintentar</button>
+    </div>
+  }
+  @case ('ready') {
+    <button
+      type="button"
+      class="comment-photo__thumb"
+      [attr.aria-label]="'Ampliar la foto del comentario, ' + context()"
+      (click)="openPreview()"
+    >
+      <img [src]="url()" alt="" />
+      <span class="comment-photo__tag" aria-hidden="true">
+        <mat-icon>zoom_in</mat-icon>
+        Ampliar
+      </span>
+    </button>
+  }
+  @default {
+    <span class="comment-photo__skeleton" [attr.role]="state() === 'loading' ? 'status' : null">
+      @if (state() === 'loading') {
+        <span class="cdk-visually-hidden">Cargando la foto del comentario.</span>
+      }
+    </span>
+  }
+}

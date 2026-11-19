@@ -1,5 +1,6 @@
 @use 'sass:color';
 @use 'tokens' as *;
+@use './admin-ops-kpis';
 
 $content-max-width: 1200px;
 $badge-tint: 0.12;
@@ -25,10 +26,23 @@ $badge-tint: 0.12;
   min-width: 0;
 }
 
+.admin__tabs {
+  --mat-tab-container-height: #{$size-touch-target + 4px};
+  min-width: 0;
+
+  mat-icon {
+    margin-inline-end: $space-2;
+  }
+}
+
+.admin__panel {
+  min-width: 0;
+}
+
 .admin__text,
 .admin__empty,
 .admin__code {
-  color: $color-text-secondary;
+  color: var(--bd-text-muted);
 }
 
 .admin__catalog {
@@ -69,8 +83,8 @@ $badge-tint: 0.12;
 
 .admin__refresh {
   // El mismo tono neutro de la acción secundaria del header; Material conserva sus estados.
-  --mat-icon-button-icon-color: #{$color-text-secondary};
-  --mat-icon-button-state-layer-color: #{$color-text-secondary};
+  --mat-icon-button-icon-color: var(--bd-text-muted);
+  --mat-icon-button-state-layer-color: var(--bd-text-muted);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -112,7 +126,7 @@ $badge-tint: 0.12;
 
 .admin__table-wrapper,
 .admin__item {
-  background-color: $color-surface;
+  background-color: var(--bd-surface);
   border-radius: $radius-base;
   box-shadow: $shadow-elevated;
 }
@@ -181,7 +195,7 @@ $badge-tint: 0.12;
 
   dt {
     font-size: $font-label;
-    color: $color-text-secondary;
+    color: var(--bd-text-muted);
   }
 
   dd {
@@ -203,4 +217,8 @@ $badge-tint: 0.12;
 .admin__badge--active {
   color: $color-success;
   background-color: color.change($color-success, $alpha: $badge-tint);
+}
+
+.admin__muted {
+  color: var(--bd-text-muted);
 }
