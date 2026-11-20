@@ -6,6 +6,7 @@ import { BehaviorSubject, NEVER, firstValueFrom, of, throwError } from 'rxjs';
 import { Role } from '../../shared/models/role';
 import { AuthService } from './auth.service';
 import { apiScope } from './msal-config';
+import { SessionChannel } from './session-channel';
 
 const fakeJwt = (claims: object) =>
   ['e30', btoa(JSON.stringify(claims)).replace(/=+$/, ''), 'firma'].join('.');
@@ -21,6 +22,7 @@ describe('AuthService', () => {
       getActiveAccount: vi.fn(() => activeAccount),
       getAllAccounts: vi.fn(() => []),
       setActiveAccount: vi.fn(),
+      clearCache: vi.fn(() => Promise.resolve()),
     },
     initialize: vi.fn(() => of(undefined)),
     handleRedirectObservable: vi.fn(() => of(null)),
@@ -29,13 +31,16 @@ describe('AuthService', () => {
   });
 
   let msal: ReturnType<typeof createMsal>;
+  let channel: { post: ReturnType<typeof vi.fn>; messages$: typeof NEVER };
 
   const setup = (activeAccount: AccountInfo | null = null) => {
     msal = createMsal(activeAccount);
+    channel = { post: vi.fn(), messages$: NEVER };
 
     TestBed.configureTestingModule({
       providers: [
         { provide: MsalService, useValue: msal },
+        { provide: SessionChannel, useValue: channel },
         {
           provide: MsalBroadcastService,
           useValue: { inProgress$: new BehaviorSubject(InteractionStatus.None) },
@@ -164,12 +169,27 @@ describe('AuthService', () => {
     expect(service.role()).toBeNull();
   });
 
-  it('cierra sesión con logoutRedirect sobre la cuenta activa', async () => {
+  it('cierra sesión con logoutRedirect sobre la cuenta activa, borra la foto y avisa a las otras pestañas', async () => {
+    localStorage.setItem('bd.profile.photo.admin-id', 'data:image/png;base64,xx');
     const service = setup(adminAccount);
 
     await firstValueFrom(service.hasSession());
     service.logout();
 
     expect(msal.logoutRedirect).toHaveBeenCalledWith({ account: adminAccount });
+    expect(localStorage.getItem('bd.profile.photo.admin-id')).toBeNull();
+    expect(service.account()).toBeNull();
+    expect(channel.post).toHaveBeenCalledWith({ type: 'logout' });
+  });
+
+  it('cierra la sesión local sin redirigir cuando otra pestaña ya la cerró', async () => {
+    const service = setup(adminAccount);
+
+    await firstValueFrom(service.hasSession());
+    await service.endLocalSession();
+
+    expect(msal.instance.clearCache).toHaveBeenCalled();
+    expect(msal.logoutRedirect).not.toHaveBeenCalled();
+    expect(service.account()).toBeNull();
   });
 });

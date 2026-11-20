@@ -10,4 +10,8 @@ export const environment = {
   },
   bffBaseUrl: 'http://localhost:8080',
   supportEmail: 'soporte@barriodigital.example',
+  session: {
+    staffIdleMinutes: 15,
+    staffIdleWarnMinutes: 2,
+  },
 };

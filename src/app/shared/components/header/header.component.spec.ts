@@ -102,9 +102,20 @@ describe('HeaderComponent', () => {
       '/perfil',
     );
 
-    element.querySelector<HTMLButtonElement>('.header__sign-out')?.click();
+    const signOut = element.querySelector<HTMLButtonElement>('.header__sign-out');
+    expect(signOut?.getAttribute('aria-label')).toBe('Cerrar sesión');
+    expect(signOut?.textContent).toContain('Cerrar sesión');
+    signOut?.click();
     expect(logout).toHaveBeenCalled();
   });
+
+  it.each([Role.Admin, Role.Funcionario, Role.Auditor])(
+    'el personal %s tiene cierre de sesión visible en el header',
+    async (role) => {
+      await render(role);
+      expect(element.querySelector('.header__sign-out')).not.toBeNull();
+    },
+  );
 
   it('el botón de menú abre la navegación y lo indica con aria-expanded', async () => {
     const fixture = await render(Role.Vecino);
