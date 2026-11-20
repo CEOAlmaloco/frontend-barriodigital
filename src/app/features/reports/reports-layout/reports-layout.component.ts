@@ -36,7 +36,7 @@ import { OVERSIGHT_ROLES } from '../../../shared/models/role';
         >
           <a
             mat-tab-link
-            routerLink="/reports"
+            routerLink="/reportes"
             routerLinkActive
             #indicators="routerLinkActive"
             [routerLinkActiveOptions]="{ exact: true }"
@@ -47,7 +47,7 @@ import { OVERSIGHT_ROLES } from '../../../shared/models/role';
           </a>
           <a
             mat-tab-link
-            routerLink="/reports/map"
+            routerLink="/reportes/mapa"
             routerLinkActive
             #map="routerLinkActive"
             [active]="map.isActive"

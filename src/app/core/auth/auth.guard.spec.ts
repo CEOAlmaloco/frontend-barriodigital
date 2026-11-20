@@ -57,7 +57,7 @@ describe('roleGuard', () => {
   });
 
   it.each(DENIED)('sin un rol válido ($kind) lleva a la pantalla sin acceso', async (access) => {
-    expect(urlOf(await runAccessGuard(roleGuard, of(access), route))).toBe('/no-access');
+    expect(urlOf(await runAccessGuard(roleGuard, of(access), route))).toBe('/sin-acceso');
   });
 
   it('espera a que se lea el token antes de decidir', async () => {
@@ -76,7 +76,7 @@ describe('accessGuard', () => {
   });
 
   it.each(DENIED)('$kind lleva a la pantalla sin acceso', async (access) => {
-    expect(urlOf(await runAccessGuard(accessGuard, of(access)))).toBe('/no-access');
+    expect(urlOf(await runAccessGuard(accessGuard, of(access)))).toBe('/sin-acceso');
   });
 });
 

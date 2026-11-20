@@ -739,13 +739,13 @@ describe('RequestDetailComponent', () => {
       '%s abre el historial del trámite por folio',
       async (role) => {
         await render(role);
-        expect(auditLink()?.getAttribute('href')).toBe('/audit?view=timeline&folio=BD-2026-000123');
+        expect(auditLink()?.getAttribute('href')).toBe('/auditoria?view=timeline&folio=BD-2026-000123');
       },
     );
 
     it('un trámite sin folio enlaza por su id', async () => {
       await render(Role.Auditor, () => of({ ...base, folio: null }));
-      expect(auditLink()?.getAttribute('href')).toBe('/audit?view=timeline&requestId=req-1');
+      expect(auditLink()?.getAttribute('href')).toBe('/auditoria?view=timeline&requestId=req-1');
     });
 
     it.each([Role.Funcionario, Role.Vecino])('%s no ve el enlace', async (role) => {

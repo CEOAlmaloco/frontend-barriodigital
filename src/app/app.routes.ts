@@ -56,7 +56,7 @@ export const routes: Routes = [
 
   // Fuera del layout: sin un rol válido no hay navegación que mostrar
   {
-    path: 'no-access',
+    path: 'sin-acceso',
     canActivate: [authGuard, noAccessGuard],
     loadComponent: () =>
       import('./features/no-access/no-access.component').then((m) => m.NoAccessComponent),
@@ -99,7 +99,7 @@ export const routes: Routes = [
         title: 'Detalle del trámite | BarrioDigital',
       },
       {
-        path: 'admin',
+        path: 'administracion',
         canActivate: [roleGuard],
         data: { roles: [Role.Admin] },
         loadComponent: () =>
@@ -107,7 +107,7 @@ export const routes: Routes = [
         title: 'Administración | BarrioDigital',
       },
       {
-        path: 'reports',
+        path: 'reportes',
         canActivate: [roleGuard],
         data: { roles: REPORTS_ROLES },
         loadComponent: () =>
@@ -119,13 +119,13 @@ export const routes: Routes = [
             path: '',
             pathMatch: 'full',
             canActivate: [roleGuard],
-            data: { roles: OVERSIGHT_ROLES, deniedRedirect: '/reports/map' },
+            data: { roles: OVERSIGHT_ROLES, deniedRedirect: '/reportes/mapa' },
             loadComponent: () =>
               import('./features/reports/reports.component').then((m) => m.ReportsComponent),
             title: 'Reportes | BarrioDigital',
           },
           {
-            path: 'map',
+            path: 'mapa',
             loadComponent: () =>
               import('./features/reports/report-map/report-map.component').then(
                 (m) => m.ReportMapComponent,
@@ -135,7 +135,7 @@ export const routes: Routes = [
         ],
       },
       {
-        path: 'audit',
+        path: 'auditoria',
         canActivate: [roleGuard],
         data: { roles: OVERSIGHT_ROLES },
         loadComponent: () =>
@@ -144,5 +144,11 @@ export const routes: Routes = [
       },
     ],
   },
+  // Rutas anteriores en inglés: los enlaces guardados siguen funcionando
+  { path: 'no-access', redirectTo: 'sin-acceso' },
+  { path: 'admin', redirectTo: 'administracion' },
+  { path: 'reports/map', redirectTo: 'reportes/mapa' },
+  { path: 'reports', redirectTo: 'reportes' },
+  { path: 'audit', redirectTo: 'auditoria' },
   { path: '**', redirectTo: '' },
 ];

@@ -6,7 +6,7 @@ import { map, of, switchMap } from 'rxjs';
 import { Role } from '../../shared/models/role';
 import { AuthService } from './auth.service';
 
-export const NO_ACCESS_PATH = '/no-access';
+export const NO_ACCESS_PATH = '/sin-acceso';
 
 /**
  * Protege rutas privadas delegando en MsalGuard. Sin sesión lleva al login ('/') en vez de dejar
