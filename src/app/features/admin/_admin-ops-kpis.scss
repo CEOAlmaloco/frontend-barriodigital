@@ -7,6 +7,17 @@
   margin: 0;
 }
 
+.admin-ops-kpis--hero {
+  @media (min-width: $breakpoint-md) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .admin-ops-kpis__tile dd {
+    font-size: calc(#{$font-h2} * var(--bd-text-scale, 1));
+    line-height: 1.15;
+  }
+}
+
 .admin-ops-kpis__tile {
   margin: 0;
   padding: $space-3 $space-4;

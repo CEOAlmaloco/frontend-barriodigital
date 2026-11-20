@@ -2,12 +2,20 @@
   <div class="mq-panel__heading">
     <div>
       <h2 id="mq-panel-title">RabbitMQ</h2>
-      <p class="mq-panel__lead">
-        Colas del clúster, mensajes pendientes y destinos de dead-letter. Vaciar o borrar requiere
-        confirmación.
-      </p>
+      @if (fetchedAt(); as at) {
+        <p class="mq-panel__fresh">Actualizado {{ formatClock(at) }}</p>
+      }
     </div>
     <div class="mq-panel__actions">
+      <label class="mq-panel__search">
+        <span class="cdk-visually-hidden">Buscar cola</span>
+        <input
+          type="search"
+          placeholder="Buscar cola…"
+          [value]="query()"
+          (input)="onQuery($any($event.target).value)"
+        />
+      </label>
       <button
         type="button"
         class="mq-panel__chip"
@@ -25,12 +33,20 @@
         Solo DLQ
       </button>
       <button
+        type="button"
+        class="mq-panel__chip"
+        [attr.aria-pressed]="autoRefresh()"
+        (click)="toggleAutoRefresh()"
+      >
+        {{ autoRefresh() ? 'En vivo' : 'Pausado' }}
+      </button>
+      <button
         mat-icon-button
         type="button"
         aria-label="Actualizar colas"
         matTooltip="Actualizar colas"
         [disabled]="loadState() === 'loading'"
-        (click)="reload()"
+        (click)="reload(true)"
       >
         <mat-icon>refresh</mat-icon>
       </button>
@@ -38,7 +54,7 @@
   </div>
 
   @if (loadState() === 'ready') {
-    <dl class="admin-ops-kpis" aria-label="Indicadores RabbitMQ">
+    <dl class="admin-ops-kpis admin-ops-kpis--hero" aria-label="Indicadores RabbitMQ">
       <div class="admin-ops-kpis__tile">
         <dt>Colas</dt>
         <dd>{{ queues().length }}</dd>
@@ -52,17 +68,54 @@
         <dd>{{ unackedTotal() }}</dd>
       </div>
       <div class="admin-ops-kpis__tile">
-        <dt>En DLQ</dt>
+        <dt>Consumidores</dt>
+        <dd>{{ consumersTotal() }}</dd>
+      </div>
+      <div class="admin-ops-kpis__tile" [class.admin-ops-kpis__tile--warn]="dlqMessageTotal() > 0">
+        <dt>DLQ</dt>
         <dd>{{ dlqMessageTotal() }}</dd>
       </div>
-      <div class="admin-ops-kpis__tile" [class.admin-ops-kpis__tile--warn]="stuckQueues() > 0">
-        <dt>Sin consumidor</dt>
-        <dd>{{ stuckQueues() }}</dd>
-      </div>
     </dl>
-    <p class="mq-panel__summary">
-      {{ messageTotal() }} mensaje(s) en total (Ready + Unacked)
-    </p>
+    @if (stuckQueues() > 0) {
+      <p class="mq-panel__summary" role="status">
+        {{ stuckQueues() }} cola(s) con mensajes y sin consumidor
+      </p>
+    }
+
+    <div class="mq-panel__dash">
+      <section class="mq-panel__chart mq-panel__chart--wide" aria-labelledby="mq-activity-title">
+        <h3 id="mq-activity-title">Actividad</h3>
+        <app-admin-rate-chart
+          [samples]="rateSamples()"
+          [legend]="rateLegend"
+          emptyTitle="Sin actividad aún"
+          emptyText="Activa En vivo para ver publish, deliver y ACK."
+        />
+      </section>
+
+      <section class="mq-panel__chart" aria-labelledby="mq-accum-title">
+        <h3 id="mq-accum-title">Mayor acumulación</h3>
+        @if (accumulation().length) {
+          <app-report-ranking labelledBy="mq-accum-title" [ordered]="true" [items]="accumulation()" />
+        } @else {
+          <p class="mq-panel__empty">Sin colas.</p>
+        }
+      </section>
+
+      <section class="mq-panel__chart" aria-labelledby="mq-dlq-title">
+        <h3 id="mq-dlq-title">DLQ</h3>
+        @if (dlqRanking().length) {
+          <app-report-ranking
+            tone="secondary"
+            labelledBy="mq-dlq-title"
+            [ordered]="true"
+            [items]="dlqRanking()"
+          />
+        } @else {
+          <p class="mq-panel__empty">Sin colas DLQ.</p>
+        }
+      </section>
+    </div>
   }
 
   @if (loadState() === 'loading') {
@@ -105,6 +158,14 @@
           <th mat-header-cell *matHeaderCellDef>Consumidores</th>
           <td mat-cell *matCellDef="let queue">{{ queue.consumers }}</td>
         </ng-container>
+        <ng-container matColumnDef="publish">
+          <th mat-header-cell *matHeaderCellDef>Publish</th>
+          <td mat-cell *matCellDef="let queue">{{ formatRate(queue.publishRate) }}</td>
+        </ng-container>
+        <ng-container matColumnDef="ack">
+          <th mat-header-cell *matHeaderCellDef>ACK</th>
+          <td mat-cell *matCellDef="let queue">{{ formatRate(queue.ackRate) }}</td>
+        </ng-container>
         <ng-container matColumnDef="ttl">
           <th mat-header-cell *matHeaderCellDef>TTL</th>
           <td mat-cell *matCellDef="let queue">
@@ -129,17 +190,19 @@
           <td mat-cell *matCellDef="let queue">
             <button matButton type="button" (click)="openDetail(queue)">Ver detalle</button>
             <button
-              matButton
               type="button"
+              class="mq-panel__danger"
               [disabled]="busyName() === queue.name || queue.messages === 0"
+              [attr.aria-disabled]="busyName() === queue.name || queue.messages === 0"
               (click)="purge(queue)"
             >
               Vaciar
             </button>
             <button
-              matButton
               type="button"
+              class="mq-panel__danger"
               [disabled]="busyName() === queue.name"
+              [attr.aria-disabled]="busyName() === queue.name"
               (click)="remove(queue)"
             >
               Eliminar

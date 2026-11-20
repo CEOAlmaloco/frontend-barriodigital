@@ -4,12 +4,11 @@
 :host {
   display: flex;
   flex-direction: column;
-  gap: $space-6;
+  gap: $space-4;
 
-  // Más específico que la escala global de títulos, que fijaría todos los h2 al tamaño de $font-h2
   h2 {
     margin: 0;
-    font-size: calc(#{$font-h3} * var(--bd-text-scale, 1));
+    font-size: calc(#{$font-body} * var(--bd-text-scale, 1));
     font-weight: $font-weight-semibold;
   }
 
@@ -27,7 +26,7 @@
 }
 
 .map-page__foot {
-  padding-block-start: $space-3;
+  padding-block-start: $space-2;
   border-top: $border-width solid var(--bd-border);
   font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
 }
@@ -47,11 +46,11 @@
 .map-page__grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  align-items: start;
+  align-items: stretch;
   gap: $space-4;
 
   @media (min-width: $breakpoint-lg) {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 7fr) minmax(16rem, 3fr);
   }
 }
 
@@ -69,7 +68,7 @@
   --mat-button-toggle-selected-state-background-color: var(--bd-primary);
   --mat-button-toggle-selected-state-text-color: var(--bd-on-primary);
   --mat-button-toggle-divider-color: var(--bd-border-interactive);
-  --mat-button-toggle-height: 40px;
+  --mat-button-toggle-height: 36px;
   --mat-button-toggle-shape: #{$radius-base};
 
   mat-icon {
@@ -81,12 +80,20 @@
   }
 }
 
+.map-page__geo {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: $space-2;
+}
+
 .map-page__overlay {
   position: absolute;
   z-index: 1;
   inset: 0;
   display: grid;
-  padding: $space-6;
+  padding: $space-4;
   place-items: center;
   border-radius: $radius-base;
   background-color: color-mix(in srgb, var(--bd-surface) 70%, transparent);
@@ -101,16 +108,16 @@
   text-align: center;
 
   mat-icon {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     color: var(--bd-text-muted);
-    font-size: 32px;
+    font-size: 28px;
   }
 }
 
 .map-page__overlay-box {
   max-width: 36ch;
-  padding: $space-6;
+  padding: $space-4;
   border: $border-width solid var(--bd-container-border);
   border-radius: $radius-base;
   background-color: var(--bd-surface);
@@ -118,5 +125,5 @@
 }
 
 .map-page__empty {
-  padding-block: $space-8;
+  padding-block: $space-6;
 }

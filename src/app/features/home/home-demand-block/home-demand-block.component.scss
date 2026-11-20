@@ -1,0 +1,73 @@
+@use 'tokens' as *;
+
+.demand {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: $space-4;
+
+  @media (min-width: $breakpoint-md) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.demand__panel {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  min-width: 0;
+
+  h3 {
+    margin: 0;
+    font-size: calc(#{$font-body} * var(--bd-text-scale, 1));
+    font-weight: $font-weight-semibold;
+  }
+}
+
+.demand__empty {
+  margin: 0;
+  color: var(--bd-text-muted);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+}
+
+.demand__quotas {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.demand__quota {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: $space-2 $space-3;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+}
+
+.demand__quota-label {
+  font-weight: $font-weight-medium;
+}
+
+.demand__quota-detail {
+  color: var(--bd-text-muted);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+}
+
+.demand__quota--none {
+  border-color: color-mix(in srgb, var(--bd-error) 40%, var(--bd-container-border));
+
+  .demand__quota-detail {
+    color: var(--bd-error);
+  }
+}
+
+.demand__quota--low .demand__quota-detail {
+  color: var(--bd-accent-text);
+}
+
+.demand__quota--inactive {
+  opacity: 0.72;
+}

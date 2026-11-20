@@ -143,7 +143,9 @@ export class RequestsMapComponent {
   private start(): void {
     const animate = !prefersReducedMotion(this.document);
     const map = createCommuneMap(this.canvas().nativeElement, {
-      scrollWheelZoom: false,
+      // Reportes: sin maxBounds. Con la comuna a pantalla Leaflet bloqueaba el arrastre.
+      scrollWheelZoom: true,
+      constrainToCommune: false,
       animate,
     });
     const cluster = L.markerClusterGroup({

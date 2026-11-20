@@ -2,20 +2,24 @@
 @use 'tokens' as *;
 @use './admin-ops-kpis';
 
-$content-max-width: 1200px;
+$content-max-width: 1400px;
 $badge-tint: 0.12;
 
 .admin {
   display: flex;
   flex-direction: column;
-  gap: $space-8;
+  gap: $space-4;
   max-width: $content-max-width;
   min-width: 0;
   margin-inline: auto;
-  padding: $space-6;
+  padding: $space-4;
+
+  @media (min-width: $breakpoint-md) {
+    padding: $space-4 $space-6;
+  }
 
   @media (min-width: $breakpoint-lg) {
-    padding: $space-12;
+    padding: $space-6 $space-8;
   }
 }
 
@@ -69,6 +73,49 @@ $badge-tint: 0.12;
   h2:focus-visible {
     outline: $border-width-strong solid $color-primary-dark;
     outline-offset: $space-1;
+  }
+}
+
+.admin__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3;
+  align-items: center;
+  margin-bottom: $space-4;
+}
+
+.admin__search input {
+  min-width: min(100%, 16rem);
+  min-height: $size-touch-target;
+  padding: 0 $space-3;
+  border: $border-width solid var(--bd-border-interactive);
+  border-radius: $radius-base;
+  background: var(--bd-surface);
+  color: var(--bd-text);
+  font: inherit;
+}
+
+.admin__filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.admin__chip {
+  min-height: $size-touch-target;
+  padding: $space-2 $space-4;
+  color: var(--bd-text);
+  background: var(--bd-surface);
+  border: $border-width solid var(--bd-border-interactive);
+  border-radius: $radius-base;
+  font: inherit;
+  cursor: pointer;
+
+  &[aria-pressed='true'] {
+    color: var(--bd-primary);
+    background: var(--bd-primary-container);
+    border-color: var(--bd-primary);
+    font-weight: $font-weight-medium;
   }
 }
 

@@ -20,10 +20,10 @@
   display: flex;
   align-items: flex-start;
   gap: $space-3;
-  padding: $space-4 $space-4 $space-2;
+  padding: $space-3 $space-4 $space-2;
 
   @media (min-width: $breakpoint-md) {
-    padding: $space-6 $space-6 $space-3;
+    padding: $space-4 $space-4 $space-2;
   }
 }
 

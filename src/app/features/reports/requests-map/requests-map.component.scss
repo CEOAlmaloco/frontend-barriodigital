@@ -1,12 +1,22 @@
 @use 'tokens' as *;
 
-$map-height: 480px;
+$map-height: 560px;
 $map-height-mobile: 360px;
+$map-height-tablet: 440px;
 
 :host {
   position: relative;
   display: block;
   isolation: isolate;
+  min-height: $map-height-mobile;
+
+  @media (min-width: $breakpoint-md) {
+    min-height: $map-height-tablet;
+  }
+
+  @media (min-width: $breakpoint-lg) {
+    min-height: $map-height;
+  }
 }
 
 :host([hidden]) {
@@ -18,6 +28,10 @@ $map-height-mobile: 360px;
   height: $map-height-mobile;
 
   @media (min-width: $breakpoint-md) {
+    height: $map-height-tablet;
+  }
+
+  @media (min-width: $breakpoint-lg) {
     height: $map-height;
   }
 }
