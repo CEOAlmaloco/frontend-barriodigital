@@ -58,54 +58,25 @@ $content-max-width: 1040px;
   }
 }
 
-.legal-layout__nav {
-  border-bottom: $border-width solid var(--bd-border);
+// Mismos tokens que las pestañas de Auditoría y Reportes
+.legal-layout__tabs {
+  --mat-tab-active-label-text-color: var(--bd-primary);
+  --mat-tab-active-focus-label-text-color: var(--bd-primary);
+  --mat-tab-active-hover-label-text-color: var(--bd-primary);
+  --mat-tab-active-indicator-color: var(--bd-primary);
+  --mat-tab-active-focus-indicator-color: var(--bd-primary);
+  --mat-tab-active-hover-indicator-color: var(--bd-primary);
+  --mat-tab-inactive-label-text-color: var(--bd-text-muted);
+  --mat-tab-inactive-hover-label-text-color: var(--bd-text);
+  --mat-tab-inactive-focus-label-text-color: var(--bd-text);
+  --mat-tab-divider-color: var(--bd-border);
+  --mat-tab-container-height: #{$size-touch-target + 4px};
+
+  mat-icon {
+    margin-inline-end: $space-2;
+  }
 
   @media print {
     display: none;
   }
-}
-
-.legal-layout__tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 $space-6;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-// Mismo indicador que la navegación principal del header: borde inferior en el enlace activo
-.legal-layout__tab {
-  display: flex;
-  align-items: center;
-  min-height: $size-touch-target;
-  // El borde se monta sobre la línea de la navegación
-  margin-bottom: -$border-width;
-  font-size: $font-body;
-  color: var(--bd-text);
-  text-decoration: none;
-  border-bottom: $border-width-strong solid transparent;
-
-  @media (prefers-reduced-motion: no-preference) {
-    transition:
-      color $transition-base,
-      border-color $transition-base;
-  }
-
-  &:hover {
-    color: var(--bd-primary);
-  }
-
-  &:focus-visible {
-    outline: $border-width-strong solid var(--bd-primary-dark);
-    outline-offset: 2px;
-    border-radius: $radius-base;
-  }
-}
-
-.legal-layout__tab--active {
-  font-weight: $font-weight-medium;
-  color: var(--bd-primary);
-  border-bottom-color: var(--bd-primary);
 }

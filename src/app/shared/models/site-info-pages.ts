@@ -2,10 +2,12 @@
 export interface SiteInfoPage {
   readonly label: string;
   readonly path: string;
+  /** Ícono de Material Icons de su pestaña. */
+  readonly icon: string;
 }
 
 export const SITE_INFO_PAGES: readonly SiteInfoPage[] = [
-  { label: 'Privacidad', path: '/legal/privacidad' },
-  { label: 'Accesibilidad', path: '/legal/accesibilidad' },
-  { label: 'Condiciones de uso', path: '/legal/condiciones-de-uso' },
+  { label: 'Privacidad', path: '/legal/privacidad', icon: 'privacy_tip' },
+  { label: 'Accesibilidad', path: '/legal/accesibilidad', icon: 'accessibility_new' },
+  { label: 'Condiciones de uso', path: '/legal/condiciones-de-uso', icon: 'description' },
 ];

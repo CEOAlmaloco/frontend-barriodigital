@@ -11,22 +11,28 @@
 </header>
 
 <main class="legal-layout">
-  <nav class="legal-layout__nav" aria-label="Documentos de información">
-    <ul class="legal-layout__tabs">
-      @for (page of pages; track page.path) {
-        <li>
-          <a
-            class="legal-layout__tab"
-            [routerLink]="page.path"
-            routerLinkActive="legal-layout__tab--active"
-            ariaCurrentWhenActive="page"
-          >
-            {{ page.label }}
-          </a>
-        </li>
-      }
-    </ul>
+  <nav
+    mat-tab-nav-bar
+    class="legal-layout__tabs"
+    aria-label="Documentos de información"
+    mat-stretch-tabs="false"
+    [tabPanel]="panel"
+  >
+    @for (page of pages; track page.path) {
+      <a
+        mat-tab-link
+        [routerLink]="page.path"
+        routerLinkActive
+        #link="routerLinkActive"
+        [active]="link.isActive"
+      >
+        <mat-icon aria-hidden="true">{{ page.icon }}</mat-icon>
+        {{ page.label }}
+      </a>
+    }
   </nav>
 
-  <router-outlet />
+  <mat-tab-nav-panel #panel>
+    <router-outlet />
+  </mat-tab-nav-panel>
 </main>

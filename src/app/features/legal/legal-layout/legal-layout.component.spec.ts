@@ -56,9 +56,14 @@ describe('LegalLayoutComponent', () => {
   it('marca el documento abierto en la navegación', async () => {
     const element = await open('/legal/condiciones-de-uso');
 
-    const current = element.querySelector('.legal-layout__nav [aria-current="page"]');
-    expect(text(current)).toBe('Condiciones de uso');
-    expect(element.querySelectorAll('.legal-layout__nav a')).toHaveLength(3);
+    const tabs = [...element.querySelectorAll('.legal-layout__tabs a[role="tab"]')];
+    const selected = tabs.filter((tab) => tab.getAttribute('aria-selected') === 'true');
+    expect(tabs).toHaveLength(3);
+    expect(selected).toHaveLength(1);
+    expect(text(selected[0])).toContain('Condiciones de uso');
+    expect(selected[0].getAttribute('aria-controls')).toBe(
+      element.querySelector('mat-tab-nav-panel')?.id,
+    );
   });
 
   it('tiene un solo contenido principal', async () => {
