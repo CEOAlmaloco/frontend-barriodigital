@@ -89,6 +89,8 @@ Las rutas privadas van como hijas del layout de rutas autenticadas en `app.route
 - **API Gateway**: HTTP API (`barriodigital-api`) delante del BFF, con un JWT Authorizer que valida issuer y audience contra Microsoft Entra ID antes de reenviar la petición. Rutas protegidas: `GET/POST /api/requests`, `GET /api/requests/{id}` y `GET /api/requests/{id}/attachment`.
 - **Verificación**: login, creación y listado de trámites probados de punta a punta contra la infraestructura real en AWS, con el header `Authorization` confirmado en las peticiones al backend.
 - **Frontend**: desplegado en AWS Amplify Hosting (deploy manual, sin repositorio Git conectado), con una regla de rewrite (`404-200` a `/index.html`) para que las rutas de Angular funcionen al recargar o acceder directo por URL. Se descartó CloudFront + S3 porque `cloudfront:CreateDistribution` no está permitido en el rol del Learner Lab de AWS Academy.
+- **Encabezados de seguridad**: `customHttp.yml` define HSTS, CSP, `X-Frame-Options`, `X-Content-Type-Options` y `Referrer-Policy`. Con deploy manual, Amplify no lee el archivo del repositorio: su contenido se copia en los encabezados personalizados de la app en la consola de Amplify cada vez que cambia. Si cambia la URL del API Gateway, se actualiza también `connect-src`.
+- **CI**: `ci.yml` corre las pruebas y el build de producción. `security.yml` busca secretos con gitleaks, falla si un PR agrega una dependencia con una vulnerabilidad crítica o si las dependencias de producción tienen una, y comprueba con `scripts/check-security-headers.mjs` que el CSP no bloquee el login, el BFF, el mapa ni las fuentes, y que no permita scripts inline sin autorizar.
 
 ## Funcionalidades
 
