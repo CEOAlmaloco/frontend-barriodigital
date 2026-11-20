@@ -28,8 +28,10 @@ import { environment } from '../../../environments/environment';
 /** Scope custom de la API. Su accessToken lleva audience api://<clientId> y el claim roles. */
 export const apiScope = `api://${environment.entraId.clientId}/${environment.entraId.apiScopeName}`;
 
+/** select_account: en un equipo compartido, Entra ID no entra solo con la cuenta del usuario anterior. */
 export const loginRequest: RedirectRequest = {
   scopes: ['openid', 'profile', apiScope],
+  prompt: 'select_account',
 };
 
 function createMsalInstance(): IPublicClientApplication {
@@ -37,7 +39,7 @@ function createMsalInstance(): IPublicClientApplication {
 
   return new PublicClientApplication({
     auth: { clientId, authority, redirectUri, postLogoutRedirectUri },
-    // sessionStorage: al cerrar el navegador no queda sesión (equipos compartidos, EP3.5-08 / SEG-07).
+    // En sessionStorage la sesión no sobrevive al cierre del navegador, necesario en equipos compartidos
     cache: { cacheLocation: BrowserCacheLocation.SessionStorage },
   });
 }

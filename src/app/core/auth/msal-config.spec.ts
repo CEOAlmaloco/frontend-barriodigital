@@ -47,6 +47,7 @@ describe('MSALInterceptorConfigFactory', () => {
     expect(config.interactionType).toBe(InteractionType.Redirect);
     expect(config.protectedResourceMap.get(`${environment.bffBaseUrl}/*`)).toEqual([apiScope]);
     expect(loginRequest.scopes).toContain(apiScope);
+    expect(loginRequest.prompt).toBe('select_account');
   });
 
   it('adjunta el accessToken, no el idToken, solo en las llamadas al BFF', () => {
