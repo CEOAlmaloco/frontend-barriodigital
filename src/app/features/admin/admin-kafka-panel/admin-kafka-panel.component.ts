@@ -30,12 +30,21 @@ import {
   type KafkaTopicSummary,
 } from '../../../core/kafka/kafka-admin.models';
 import { failureKind } from '../../../shared/utils/http-failure';
+import { formatClock } from '../../reports/report-format';
+import {
+  RankingItem,
+  ReportRankingComponent,
+} from '../../reports/report-ranking/report-ranking.component';
 import {
   ConfirmActionDialogComponent,
   type ConfirmActionDialogData,
 } from '../confirm-action-dialog/confirm-action-dialog.component';
 
 type KafkaSection = 'topics' | 'groups' | 'dlt';
+type TopicHealth = 'ok' | 'degraded' | 'offline';
+
+/** Tope de grupos/tópicos a los que se pide detalle (evita N+1 masivo). */
+const LAG_SAMPLE = 8;
 
 @Component({
   selector: 'app-admin-kafka-panel',
@@ -51,6 +60,7 @@ type KafkaSection = 'topics' | 'groups' | 'dlt';
     MatSelect,
     MatTableModule,
     MatTooltip,
+    ReportRankingComponent,
   ],
   templateUrl: './admin-kafka-panel.component.html',
   styleUrl: './admin-kafka-panel.component.scss',
@@ -75,9 +85,34 @@ export class AdminKafkaPanelComponent {
   protected readonly loadState = signal<'loading' | 'ready' | 'error'>('loading');
   protected readonly detailLoading = signal(false);
   protected readonly busy = signal(false);
+  protected readonly fetchedAt = signal<Date | null>(null);
+  protected readonly lagRanking = signal<RankingItem[]>([]);
+  protected readonly groupLag = signal<Record<string, number>>({});
+  protected readonly topicHealth = signal<Record<string, TopicHealth>>({});
+  protected readonly partitionHealth = signal<{
+    sampled: number;
+    online: number;
+    underReplicated: number;
+    offlineLeaders: number;
+  } | null>(null);
+  protected readonly formatClock = formatClock;
 
-  protected readonly topicColumns = ['name', 'partitions', 'replication', 'system', 'acciones'] as const;
-  protected readonly groupColumns = ['groupId', 'state', 'members', 'system', 'acciones'] as const;
+  protected readonly topicColumns = [
+    'name',
+    'health',
+    'partitions',
+    'replication',
+    'system',
+    'acciones',
+  ] as const;
+  protected readonly groupColumns = [
+    'groupId',
+    'state',
+    'members',
+    'lag',
+    'system',
+    'acciones',
+  ] as const;
   protected readonly dltColumns = [
     'select',
     'event',
@@ -92,8 +127,14 @@ export class AdminKafkaPanelComponent {
     const detail = this.groupDetail();
     return detail ? totalLag(detail) : null;
   });
-  protected readonly businessTopics = computed(
-    () => this.topics().filter((topic) => !topic.system && !topic.name.endsWith('.DLT')).length,
+  /** Tópicos visibles en tabla excluyendo DLT (incluye sistema). */
+  protected readonly topicCount = computed(
+    () => this.topics().filter((topic) => !topic.name.endsWith('.DLT')).length,
+  );
+  protected readonly partitionTotal = computed(() =>
+    this.topics()
+      .filter((topic) => !topic.name.endsWith('.DLT'))
+      .reduce((sum, topic) => sum + topic.partitions, 0),
   );
   protected readonly groupsWithMembers = computed(
     () => this.groups().filter((group) => group.members > 0).length,
@@ -101,6 +142,27 @@ export class AdminKafkaPanelComponent {
   protected readonly emptyGroups = computed(
     () => this.groups().filter((group) => group.state === 'Empty' || group.members === 0).length,
   );
+  protected readonly underReplicatedSample = computed(() => {
+    const detail = this.topicDetail();
+    if (!detail) {
+      return null;
+    }
+    return detail.partitions.filter((part) => part.isr.length < part.replicas.length).length;
+  });
+  protected readonly lagTotal = computed(() =>
+    Object.values(this.groupLag()).reduce((sum, value) => sum + value, 0),
+  );
+  protected readonly partitionHealthItems = computed<RankingItem[]>(() => {
+    const health = this.partitionHealth();
+    if (!health || health.sampled === 0) {
+      return [];
+    }
+    return [
+      { label: 'Online', value: health.online },
+      { label: 'Under-replicated', value: health.underReplicated },
+      { label: 'Sin líder', value: health.offlineLeaders },
+    ].filter((item) => item.value > 0 || item.label === 'Online');
+  });
 
   constructor() {
     this.reload();
@@ -115,6 +177,10 @@ export class AdminKafkaPanelComponent {
 
   protected reload(): void {
     this.loadState.set('loading');
+    this.lagRanking.set([]);
+    this.groupLag.set({});
+    this.topicHealth.set({});
+    this.partitionHealth.set(null);
     forkJoin({
       topics: this.kafka.listTopics().pipe(catchError(() => of(null))),
       groups: this.kafka.listConsumerGroups().pipe(catchError(() => of(null))),
@@ -130,11 +196,102 @@ export class AdminKafkaPanelComponent {
         this.dltNames.set(topics.filter((topic) => topic.name.endsWith('.DLT')).map((t) => t.name));
         if (groups) {
           this.groups.set(groups);
+          this.loadLagSample(groups);
         }
+        this.loadPartitionHealth(topics);
+        this.fetchedAt.set(new Date());
         this.loadState.set('ready');
         if (this.section() === 'dlt') {
           this.prepareDlt();
         }
+      });
+  }
+
+  protected healthOf(name: string): TopicHealth | null {
+    return this.topicHealth()[name] ?? null;
+  }
+
+  protected lagOf(groupId: string): number | null {
+    const lag = this.groupLag()[groupId];
+    return lag === undefined ? null : lag;
+  }
+
+  /** Lag por grupo (muestra). Incluye 0 para no ocultar grupos sanos. */
+  private loadLagSample(groups: KafkaGroupSummary[]): void {
+    const preferred = groups.filter((group) => !group.system);
+    const sample = (preferred.length > 0 ? preferred : groups).slice(0, LAG_SAMPLE);
+    if (sample.length === 0) {
+      return;
+    }
+    forkJoin(
+      sample.map((group) =>
+        this.kafka.getConsumerGroup(group.groupId).pipe(catchError(() => of(null))),
+      ),
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((details) => {
+        const lagMap: Record<string, number> = {};
+        const ranking: RankingItem[] = [];
+        for (const detail of details) {
+          if (!detail) {
+            continue;
+          }
+          const value = totalLag(detail);
+          lagMap[detail.groupId] = value;
+          ranking.push({ label: detail.groupId, value });
+        }
+        ranking.sort((a, b) => b.value - a.value);
+        this.groupLag.set(lagMap);
+        this.lagRanking.set(ranking);
+      });
+  }
+
+  /** Salud de particiones + mapa por tópico (muestra no-DLT, incluye sistema). */
+  private loadPartitionHealth(topics: KafkaTopicSummary[]): void {
+    const sample = topics.filter((topic) => !topic.name.endsWith('.DLT')).slice(0, LAG_SAMPLE);
+    if (sample.length === 0) {
+      this.partitionHealth.set({
+        sampled: 0,
+        online: 0,
+        underReplicated: 0,
+        offlineLeaders: 0,
+      });
+      return;
+    }
+    forkJoin(
+      sample.map((topic) => this.kafka.getTopic(topic.name).pipe(catchError(() => of(null)))),
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((details) => {
+        let online = 0;
+        let underReplicated = 0;
+        let offlineLeaders = 0;
+        let sampled = 0;
+        const healthMap: Record<string, TopicHealth> = {};
+        for (const detail of details) {
+          if (!detail) {
+            continue;
+          }
+          sampled += 1;
+          let topicStatus: TopicHealth = 'ok';
+          for (const part of detail.partitions) {
+            if (part.leader == null || part.leader < 0) {
+              offlineLeaders += 1;
+              topicStatus = 'offline';
+            } else {
+              online += 1;
+            }
+            if (part.isr.length < part.replicas.length) {
+              underReplicated += 1;
+              if (topicStatus === 'ok') {
+                topicStatus = 'degraded';
+              }
+            }
+          }
+          healthMap[detail.name] = topicStatus;
+        }
+        this.topicHealth.set(healthMap);
+        this.partitionHealth.set({ sampled, online, underReplicated, offlineLeaders });
       });
   }
 

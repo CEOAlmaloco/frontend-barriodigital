@@ -1,12 +1,21 @@
 <main class="admin">
   <header class="admin__header">
-    <h1>Panel de administración</h1>
+    <h1>Administración</h1>
     <p class="admin__text">
-      Catálogo de trámites y mensajería operativa (RabbitMQ y Kafka) para el personal Admin.
+      Centro de control y supervisión de BarrioDigital: operación, catálogo y mensajería.
     </p>
   </header>
 
   <nav class="admin__tabs" mat-tab-nav-bar [tabPanel]="adminPanel" aria-label="Secciones de administración">
+    <button
+      type="button"
+      mat-tab-link
+      [active]="section() === 'panel'"
+      (click)="selectSection('panel')"
+    >
+      <mat-icon aria-hidden="true">dashboard</mat-icon>
+      Panel
+    </button>
     <button
       type="button"
       mat-tab-link
@@ -38,6 +47,9 @@
 
   <mat-tab-nav-panel #adminPanel class="admin__panel">
     @switch (section()) {
+      @case ('panel') {
+        <app-admin-overview (openSection)="selectSection($event)" />
+      }
       @case ('catalog') {
         <section class="admin__catalog" aria-labelledby="procedure-types-title">
           <div class="admin__heading">
@@ -111,10 +123,50 @@
                   <dd>{{ catalogExhausted() }}</dd>
                 </div>
               </dl>
+              <div class="admin__filters">
+                <label class="admin__search">
+                  <span class="cdk-visually-hidden">Buscar tipo</span>
+                  <input
+                    type="search"
+                    placeholder="Buscar por código o nombre…"
+                    [value]="catalogQuery()"
+                    (input)="catalogQuery.set($any($event.target).value)"
+                  />
+                </label>
+                <div class="admin__filter-chips" role="group" aria-label="Filtrar por estado">
+                  <button
+                    type="button"
+                    class="admin__chip"
+                    [attr.aria-pressed]="catalogStatus() === 'all'"
+                    (click)="catalogStatus.set('all')"
+                  >
+                    Todos
+                  </button>
+                  <button
+                    type="button"
+                    class="admin__chip"
+                    [attr.aria-pressed]="catalogStatus() === 'active'"
+                    (click)="catalogStatus.set('active')"
+                  >
+                    Activos
+                  </button>
+                  <button
+                    type="button"
+                    class="admin__chip"
+                    [attr.aria-pressed]="catalogStatus() === 'inactive'"
+                    (click)="catalogStatus.set('inactive')"
+                  >
+                    Inactivos
+                  </button>
+                </div>
+              </div>
+              @if (visibleCatalog().length === 0) {
+                <p class="admin__empty">Ningún tipo coincide con la búsqueda o el filtro.</p>
+              } @else {
               <div class="admin__table-wrapper">
                 <table
                   mat-table
-                  [dataSource]="catalog()"
+                  [dataSource]="visibleCatalog()"
                   class="admin__table"
                   aria-label="Tipos de trámite"
                 >
@@ -175,7 +227,7 @@
               </div>
 
               <ul class="admin__cards" aria-label="Tipos de trámite">
-                @for (type of catalog(); track type.value) {
+                @for (type of visibleCatalog(); track type.value) {
                   <li class="admin__item">
                     <h3 class="admin__name">{{ type.label }}</h3>
                     <dl class="admin__fields">
@@ -215,6 +267,7 @@
                   </li>
                 }
               </ul>
+              }
             }
           }
         </section>

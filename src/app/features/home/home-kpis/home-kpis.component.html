@@ -4,13 +4,18 @@
   [attr.aria-busy]="view().status === 'loading'"
 >
   <div class="kpis__bar">
-    <h2 id="home-kpis-title" class="kpis__title">Indicadores de la comuna</h2>
+    <div class="kpis__intro">
+      <h2 id="home-kpis-title" class="kpis__title">Resumen operativo</h2>
+      <p class="kpis__subtitle">
+        Estado actual de la comuna. Ingresos y cierres: ventana móvil de 24 horas (no día civil).
+      </p>
+    </div>
     <div class="kpis__controls">
       @if (ready(); as ready) {
         <p class="kpis__freshness">
-          @if (ready.data.lastEventAt) {
+          @if (ready.data.kpis.lastEventAt) {
             <span
-              >Datos al <strong>{{ ready.data.lastEventAt | requestDate }}</strong></span
+              >Datos al <strong>{{ ready.data.kpis.lastEventAt | requestDate }}</strong></span
             >
           } @else {
             <span>Aún no hay eventos registrados</span>
@@ -28,6 +33,15 @@
         <button matButton="outlined" type="button" (click)="togglePause()">
           <mat-icon aria-hidden="true">{{ paused() ? 'play_arrow' : 'pause' }}</mat-icon>
           {{ paused() ? 'Reanudar' : 'Pausar' }}
+        </button>
+        <button
+          matButton="outlined"
+          type="button"
+          [attr.aria-disabled]="source.state().loading"
+          (click)="source.state().loading || retry()"
+        >
+          <mat-icon aria-hidden="true">refresh</mat-icon>
+          Actualizar
         </button>
         <a class="home-link" routerLink="/reportes">
           Ver reportes<mat-icon aria-hidden="true">arrow_forward</mat-icon>
@@ -47,7 +61,101 @@
         </span>
       </p>
     }
-    <app-report-kpi-tiles [kpis]="ready.data" [range]="range" />
+
+    <dl class="ops-tiles">
+      @for (tile of tiles(); track tile.id) {
+        <div
+          class="ops-tile"
+          [class.ops-tile--warn]="tile.warn"
+          [class.ops-tile--lead]="tile.emphasis === 'lead'"
+        >
+          <div class="ops-tile__top">
+            <dt>{{ tile.label }}</dt>
+            <mat-icon class="ops-tile__icon" aria-hidden="true">{{ tile.icon }}</mat-icon>
+          </div>
+          @if (tile.value !== null) {
+            <dd class="ops-tile__value">{{ tile.value }}</dd>
+          } @else {
+            <dd class="ops-tile__value ops-tile__value--empty">{{ tile.empty }}</dd>
+          }
+          <dd class="ops-tile__meta">{{ tile.meta }}</dd>
+          @if (tile.link) {
+            <a class="ops-tile__link" routerLink="/tramites" [queryParams]="tile.link">
+              Ver trámites<span class="cdk-visually-hidden">: {{ tile.label }}</span>
+            </a>
+          } @else if (tile.fragment) {
+            <a class="ops-tile__link" [routerLink]="[]" [fragment]="tile.fragment">
+              Ver listado<span class="cdk-visually-hidden">: {{ tile.label }}</span>
+            </a>
+          }
+        </div>
+      }
+    </dl>
+
+    <section class="activity" aria-labelledby="home-activity-title">
+      <div class="activity__head">
+        <h3 id="home-activity-title">Ingresos de las últimas 24 horas</h3>
+        <p class="activity__compare">
+          <span
+            ><strong>{{ formatCount(incomingTotal()) }}</strong> ingresados</span
+          >
+          <span class="activity__sep" aria-hidden="true">·</span>
+          <span
+            ><strong>{{ formatCount(ready.data.kpis.resolvedCount) }}</strong> resueltos</span
+          >
+          <span class="activity__note">El gráfico muestra solo ingresos; resueltos es el total del período</span>
+        </p>
+      </div>
+      <app-report-trend-chart
+        [series]="ready.data.kpis.requestsOverTime"
+        period="las últimas 24 horas"
+      />
+    </section>
+
+    <div class="ops-split">
+      <section class="status-panel" aria-labelledby="home-status-title">
+        <div class="status-panel__head">
+          <h3 id="home-status-title">Distribución de estados</h3>
+          <p class="status-panel__meta">
+            Ahora · {{ formatCount(openTotal()) }} abiertos
+          </p>
+        </div>
+        <ul class="status-panel__list">
+          @for (row of statusRows(); track row.status) {
+            <li class="status-panel__item">
+              <span class="status-panel__label">{{ row.label }}</span>
+              <span class="status-panel__value">{{ formatCount(row.count) }}</span>
+              <span class="status-panel__track" aria-hidden="true">
+                <span
+                  class="status-panel__fill"
+                  [style.width.%]="statusMax() === 0 ? 0 : (row.count / statusMax()) * 100"
+                ></span>
+              </span>
+            </li>
+          }
+        </ul>
+      </section>
+
+      <section class="perf-panel" aria-labelledby="home-perf-title">
+        <div class="perf-panel__head">
+          <h3 id="home-perf-title">Rendimiento</h3>
+          <p class="perf-panel__meta">Últimas 24 horas</p>
+        </div>
+        <dl class="perf-panel__list">
+          @for (metric of perfMetrics(); track metric.id) {
+            <div class="perf-panel__item">
+              <dt>{{ metric.label }}</dt>
+              @if (metric.value !== null) {
+                <dd class="perf-panel__value">{{ metric.value }}</dd>
+              } @else {
+                <dd class="perf-panel__value perf-panel__value--empty">{{ metric.empty }}</dd>
+              }
+              <dd class="perf-panel__meta-text">{{ metric.meta }}</dd>
+            </div>
+          }
+        </dl>
+      </section>
+    </div>
   } @else if (failure(); as failure) {
     <div class="kpis__error">
       @switch (failure.kind) {
@@ -82,7 +190,11 @@
       }
     </div>
   } @else {
-    <app-report-kpi-tiles [kpis]="null" [range]="range" />
+    <div class="ops-tiles" aria-hidden="true">
+      @for (tile of [1, 2, 3, 4, 5, 6]; track tile) {
+        <div class="ops-tile ops-tile--skeleton"></div>
+      }
+    </div>
   }
 </section>
 

@@ -5,9 +5,13 @@ import { MAT_DIALOG_DEFAULT_OPTIONS, MatDialog, MatDialogRef } from '@angular/ma
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltip } from '@angular/material/tooltip';
 import { By } from '@angular/platform-browser';
+import { provideRouter } from '@angular/router';
 import { Observable, Subject, Subscriber, firstValueFrom, of, throwError } from 'rxjs';
 
 import { CatalogService } from '../../core/catalog/catalog.service';
+import { KafkaAdminService } from '../../core/kafka/kafka-admin.service';
+import { MqAdminService } from '../../core/mq/mq-admin.service';
+import { ReportService } from '../../core/report/report.service';
 import { ProcedureType } from '../../shared/models/procedure-type.model';
 import { AdminComponent } from './admin.component';
 import {
@@ -50,7 +54,24 @@ describe('AdminComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AdminComponent],
       providers: [
+        provideRouter([]),
         { provide: CatalogService, useValue: service },
+        {
+          provide: ReportService,
+          useValue: {
+            getKpis: () => of(null),
+            getTopProcedures: () => of(null),
+            getSlaAlerts: () => of(null),
+          },
+        },
+        { provide: MqAdminService, useValue: { listQueues: () => of([]) } },
+        {
+          provide: KafkaAdminService,
+          useValue: {
+            listTopics: () => of([]),
+            listConsumerGroups: () => of([]),
+          },
+        },
         {
           provide: MAT_DIALOG_DEFAULT_OPTIONS,
           useValue: { enterAnimationDuration: 0, exitAnimationDuration: 0 },
@@ -59,6 +80,12 @@ describe('AdminComponent', () => {
     }).compileComponents();
     fixture = TestBed.createComponent(AdminComponent);
     element = fixture.nativeElement;
+    await fixture.whenStable();
+    // El panel overview es la pestaña por defecto; los tests de catálogo abren Catálogo.
+    const catalogTab = Array.from(element.querySelectorAll<HTMLButtonElement>('button')).find(
+      (item) => item.textContent?.includes('Catálogo'),
+    );
+    catalogTab?.click();
     await fixture.whenStable();
   };
   const text = () => element.textContent ?? '';
@@ -103,7 +130,7 @@ describe('AdminComponent', () => {
 
   it('mantiene encabezado y creación disponibles durante una única carga inicial', async () => {
     await render(() => new Subject<ProcedureType[]>());
-    expect(text()).toContain('Panel de administración');
+    expect(text()).toContain('Administración');
     expect(text()).toContain('RabbitMQ');
     expect(text()).toContain('Kafka');
     expect(button('Nuevo tipo').disabled).toBe(false);

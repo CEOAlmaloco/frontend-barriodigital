@@ -11,23 +11,30 @@ import {
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
+import { forkJoin, map } from 'rxjs';
 
 import { ReportService } from '../../../core/report/report.service';
-import { ReportKpis, ReportRange } from '../../../shared/models/report.model';
+import { ReportRange } from '../../../shared/models/report.model';
 import { polledResource } from '../../../shared/utils/polled-resource';
-import { formatClock } from '../../reports/report-format';
-import { ReportKpiTilesComponent } from '../../reports/report-kpi-tiles/report-kpi-tiles.component';
+import { formatClock, formatCount } from '../../reports/report-format';
+import { ReportTrendChartComponent } from '../../reports/report-trend-chart/report-trend-chart.component';
 import { RequestDatePipe } from '../../requests/request-date.pipe';
 import { blockView } from '../home-block-view';
 import { HomeStateComponent } from '../home-state/home-state.component';
+import {
+  HomeOpsSnapshot,
+  openTotal,
+  toOpsTiles,
+  toPerfMetrics,
+  toStatusRows,
+} from './home-ops-tiles';
 
-/** La ventana de /reports por omisión: lo que cambia en el día. */
+/** Ventana operativa de /inicio: coincidente con el default de report. */
 const RANGE: ReportRange = 'last24h';
 
 /**
- * KPIs del Admin con polling cada 5 s (K8): se pausa con la pestaña oculta, se detiene al salir de /inicio y
- * espera más entre intentos ante errores. La pausa manual cumple WCAG 2.2.2, porque la información se actualiza
- * sola junto a otro contenido.
+ * Resumen operativo del Admin (K8): polling cada 5 s, pausa con pestaña oculta y al salir de /inicio.
+ * No reutiliza los tiles de /reports: aquí la foto es de gestión, no de análisis del período.
  */
 @Component({
   selector: 'app-home-kpis',
@@ -36,7 +43,7 @@ const RANGE: ReportRange = 'last24h';
     MatButton,
     MatIcon,
     NgTemplateOutlet,
-    ReportKpiTilesComponent,
+    ReportTrendChartComponent,
     RequestDatePipe,
     RouterLink,
   ],
@@ -49,9 +56,15 @@ export class HomeKpisComponent {
   private readonly announcer = inject(LiveAnnouncer);
 
   protected readonly range = RANGE;
-  protected readonly source = polledResource<ReportRange, ReportKpis>({
+  protected readonly formatClock = formatClock;
+  protected readonly formatCount = formatCount;
+  protected readonly source = polledResource<ReportRange, HomeOpsSnapshot>({
     key: RANGE,
-    load: (range) => this.reportService.getKpis(range),
+    load: (range) =>
+      forkJoin({
+        kpis: this.reportService.getKpis(range),
+        overdue: this.reportService.getSlaAlerts({ status: ['VENCIDO'], page: 0, size: 1 }),
+      }).pipe(map((snapshot) => snapshot)),
   });
   protected readonly view = computed(() => blockView(this.source.state(), this.source.key()));
   protected readonly ready = computed(() => {
@@ -63,12 +76,37 @@ export class HomeKpisComponent {
     return view.status === 'error' ? view : null;
   });
   protected readonly paused = this.source.paused;
+  protected readonly tiles = computed(() => {
+    const ready = this.ready();
+    return ready ? toOpsTiles(ready.data) : [];
+  });
+  protected readonly statusRows = computed(() => {
+    const ready = this.ready();
+    return ready ? toStatusRows(ready.data.kpis) : [];
+  });
+  protected readonly openTotal = computed(() => {
+    const ready = this.ready();
+    return ready ? openTotal(ready.data.kpis) : 0;
+  });
+  protected readonly statusMax = computed(() =>
+    Math.max(1, ...this.statusRows().map((row) => row.count)),
+  );
+  protected readonly perfMetrics = computed(() => {
+    const ready = this.ready();
+    return ready ? toPerfMetrics(ready.data.kpis) : [];
+  });
+  protected readonly incomingTotal = computed(() => {
+    const ready = this.ready();
+    if (!ready) {
+      return 0;
+    }
+    return ready.data.kpis.requestsOverTime.points.reduce((sum, point) => sum + point.count, 0);
+  });
   protected readonly retryHint = computed(() =>
     this.paused()
       ? 'Usa Reintentar para volver a consultar.'
       : 'Se volverá a intentar automáticamente.',
   );
-  protected readonly formatClock = formatClock;
 
   constructor() {
     this.source.setKey(RANGE);

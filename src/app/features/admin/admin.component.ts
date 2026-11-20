@@ -25,18 +25,23 @@ import { businessDaysLabel } from '../requests/sla-format';
 import { AdminKafkaPanelComponent } from './admin-kafka-panel/admin-kafka-panel.component';
 import { AdminMqPanelComponent } from './admin-mq-panel/admin-mq-panel.component';
 import {
+  AdminNavSection,
+  AdminOverviewComponent,
+} from './admin-overview/admin-overview.component';
+import {
   ProcedureTypeDialogComponent,
   ProcedureTypeDialogData,
   ProcedureTypeDialogResult,
 } from './procedure-type-dialog/procedure-type-dialog.component';
 
-type AdminSection = 'catalog' | 'rabbitmq' | 'kafka';
+type AdminSection = 'panel' | AdminNavSection;
 
 @Component({
   selector: 'app-admin',
   imports: [
     AdminKafkaPanelComponent,
     AdminMqPanelComponent,
+    AdminOverviewComponent,
     MatButton,
     MatIconButton,
     MatIcon,
@@ -62,7 +67,7 @@ export class AdminComponent {
   > | null = null;
   private readonly savedOperation = signal<'create' | 'edit' | null>(null);
 
-  protected readonly section = signal<AdminSection>('catalog');
+  protected readonly section = signal<AdminSection>('panel');
 
   protected readonly columns = [
     'codigo',
@@ -75,11 +80,32 @@ export class AdminComponent {
   ];
   protected readonly catalog = signal<ProcedureType[]>([]);
   protected readonly hasCatalog = signal(false);
+  protected readonly catalogQuery = signal('');
+  protected readonly catalogStatus = signal<'all' | 'active' | 'inactive'>('all');
   protected readonly loadState = signal<'loading' | 'ready' | 'error'>('loading');
   protected readonly isRefreshing = signal(false);
   protected readonly catalogActive = computed(
     () => this.catalog().filter((type) => type.active).length,
   );
+  protected readonly visibleCatalog = computed(() => {
+    const q = this.catalogQuery().trim().toLowerCase();
+    const status = this.catalogStatus();
+    return this.catalog().filter((type) => {
+      if (status === 'active' && !type.active) {
+        return false;
+      }
+      if (status === 'inactive' && type.active) {
+        return false;
+      }
+      if (!q) {
+        return true;
+      }
+      return (
+        type.value.toLowerCase().includes(q) ||
+        type.label.toLowerCase().includes(q)
+      );
+    });
+  });
   protected readonly catalogWithQuota = computed(
     () => this.catalog().filter((type) => typeof type.dailyQuota === 'number').length,
   );

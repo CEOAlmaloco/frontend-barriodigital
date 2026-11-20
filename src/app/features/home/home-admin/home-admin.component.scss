@@ -1,0 +1,8 @@
+@use 'tokens' as *;
+
+.home-admin__lead {
+  margin: 0;
+  color: var(--bd-text-muted);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+  max-width: $measure-body;
+}

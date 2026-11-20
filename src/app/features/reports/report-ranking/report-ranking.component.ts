@@ -6,6 +6,8 @@ import { formatCount } from '../report-format';
 export interface RankingItem {
   label: string;
   value: number;
+  /** Texto de ayuda (p. ej. porcentaje) al pasar el cursor. */
+  title?: string;
 }
 
 /** Valores por categoría con barras proporcionales al mayor. `ordered` lo anuncia como ranking. */
@@ -15,7 +17,7 @@ export interface RankingItem {
   template: `
     <ng-template #listItems>
       @for (item of rows(); track $index) {
-        <li class="ranking__item">
+        <li class="ranking__item" [attr.title]="item.title || null">
           <span class="ranking__label">
             @if (ordered()) {
               <span class="ranking__rank" aria-hidden="true">{{ $index + 1 }}.</span>

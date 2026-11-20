@@ -22,9 +22,9 @@ describe('AdminKafkaPanelComponent', () => {
           provide: KafkaAdminService,
           useValue: {
             listTopics,
-            getTopic: vi.fn(),
+            getTopic: vi.fn(() => of(null)),
             listConsumerGroups: vi.fn(() => of([])),
-            getConsumerGroup: vi.fn(),
+            getConsumerGroup: vi.fn(() => of(null)),
             resetOffsets: vi.fn(),
             listDltMessages: vi.fn(() => of({ dlt: 'requests.events.DLT', partitions: [] })),
             replayDlt: vi.fn(),
@@ -43,5 +43,8 @@ describe('AdminKafkaPanelComponent', () => {
     expect(listTopics).toHaveBeenCalled();
     expect(element.textContent).toContain('requests.events');
     expect(element.textContent).toContain('Kafka');
+    // Topics KPI excluye DLT; no debe quedar en 0 si hay tópicos de sistema.
+    expect(element.textContent).toMatch(/Topics\s*1/);
+    expect(element.textContent).toMatch(/Tópicos DLT\s*1/);
   });
 });
