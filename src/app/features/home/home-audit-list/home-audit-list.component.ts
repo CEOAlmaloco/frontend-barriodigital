@@ -53,7 +53,7 @@ interface AuditRow {
             </span>
           </ng-template>
           @if (row.timeline) {
-            <a class="list__row list__row--event" routerLink="/audit" [queryParams]="row.timeline">
+            <a class="list__row list__row--event" routerLink="/auditoria" [queryParams]="row.timeline">
               <ng-container [ngTemplateOutlet]="content" />
             </a>
           } @else {

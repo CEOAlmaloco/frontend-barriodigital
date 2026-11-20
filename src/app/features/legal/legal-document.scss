@@ -1,0 +1,247 @@
+@use 'tokens' as *;
+
+// Estilos comunes de los documentos de información: tarjeta principal como las del módulo de trámites y
+// superficies secundarias planas para el resumen, el índice y los datos del navegador.
+
+:host {
+  display: block;
+}
+
+.legal-document {
+  display: flex;
+  flex-direction: column;
+  gap: $space-8;
+  padding: $space-6;
+  background-color: var(--bd-surface);
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  box-shadow: $shadow-elevated;
+
+  @media (min-width: $breakpoint-md) {
+    padding: $space-8;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: legal-document-enter $transition-entrance both;
+  }
+
+  @media print {
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+  }
+}
+
+@keyframes legal-document-enter {
+  from {
+    opacity: 0;
+    transform: translateY($space-2);
+  }
+}
+
+.legal-document__header {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.legal-document__title {
+  margin: 0;
+  font-size: $font-h2;
+  font-weight: $font-weight-semibold;
+  line-height: 1.25;
+
+  @media (min-width: $breakpoint-md) {
+    font-size: $font-h1;
+  }
+}
+
+.legal-document__meta {
+  margin: 0;
+  font-size: $font-body-sm;
+  color: var(--bd-text-muted);
+}
+
+.legal-document__lead {
+  max-width: $measure-body;
+  margin: $space-2 0 0;
+  font-size: $font-body;
+  line-height: $line-height-body;
+}
+
+.legal-document__box {
+  padding: $space-4 $space-6;
+  border: $border-width solid var(--bd-border);
+  border-radius: $radius-base;
+}
+
+.legal-document__box-title {
+  margin: 0 0 $space-3;
+  font-size: $font-h3;
+  font-weight: $font-weight-semibold;
+}
+
+.legal-document__summary {
+  display: grid;
+  gap: $space-1;
+  margin: 0;
+
+  @media (min-width: $breakpoint-md) {
+    grid-template-columns: minmax(10rem, max-content) 1fr;
+    gap: $space-3 $space-6;
+  }
+
+  dt {
+    font-weight: $font-weight-semibold;
+
+    // En una columna, cada par se separa del anterior; el título queda junto a su descripción
+    &:not(:first-of-type) {
+      margin-top: $space-3;
+
+      @media (min-width: $breakpoint-md) {
+        margin-top: 0;
+      }
+    }
+  }
+
+  dd {
+    margin: 0;
+    line-height: $line-height-body;
+  }
+}
+
+.legal-document__toc-list {
+  display: grid;
+  gap: $space-1;
+  margin: 0;
+  padding-left: $space-6;
+
+  @media (min-width: $breakpoint-md) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: $space-8;
+  }
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    min-height: $size-touch-target;
+    color: var(--bd-primary);
+    text-underline-offset: 0.2em;
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition: color $transition-base;
+    }
+
+    &:hover {
+      color: var(--bd-primary-dark);
+    }
+
+    &:focus-visible {
+      outline: $border-width-strong solid var(--bd-primary-dark);
+      outline-offset: 2px;
+      border-radius: $radius-base;
+    }
+  }
+
+  @media print {
+    display: none;
+  }
+}
+
+.legal-document__section {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  max-width: $measure-body;
+
+  h2 {
+    margin: 0;
+    // Al saltar desde el índice el título no queda pegado al borde de la ventana
+    scroll-margin-top: $space-6;
+    font-size: $font-h3;
+    font-weight: $font-weight-semibold;
+
+    &:focus {
+      outline: none;
+    }
+
+    &:focus-visible {
+      outline: $border-width-strong solid var(--bd-primary-dark);
+      outline-offset: $space-1;
+    }
+  }
+
+  h3 {
+    margin: 0;
+    font-size: $font-body;
+    font-weight: $font-weight-semibold;
+  }
+
+  p,
+  ul {
+    margin: 0;
+    line-height: $line-height-body;
+  }
+
+  ul:not(.legal-document__items) {
+    display: flex;
+    flex-direction: column;
+    gap: $space-2;
+    padding-left: $space-6;
+  }
+}
+
+// Enlaces del texto: resumen, secciones y datos de contacto
+.legal-document a {
+  color: var(--bd-primary);
+  font-weight: $font-weight-medium;
+  text-underline-offset: 0.2em;
+
+  &:hover {
+    color: var(--bd-primary-dark);
+  }
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: 2px;
+    border-radius: $radius-base;
+  }
+}
+
+.legal-document__items {
+  display: grid;
+  gap: $space-3;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @media (min-width: $breakpoint-md) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.legal-document__item {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  padding: $space-4;
+  border: $border-width solid var(--bd-border);
+  border-radius: $radius-base;
+
+  dl {
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+    margin: 0;
+  }
+
+  dt {
+    font-size: $font-body-sm;
+    color: var(--bd-text-muted);
+  }
+
+  dd {
+    margin: 0 0 $space-2;
+    line-height: $line-height-body;
+  }
+}

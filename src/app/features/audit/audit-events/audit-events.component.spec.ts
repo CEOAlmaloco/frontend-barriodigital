@@ -116,13 +116,13 @@ describe('AuditEventsComponent', () => {
   const form = () =>
     (harness.routeDebugElement!.componentInstance as unknown as { form: FormGroup }).form;
 
-  async function open(path = '/audit', isWide = true) {
+  async function open(path = '/auditoria', isWide = true) {
     calls = [];
     wide = isWide;
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
-          { path: 'audit', component: AuditEventsComponent },
+          { path: 'auditoria', component: AuditEventsComponent },
           { path: 'tramites/:id', component: OtherComponent },
         ]),
         {
@@ -154,7 +154,7 @@ describe('AuditEventsComponent', () => {
 
     await click(button('Quitar el período'));
 
-    expect(url()).toBe('/audit?period=all');
+    expect(url()).toBe('/auditoria?period=all');
     expect(calls.length).toBe(2);
     expect(calls[1].params['from']).toBeUndefined();
     expect(text()).not.toContain('Últimos 7 días');
@@ -196,7 +196,7 @@ describe('AuditEventsComponent', () => {
 
   it('descarta la respuesta de una búsqueda anterior que llega después de la nueva', async () => {
     await open();
-    await harness.navigateByUrl('/audit?actorRole=Admin');
+    await harness.navigateByUrl('/auditoria?actorRole=Admin');
     await settle();
 
     expect(calls.length).toBe(2);
@@ -219,13 +219,13 @@ describe('AuditEventsComponent', () => {
     await click(button('Detalle de Edición'));
     await click(button('Ver eventos de este actor'));
 
-    expect(url()).toBe('/audit?actorId=a1');
+    expect(url()).toBe('/auditoria?actorId=a1');
     expect(calls[1].params['actorId']).toBe('a1');
     expect(text()).toContain('Actor: Carolina Muñoz');
 
     await respond(calls[1], pageOf([configEvent]));
     await click(button('Quitar el filtro por Carolina Muñoz'));
-    expect(url()).toBe('/audit');
+    expect(url()).toBe('/auditoria');
   });
 
   it('no consulta con un rango de fechas invertido y envía un rango válido en hora de Chile', async () => {
@@ -241,14 +241,14 @@ describe('AuditEventsComponent', () => {
     form().patchValue({ to: new Date(2026, 10, 12) });
     await settle();
 
-    expect(url()).toBe('/audit?from=2026-11-10&to=2026-11-12');
+    expect(url()).toBe('/auditoria?from=2026-11-10&to=2026-11-12');
     expect(calls[1].params['from']).toBe('2026-11-10T03:00:00.000Z');
     expect(calls[1].params['to']).toBe('2026-11-13T02:59:59.999Z');
     expect(text()).not.toContain('Últimos 7 días');
   });
 
   it('muestra el servicio no disponible y reintenta con los mismos filtros', async () => {
-    await open('/audit?actorRole=Auditor');
+    await open('/auditoria?actorRole=Auditor');
     await fail(calls[0], 503);
 
     expect(text()).toContain('La auditoría no está disponible');
@@ -265,14 +265,14 @@ describe('AuditEventsComponent', () => {
     expect(text()).toContain('No tienes acceso a la auditoría');
     expect(() => button('Reintentar')).toThrow();
 
-    await harness.navigateByUrl('/audit?period=all');
+    await harness.navigateByUrl('/auditoria?period=all');
     await settle();
     await fail(calls[1], 400);
     expect(text()).toContain('No se pudo aplicar la búsqueda');
   });
 
   it('Actualizar vuelve a consultar con los mismos filtros y conserva el detalle abierto', async () => {
-    await open('/audit?actorRole=Admin');
+    await open('/auditoria?actorRole=Admin');
     expect(text()).not.toContain('Consultado');
     await respond(calls[0], pageOf([configEvent]));
     expect(text()).toMatch(/Consultado \d{2}:\d{2}:\d{2}/);
@@ -312,23 +312,23 @@ describe('AuditEventsComponent', () => {
   });
 
   it('vuelve a la última página si la de la URL ya no existe', async () => {
-    await open('/audit?page=5');
+    await open('/auditoria?page=5');
     await respond(calls[0], pageOf([], { page: 5, totalElements: 30, totalPages: 2 }));
 
-    expect(url()).toBe('/audit?page=1');
+    expect(url()).toBe('/auditoria?page=1');
     expect(calls[1].params['page']).toBe('1');
   });
 
   it('reemplaza en la URL los valores inválidos por los que consulta', async () => {
-    await open('/audit?actorRole=Root&size=999&period=all');
-    expect(url()).toBe('/audit?period=all');
+    await open('/auditoria?actorRole=Root&size=999&period=all');
+    expect(url()).toBe('/auditoria?period=all');
     expect(calls.length).toBe(1);
     expect(calls[0].params['actorRole']).toBeUndefined();
     expect(calls[0].params['size']).toBe('20');
   });
 
   it('en móvil muestra una lista y los filtros plegados', async () => {
-    await open('/audit', false);
+    await open('/auditoria', false);
     await respond(calls[0], pageOf([configEvent, requestEvent]));
 
     expect(element().querySelector('table')).toBeNull();

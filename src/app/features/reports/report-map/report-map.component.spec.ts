@@ -147,14 +147,14 @@ describe('ReportMapComponent', () => {
     render();
   };
 
-  async function open(target = '/reports/map') {
+  async function open(target = '/reportes/mapa') {
     calls = [];
     catalogCalls = [];
     announce = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
-          { path: 'reports/map', component: ReportMapComponent },
+          { path: 'reportes/mapa', component: ReportMapComponent },
           { path: 'tramites/:id', children: [] },
         ]),
         { provide: LiveAnnouncer, useValue: { announce } },
@@ -237,7 +237,7 @@ describe('ReportMapComponent', () => {
   });
 
   it('lee los filtros de la URL en orden canónico y descarta un tipo mal formado', async () => {
-    await open('/reports/map?status=RESUELTO,INGRESADO&type=Bache%20X&range=last24h');
+    await open('/reportes/mapa?status=RESUELTO,INGRESADO&type=Bache%20X&range=last24h');
 
     expect(calls[0].query).toEqual({
       range: 'last24h',
@@ -245,7 +245,7 @@ describe('ReportMapComponent', () => {
       procedureType: null,
     });
     await settle();
-    expect(url()).toBe('/reports/map?status=INGRESADO,RESUELTO&range=last24h');
+    expect(url()).toBe('/reportes/mapa?status=INGRESADO,RESUELTO&range=last24h');
   });
 
   it('al cambiar el filtro atenúa los puntos anteriores, no muestra sus totales y reencuadra con los nuevos', async () => {
@@ -253,7 +253,7 @@ describe('ReportMapComponent', () => {
     respond();
     const firstKey = map().dataset['fitKey'];
 
-    await navigate('/reports/map?status=EN_TERRENO');
+    await navigate('/reportes/mapa?status=EN_TERRENO');
 
     expect(calls.at(-1)!.query.status).toEqual(['EN_TERRENO']);
     expect(map().dataset['busy']).toBe('true');
@@ -281,7 +281,7 @@ describe('ReportMapComponent', () => {
   });
 
   it('sin resultados lo dice sobre el mapa y, con filtros, ofrece limpiarlos', async () => {
-    await open('/reports/map?type=bache');
+    await open('/reportes/mapa?type=bache');
     respond(response({ items: [], locatedTotal: 0, withoutLocation: 0, bySector: [] }));
 
     expect(text('.map-page__overlay')).toContain('No hay trámites para estos filtros');
@@ -293,7 +293,7 @@ describe('ReportMapComponent', () => {
       element().querySelector<HTMLButtonElement>('.map-page__overlay button')!.click(),
     );
 
-    expect(url()).toBe('/reports/map');
+    expect(url()).toBe('/reportes/mapa');
   });
 
   it('sin filtros y sin resultados nombra el período en vez de ofrecer limpiar', async () => {
@@ -347,7 +347,7 @@ describe('ReportMapComponent', () => {
   });
 
   it('con el catálogo caído conserva el tipo activo con su nombre y permite reintentar', async () => {
-    await open('/reports/map?type=bache');
+    await open('/reportes/mapa?type=bache');
     respond();
     failCatalog();
 
@@ -381,7 +381,7 @@ describe('ReportMapComponent', () => {
   });
 
   it('la vista Lista muestra los mismos trámites con enlace al detalle y conserva el mapa montado', async () => {
-    await open('/reports/map?view=list');
+    await open('/reportes/mapa?view=list');
     respond();
     loadCatalog();
 
