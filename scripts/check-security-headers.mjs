@@ -98,7 +98,7 @@ for (const sheetOrigin of sheetOrigins) {
 }
 // Las hojas de Google Fonts cargan los archivos de fuente desde fonts.gstatic.com
 if (
-  sheetOrigins.includes('https://fonts.googleapis.com') &&
+  sheetOrigins.some((sheetOrigin) => sheetOrigin === 'https://fonts.googleapis.com') &&
   !allows('font-src', 'https://fonts.gstatic.com')
 ) {
   fail('font-src no permite https://fonts.gstatic.com');
