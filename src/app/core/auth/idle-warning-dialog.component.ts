@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnDestroy,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { MatButton } from '@angular/material/button';
 import {
   MAT_DIALOG_DATA,
@@ -17,23 +25,31 @@ export interface IdleWarningData {
   imports: [MatButton, MatDialogActions, MatDialogContent, MatDialogTitle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <h2 mat-dialog-title>Sesión por inactividad</h2>
+    <h2 mat-dialog-title>Tu sesión se cerrará pronto</h2>
     <mat-dialog-content>
+      <p>Por seguridad, la sesión se cierra tras un tiempo sin actividad.</p>
       <p>
-        Por seguridad en equipos compartidos, tu sesión se cerrará en
-        <strong>{{ secondsLeft() }} s</strong> si no hay actividad.
+        Tiempo restante: <strong>{{ timeLeft() }}</strong>
       </p>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button matButton="filled" type="button" (click)="continueSession()">Seguir trabajando</button>
+      <button matButton="filled" type="button" (click)="continueSession()">
+        Seguir trabajando
+      </button>
     </mat-dialog-actions>
   `,
 })
 export class IdleWarningDialogComponent implements OnInit, OnDestroy {
-  private readonly dialogRef = inject(MatDialogRef<IdleWarningDialogComponent, 'continue' | 'timeout'>);
+  private readonly dialogRef = inject(
+    MatDialogRef<IdleWarningDialogComponent, 'continue' | 'timeout'>,
+  );
   private readonly data = inject<IdleWarningData>(MAT_DIALOG_DATA);
 
   protected readonly secondsLeft = signal(this.data.secondsLeft);
+  protected readonly timeLeft = computed(() => {
+    const seconds = this.secondsLeft();
+    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  });
   private tick?: ReturnType<typeof setInterval>;
 
   ngOnInit(): void {

@@ -11,7 +11,6 @@ export const environment = {
   // URL de la Api Gateway
   bffBaseUrl: 'https://0yo277ntr8.execute-api.us-east-1.amazonaws.com',
   supportEmail: 'soporte@barriodigital.example',
-  /** Sesión en equipos compartidos (EP3.5-08 / SEG-07). */
   session: {
     /** Minutos sin actividad antes de cerrar sesión del personal. */
     staffIdleMinutes: 15,

@@ -234,7 +234,7 @@ $symbol-height: 36px;
   color: var(--bd-primary);
 }
 
-// Visible en todas las pantallas del personal (EP3.5-08): icono siempre; texto desde sm.
+// Gris para no competir con la acción principal de la página. En móvil queda solo el ícono
 .header__sign-out {
   --mat-button-text-label-text-color: var(--bd-text-muted);
   --mat-button-text-state-layer-color: var(--bd-text-muted);
