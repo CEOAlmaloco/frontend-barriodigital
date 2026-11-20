@@ -2,6 +2,20 @@
 
 Aplicación web de BarrioDigital, la plataforma municipal de trámites y atención vecinal. Los usuarios inician sesión con su cuenta de Microsoft Entra ID; el backend (microservicios Spring Boot) vive en otros repositorios.
 
+## Contratos
+
+Contratos vigentes en `barriodigital-infra` ([índice](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/README.md)):
+
+- [Capacidades por rol y navegación](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/capacidades-roles.md)
+- [Cambio de estado del trámite](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/requests-estado.md)
+- [Historial, gestiones, ubicación e imágenes](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/requests-actividad.md)
+- [Comentario y fotos del vecino](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/requests-comentario.md)
+- [Encuesta de satisfacción](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/requests-encuesta.md)
+- [Aviso de posible duplicado](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/requests-duplicados.md)
+- [Exportación CSV del listado](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/requests-csv.md)
+- [Reportes y auditoría](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/report-audit.md)
+- [App Registration y roles de Entra ID](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/decisiones.md)
+
 ## Stack
 
 - **Angular 21** (21.2.x) con componentes standalone, sin NgModules
