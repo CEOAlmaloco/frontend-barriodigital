@@ -90,11 +90,15 @@ for (const tile of app.matchAll(/tileLayer\(\s*'([^']+)'/g)) {
   if (!allows('img-src', origin(tile[1])))
     fail(`img-src no permite las teselas ${origin(tile[1])}`);
 }
-for (const sheet of sourceIndex.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)) {
-  if (!allows('style-src', origin(sheet[1]))) fail(`style-src no permite ${origin(sheet[1])}`);
+const sheetOrigins = [...sourceIndex.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map(
+  (sheet) => origin(sheet[1]),
+);
+for (const sheetOrigin of sheetOrigins) {
+  if (!allows('style-src', sheetOrigin)) fail(`style-src no permite ${sheetOrigin}`);
 }
+// Las hojas de Google Fonts cargan los archivos de fuente desde fonts.gstatic.com
 if (
-  sourceIndex.includes('fonts.googleapis.com') &&
+  sheetOrigins.includes('https://fonts.googleapis.com') &&
   !allows('font-src', 'https://fonts.gstatic.com')
 ) {
   fail('font-src no permite https://fonts.gstatic.com');
