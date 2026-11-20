@@ -36,7 +36,10 @@
   --bd-brand-paper: var(--bd-surface);
 }
 
+// Columna: el pie del sitio queda al final aunque la página sea corta
 .app-shell {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
   background-color: var(--bd-background);
   color: var(--bd-text);

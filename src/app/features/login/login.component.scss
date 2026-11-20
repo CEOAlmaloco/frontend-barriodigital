@@ -8,7 +8,8 @@ $panel-max-width: 400px;
   align-items: center;
   justify-content: center;
   gap: $space-6;
-  min-height: 100vh;
+  // Ocupa el alto disponible sobre el pie del sitio
+  flex: 1 0 auto;
   padding: $space-6 $space-4;
 }
 

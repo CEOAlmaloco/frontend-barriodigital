@@ -3,13 +3,15 @@ import { RouterOutlet } from '@angular/router';
 
 import { AuthService } from './core/auth/auth.service';
 import { AccessibilityWidgetComponent } from './shared/components/accessibility-widget/accessibility-widget.component';
+import { SiteFooterComponent } from './shared/components/site-footer/site-footer.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, AccessibilityWidgetComponent],
+  imports: [RouterOutlet, AccessibilityWidgetComponent, SiteFooterComponent],
   template: `
     <div class="app-shell">
       <router-outlet />
+      <app-site-footer />
     </div>
     <app-accessibility-widget />
   `,
