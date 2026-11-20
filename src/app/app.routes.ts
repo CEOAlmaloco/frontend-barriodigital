@@ -7,7 +7,6 @@ import {
   redirectAuthenticatedGuard,
   roleGuard,
 } from './core/auth/auth.guard';
-import { AuthenticatedLayoutComponent } from './core/layout/authenticated-layout.component';
 import { OVERSIGHT_ROLES, REPORTS_ROLES, REQUESTS_ROLES, Role } from './shared/models/role';
 
 export const routes: Routes = [
@@ -29,7 +28,10 @@ export const routes: Routes = [
   // Rutas privadas: hijas del layout autenticado, que monta el header. accessGuard corre después de authGuard
   {
     path: '',
-    component: AuthenticatedLayoutComponent,
+    loadComponent: () =>
+      import('./core/layout/authenticated-layout.component').then(
+        (m) => m.AuthenticatedLayoutComponent,
+      ),
     canActivate: [authGuard],
     canActivateChild: [accessGuard],
     children: [
