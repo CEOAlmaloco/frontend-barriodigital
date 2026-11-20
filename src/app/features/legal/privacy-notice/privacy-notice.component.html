@@ -1,0 +1,221 @@
+<article class="legal-document" aria-labelledby="privacy-title">
+  <header class="legal-document__header">
+    <h1 id="privacy-title" class="legal-document__title">Aviso de privacidad</h1>
+    <p class="legal-document__meta">Vigente desde el 20 de noviembre de 2026</p>
+    <p class="legal-document__lead">
+      Este aviso explica qué datos personales trata BarrioDigital, para qué, quién accede a ellos y
+      cómo puedes ejercer tus derechos.
+    </p>
+  </header>
+
+  <section class="legal-document__box" aria-labelledby="privacy-summary-title">
+    <h2 id="privacy-summary-title" class="legal-document__box-title">En resumen</h2>
+    <dl class="legal-document__summary">
+      <dt>Responsable</dt>
+      <dd>La municipalidad que presta el servicio por medio de BarrioDigital.</dd>
+      <dt>Para qué</dt>
+      <dd>Atender tus trámites, informarte de su avance y mejorar la gestión municipal.</dd>
+      <dt>Sin aceptación</dt>
+      <dd>
+        La municipalidad trata estos datos dentro de sus funciones legales. No necesitas aceptar
+        este aviso para usar el servicio.
+      </dd>
+      <dt>Tus derechos</dt>
+      <dd>
+        Puedes saber qué datos tuyos tenemos, corregirlos, pedir su eliminación o su bloqueo
+        escribiendo a <a [href]="'mailto:' + supportEmail">{{ supportEmail }}</a
+        >.
+      </dd>
+      <dt>En tu navegador</dt>
+      <dd>
+        Solo lo necesario para tu sesión y tus preferencias. No usamos cookies de publicidad ni de
+        medición.
+      </dd>
+    </dl>
+  </section>
+
+  <nav class="legal-document__box" aria-labelledby="privacy-toc-title">
+    <h2 id="privacy-toc-title" class="legal-document__box-title">En esta página</h2>
+    <ol class="legal-document__toc-list">
+      @for (section of sections; track section.id) {
+        <li>
+          <a routerLink="." [fragment]="section.id">{{ section.label }}</a>
+        </li>
+      }
+    </ol>
+  </nav>
+
+  <section class="legal-document__section" aria-labelledby="responsable">
+    <h2 id="responsable" tabindex="-1">Responsable</h2>
+    <p>
+      La municipalidad que presta el servicio es la responsable del tratamiento de los datos que
+      ingresas en BarrioDigital. Las consultas sobre tus datos se reciben en
+      <a [href]="'mailto:' + supportEmail">{{ supportEmail }}</a> o en la oficina de atención de la
+      municipalidad.
+    </p>
+  </section>
+
+  <section class="legal-document__section" aria-labelledby="datos">
+    <h2 id="datos" tabindex="-1">Qué datos tratamos</h2>
+    <ul>
+      <li>
+        <strong>De tu cuenta:</strong> nombre, correo e identificador de tu cuenta de Microsoft, y
+        el rol asignado si eres parte del personal municipal.
+      </li>
+      <li>
+        <strong>De tus trámites:</strong> el tipo, la descripción, la dirección, el sector, la
+        referencia, el punto en el mapa si lo indicas, la imagen si la adjuntas, tus comentarios y
+        la evaluación de la atención si la entregas. Las imágenes se guardan sin sus datos internos,
+        como la ubicación GPS.
+      </li>
+      <li>
+        <strong>De la atención:</strong> las gestiones del personal, como los intentos de contacto,
+        las asignaciones, los cambios de estado y sus motivos.
+      </li>
+      <li>
+        <strong>De seguridad:</strong> qué acción se hizo, quién la hizo y cuándo. En las
+        operaciones de administración del personal también se registra la dirección IP de origen.
+      </li>
+    </ul>
+  </section>
+
+  <section class="legal-document__section" aria-labelledby="finalidades">
+    <h2 id="finalidades" tabindex="-1">Para qué los usamos</h2>
+    <ul>
+      <li>Atender y responder tus trámites.</li>
+      <li>Avisarte por correo de sus avances. Puedes pausar estos avisos en Mi perfil.</li>
+      <li>
+        Elaborar reportes de la gestión municipal, como plazos de atención y trámites por sector.
+      </li>
+      <li>
+        Registrar las acciones sobre cada trámite para la auditoría interna y la seguridad del
+        servicio.
+      </li>
+    </ul>
+    <p>No vendemos tus datos ni los usamos con fines publicitarios.</p>
+  </section>
+
+  <section class="legal-document__section" aria-labelledby="fundamento">
+    <h2 id="fundamento" tabindex="-1">Fundamento legal</h2>
+    <p>
+      La municipalidad trata estos datos en las materias de su competencia, conforme a la Ley N°
+      19.628 sobre protección de la vida privada (artículo 20). Por eso no se pide tu
+      consentimiento.
+    </p>
+    <p>
+      Este aviso se actualizará cuando entren en vigencia las modificaciones de la Ley N° 21.719,
+      que regula la protección y el tratamiento de los datos personales.
+    </p>
+  </section>
+
+  <section class="legal-document__section" aria-labelledby="acceso">
+    <h2 id="acceso" tabindex="-1">Quién accede y con quién se comparten</h2>
+    <ul>
+      <li>El personal municipal que atiende los trámites, según su función.</li>
+      <li>La auditoría interna, que revisa las acciones sin ver tu correo.</li>
+      <li>
+        Otros vecinos no ven tus datos, tu descripción ni tu dirección. Al buscar posibles
+        duplicados pueden ver el tipo, el estado, el sector, el folio, la fecha de ingreso y la
+        distancia aproximada de tu trámite.
+      </li>
+    </ul>
+    <p>
+      El servicio funciona sobre proveedores tecnológicos que tratan los datos por encargo de la
+      municipalidad:
+    </p>
+    <ul>
+      <li>Microsoft, para el inicio de sesión.</li>
+      <li>
+        Amazon Web Services, en Estados Unidos, para la aplicación, la mensajería y el acceso a la
+        API.
+      </li>
+      <li>Oracle, en Chile, para la base de datos de trámites.</li>
+    </ul>
+    <p>
+      Además, tu navegador pide directamente a OpenStreetMap las imágenes del mapa y a Google las
+      fuentes tipográficas. Esos servicios reciben tu dirección IP, pero no tus datos de trámites.
+    </p>
+  </section>
+
+  <section class="legal-document__section" aria-labelledby="conservacion">
+    <h2 id="conservacion" tabindex="-1">Cuánto tiempo se conservan</h2>
+    <p>
+      Mientras sean necesarios para atender el trámite y cumplir las obligaciones de registro,
+      archivo y transparencia de la municipalidad. Los plazos por tipo de dato se informarán en este
+      aviso cuando se definan.
+    </p>
+  </section>
+
+  <section class="legal-document__section" aria-labelledby="derechos">
+    <h2 id="derechos" tabindex="-1">Tus derechos</h2>
+    <p>Respecto de tus datos personales puedes pedir:</p>
+    <ul>
+      <li>Saber qué datos tuyos tenemos y para qué los usamos.</li>
+      <li>Corregirlos si son inexactos o están incompletos.</li>
+      <li>Eliminarlos o bloquearlos, en los casos que permite la ley.</li>
+    </ul>
+    <p>
+      Con la entrada en vigencia de la Ley N° 21.719 también podrás oponerte a un tratamiento y
+      pedir tus datos en un formato que puedas llevar a otro servicio.
+    </p>
+    <p>
+      Escribe a <a [href]="'mailto:' + supportEmail">{{ supportEmail }}</a> con tu nombre, el
+      derecho que quieres ejercer y, si se trata de un trámite, su folio. La solicitud no tiene
+      costo.
+    </p>
+  </section>
+
+  <section class="legal-document__section" aria-labelledby="navegador">
+    <h2 id="navegador" tabindex="-1">Datos guardados en tu navegador</h2>
+    <p>
+      BarrioDigital guarda en tu navegador solo lo necesario para funcionar. No usamos cookies de
+      publicidad ni de medición, por eso no te pedimos que las aceptes.
+    </p>
+    <ul class="legal-document__items">
+      <li class="legal-document__item">
+        <h3>Sesión</h3>
+        <dl>
+          <dt>Para qué</dt>
+          <dd>Mantener tu sesión iniciada con Microsoft mientras usas el servicio.</dd>
+          <dt>Cuánto dura</dt>
+          <dd>Se borra al cerrar sesión o el navegador.</dd>
+        </dl>
+      </li>
+      <li class="legal-document__item">
+        <h3>Preferencias de accesibilidad</h3>
+        <dl>
+          <dt>Para qué</dt>
+          <dd>Recordar el tamaño de texto, el contraste y las demás opciones que elegiste.</dd>
+          <dt>Cuánto dura</dt>
+          <dd>Hasta que las cambies o borres los datos del sitio en tu navegador.</dd>
+        </dl>
+      </li>
+      <li class="legal-document__item">
+        <h3>Foto y preferencias del perfil</h3>
+        <dl>
+          <dt>Para qué</dt>
+          <dd>
+            Mostrar la foto y las preferencias de trabajo que elegiste en Mi perfil, solo en este
+            equipo.
+          </dd>
+          <dt>Cuánto dura</dt>
+          <dd>Se borran al cerrar sesión.</dd>
+        </dl>
+      </li>
+      <li class="legal-document__item">
+        <h3>Inicio de sesión de Microsoft</h3>
+        <dl>
+          <dt>Para qué</dt>
+          <dd>Microsoft guarda sus propias cookies al iniciar sesión en su sitio.</dd>
+          <dt>Cuánto dura</dt>
+          <dd>Lo define Microsoft en su declaración de privacidad.</dd>
+        </dl>
+      </li>
+    </ul>
+  </section>
+
+  <section class="legal-document__section" aria-labelledby="cambios">
+    <h2 id="cambios" tabindex="-1">Cambios a este aviso</h2>
+    <p>Cualquier cambio se publica en esta página con su nueva fecha de vigencia.</p>
+  </section>
+</article>

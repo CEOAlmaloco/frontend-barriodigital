@@ -1,0 +1,111 @@
+@use 'tokens' as *;
+
+$header-height: 64px;
+$logo-height: 32px;
+$content-max-width: 1040px;
+
+:host {
+  display: block;
+}
+
+.legal-layout__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4;
+  height: $header-height;
+  padding-inline: $space-6;
+  background-color: var(--bd-surface);
+  border-bottom: $border-width solid var(--bd-border);
+
+  @media (min-width: $breakpoint-lg) {
+    padding-inline: $space-12;
+  }
+
+  @media print {
+    display: none;
+  }
+}
+
+.legal-layout__brand {
+  display: flex;
+  align-items: center;
+  // Área de clic más amplia que el dibujo sin mover el logo, igual que en el header de la app
+  padding: $space-1;
+  margin: -$space-1;
+  border-radius: $radius-base;
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: 2px;
+  }
+}
+
+.legal-layout__logo {
+  height: $logo-height;
+}
+
+.legal-layout {
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+  max-width: $content-max-width;
+  margin-inline: auto;
+  padding: $space-6;
+
+  @media (min-width: $breakpoint-lg) {
+    padding: $space-8 $space-12 $space-12;
+  }
+}
+
+.legal-layout__nav {
+  border-bottom: $border-width solid var(--bd-border);
+
+  @media print {
+    display: none;
+  }
+}
+
+.legal-layout__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 $space-6;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// Mismo indicador que la navegación principal del header: borde inferior en el enlace activo
+.legal-layout__tab {
+  display: flex;
+  align-items: center;
+  min-height: $size-touch-target;
+  // El borde se monta sobre la línea de la navegación
+  margin-bottom: -$border-width;
+  font-size: $font-body;
+  color: var(--bd-text);
+  text-decoration: none;
+  border-bottom: $border-width-strong solid transparent;
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition:
+      color $transition-base,
+      border-color $transition-base;
+  }
+
+  &:hover {
+    color: var(--bd-primary);
+  }
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: 2px;
+    border-radius: $radius-base;
+  }
+}
+
+.legal-layout__tab--active {
+  font-weight: $font-weight-medium;
+  color: var(--bd-primary);
+  border-bottom-color: var(--bd-primary);
+}

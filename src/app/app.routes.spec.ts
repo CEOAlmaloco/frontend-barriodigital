@@ -345,3 +345,48 @@ describe('Ruta /no-access', () => {
     expect(TestBed.inject(Router).url).toBe('/');
   });
 });
+
+describe('Información pública /legal', () => {
+  let ctx: ReturnType<typeof setup>;
+
+  beforeEach(() => {
+    ctx = setup();
+  });
+
+  it.each([
+    ['/legal/privacidad', 'Aviso de privacidad | BarrioDigital', 'Aviso de privacidad'],
+    ['/legal/accesibilidad', 'Declaración de accesibilidad | BarrioDigital', 'Declaración de accesibilidad'],
+    ['/legal/condiciones-de-uso', 'Condiciones de uso | BarrioDigital', 'Condiciones de uso'],
+  ])('%s se abre sin sesión, con su título', async (url, title, heading) => {
+    ctx.auth.stub.isAuthenticated.set(false);
+    ctx.auth.stub.hasSession.mockReturnValue(of(false));
+    const harness = await RouterTestingHarness.create();
+
+    await harness.navigateByUrl(url);
+    harness.detectChanges();
+
+    expect(TestBed.inject(Router).url).toBe(url);
+    expect(document.title).toBe(title);
+    expect(harness.routeNativeElement?.querySelector('h1')?.textContent?.trim()).toBe(heading);
+    expect(ctx.msalGuard.canActivate).not.toHaveBeenCalled();
+  });
+
+  it('/legal abre el aviso de privacidad', async () => {
+    const harness = await RouterTestingHarness.create();
+
+    await harness.navigateByUrl('/legal');
+
+    expect(TestBed.inject(Router).url).toBe('/legal/privacidad');
+  });
+
+  it('con sesión iniciada se abre igual, sin el header de la app', async () => {
+    ctx.auth.tokenRoles.set([Role.Funcionario]);
+    const harness = await RouterTestingHarness.create();
+
+    await harness.navigateByUrl('/legal/accesibilidad');
+    harness.detectChanges();
+
+    expect(TestBed.inject(Router).url).toBe('/legal/accesibilidad');
+    expect(harness.routeNativeElement?.querySelector('app-header')).toBeNull();
+  });
+});
