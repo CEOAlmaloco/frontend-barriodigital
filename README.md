@@ -2,14 +2,19 @@
 
 Aplicación web de BarrioDigital, la plataforma municipal de trámites y atención vecinal. Los usuarios inician sesión con su cuenta de Microsoft Entra ID; el backend (microservicios Spring Boot) vive en otros repositorios.
 
-
 ## Contratos
 
-Contratos vigentes en `barriodigital-infra` (EP3.5-01). Índice: [docs/contratos](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/README.md).
+Contratos vigentes en `barriodigital-infra` ([índice](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/README.md)):
 
-- [Capacidades / navegación](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/capacidades-roles.md)
-- [Trámites (estado, folio, CSV…)](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/requests-estado.md)
-- [Índice de contratos](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/README.md)
+- [Capacidades por rol y navegación](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/capacidades-roles.md)
+- [Cambio de estado del trámite](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/requests-estado.md)
+- [Historial, gestiones, ubicación e imágenes](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/requests-actividad.md)
+- [Comentario y fotos del vecino](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/requests-comentario.md)
+- [Encuesta de satisfacción](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/requests-encuesta.md)
+- [Aviso de posible duplicado](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/requests-duplicados.md)
+- [Exportación CSV del listado](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/requests-csv.md)
+- [Reportes y auditoría](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/contratos/report-audit.md)
+- [App Registration y roles de Entra ID](https://github.com/CEOAlmaloco/barriodigital-infra/blob/develop/docs/decisiones.md)
 
 ## Stack
 
@@ -43,7 +48,7 @@ Contratos vigentes en `barriodigital-infra` (EP3.5-01). Índice: [docs/contratos
    - `environment.development.ts` lo usa `npm start`.
    - `environment.ts` lo usa el build de producción.
 
-   Ambos archivos ya traen los valores de la app registrada en Microsoft Entra ID. La fuente de verdad es `barriodigital-infra/docs/contratos/README.md`: si esos valores cambian, cópialos desde ahí a los dos archivos.
+   Ambos archivos ya traen los valores de la app registrada en Microsoft Entra ID. La fuente de verdad es `barriodigital-infra/docs/decisiones.md`: si esos valores cambian, cópialos desde ahí a los dos archivos.
 
    `bffBaseUrl` es la URL del BFF y toda llamada a esa URL sale con el token de acceso. En `environment.development.ts` apunta al BFF local (`http://localhost:8080`); en `environment.ts`, a la Invoke URL del API Gateway (`barriodigital-api`), que protege las rutas con un JWT Authorizer antes de reenviar al BFF en la EC2.
 
