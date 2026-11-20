@@ -9,7 +9,6 @@ import { routes } from './app.routes';
 import { accessGuard, authGuard, noAccessGuard, roleGuard } from './core/auth/auth.guard';
 import { AuthService } from './core/auth/auth.service';
 import { CatalogService } from './core/catalog/catalog.service';
-import { AuthenticatedLayoutComponent } from './core/layout/authenticated-layout.component';
 import { RequestsService } from './features/requests/requests.service';
 import { Role, resolveAccess } from './shared/models/role';
 
@@ -77,7 +76,7 @@ const setup = () => {
   return { auth, msalGuard };
 };
 
-const layoutRoute = () => routes.find((route) => route.component === AuthenticatedLayoutComponent);
+const layoutRoute = () => routes.find((route) => route.path === '' && route.children !== undefined);
 const childRoute = (path: string) => layoutRoute()?.children?.find((child) => child.path === path);
 
 describe('Layout autenticado', () => {

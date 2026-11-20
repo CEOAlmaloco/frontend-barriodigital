@@ -234,9 +234,20 @@ $symbol-height: 36px;
   color: var(--bd-primary);
 }
 
-// Tokens de Material en el propio botón: gris en reposo para no competir con el botón primario de la página
+// Gris para no competir con la acción principal de la página. En móvil queda solo el ícono
 .header__sign-out {
   --mat-button-text-label-text-color: var(--bd-text-muted);
   --mat-button-text-state-layer-color: var(--bd-text-muted);
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+}
+
+.header__sign-out-label {
+  display: none;
+
+  @media (min-width: $breakpoint-sm) {
+    display: inline;
+  }
 }

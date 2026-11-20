@@ -11,4 +11,10 @@ export const environment = {
   // URL de la Api Gateway
   bffBaseUrl: 'https://0yo277ntr8.execute-api.us-east-1.amazonaws.com',
   supportEmail: 'soporte@barriodigital.example',
+  session: {
+    /** Minutos sin actividad antes de cerrar sesión del personal. */
+    staffIdleMinutes: 15,
+    /** Minutos de aviso previos al cierre. */
+    staffIdleWarnMinutes: 2,
+  },
 };
