@@ -4,11 +4,12 @@
 :host {
   display: flex;
   flex-direction: column;
-  gap: $space-4;
+  gap: $space-6;
 
+  // Más específico que la escala global de títulos, que fijaría todos los h2 al tamaño de $font-h2
   h2 {
     margin: 0;
-    font-size: calc(#{$font-body} * var(--bd-text-scale, 1));
+    font-size: calc(#{$font-h3} * var(--bd-text-scale, 1));
     font-weight: $font-weight-semibold;
   }
 
@@ -35,7 +36,6 @@
   background-color: var(--bd-primary-container);
   color: var(--bd-primary-dark);
   font-weight: $font-weight-semibold;
-  font-size: calc(#{$font-label} * var(--bd-text-scale, 1));
 }
 
 .reports__notice {
@@ -45,13 +45,13 @@
 .reports__kpis {
   display: flex;
   flex-direction: column;
-  gap: $space-3;
+  gap: $space-4;
 }
 
 .reports__grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  align-items: stretch;
+  align-items: start;
   gap: $space-4;
 
   @media (min-width: $breakpoint-md) {

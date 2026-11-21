@@ -1,0 +1,113 @@
+@use 'tokens' as *;
+
+$icon-box: 40px;
+$padding: $space-4;
+$padding-md: $space-6;
+
+// El ícono va dentro del dt y se ubica en su propia columna: etiqueta y valor quedan apilados a su derecha
+:host {
+  --tile-color: var(--bd-text-muted);
+  --tile-container: var(--bd-background);
+
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: $padding;
+  padding-inline-start: $padding + $icon-box + $space-3;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--bd-surface);
+  box-shadow: $shadow-elevated;
+
+  @media (min-width: $breakpoint-md) {
+    padding: $padding-md;
+    padding-inline-start: $padding-md + $icon-box + $space-3;
+  }
+}
+
+:host([data-tone='primary']) {
+  --tile-color: var(--bd-primary);
+  --tile-container: var(--bd-primary-container);
+}
+
+:host([data-tone='secondary']) {
+  --tile-color: var(--bd-secondary);
+  --tile-container: var(--bd-secondary-container);
+}
+
+:host([data-tone='success']) {
+  --tile-color: var(--bd-success);
+  --tile-container: var(--bd-success-container);
+}
+
+:host([data-tone='accent']) {
+  --tile-color: var(--bd-accent-text);
+  --tile-container: var(--bd-accent-container);
+}
+
+:host([data-tone='error']) {
+  --tile-color: var(--bd-error);
+  --tile-container: var(--bd-error-container);
+}
+
+.kpi__icon {
+  position: absolute;
+  top: $padding;
+  inset-inline-start: $padding;
+  display: grid;
+  width: $icon-box;
+  height: $icon-box;
+  place-items: center;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: 50%;
+  background-color: var(--tile-container);
+  color: var(--tile-color);
+
+  @media (min-width: $breakpoint-md) {
+    top: $padding-md;
+    inset-inline-start: $padding-md;
+  }
+
+  mat-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+}
+
+// :host + clase compila a (0,3,0) y vence a la escala global de texto sobre dt y dd, que es (0,2,2)
+:host .kpi__label,
+:host .kpi__value,
+:host .kpi__placeholder {
+  margin: 0;
+}
+
+:host .kpi__label,
+:host .kpi__placeholder {
+  color: var(--bd-text-muted);
+  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
+  overflow-wrap: anywhere;
+}
+
+:host .kpi__placeholder {
+  line-height: 2.5;
+}
+
+:host .kpi__value {
+  color: var(--bd-text);
+  font-size: calc(#{$font-h2} * var(--bd-text-scale, 1));
+  font-weight: $font-weight-semibold;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+
+  @media (min-width: $breakpoint-md) {
+    font-size: calc(#{$font-h1} * var(--bd-text-scale, 1));
+  }
+}
+
+:host([data-tone='error']) .kpi__value {
+  color: var(--bd-error);
+}

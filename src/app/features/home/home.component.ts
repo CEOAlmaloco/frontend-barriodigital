@@ -61,9 +61,10 @@ export class HomeComponent {
 
   constructor() {
     // En paralelo con los bloques y sin bloquearlos: mientras llega, las listas usan el nombre guardado. El
-    // Auditor no lo necesita, porque la auditoría conserva el nombre que tenía el tipo en cada hecho.
+    // Admin ya lo consulta en «Requiere atención», que necesita el cupo del día, y esa consulta actualiza los
+    // nombres. El Auditor no lo necesita, porque la auditoría conserva el nombre que tenía el tipo en cada hecho.
     const role = this.role();
-    if (role !== null && role !== Role.Auditor) {
+    if (role === Role.Vecino || role === Role.Funcionario) {
       this.catalogService.loadLabels();
     }
   }

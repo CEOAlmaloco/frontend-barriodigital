@@ -10,6 +10,7 @@ import type {
   KafkaReplayRequest,
   KafkaReplayResponse,
   KafkaResetOffsetsRequest,
+  KafkaResetOffsetsResponse,
   KafkaTopicDetail,
   KafkaTopicSummary,
 } from './kafka-admin.models';
@@ -42,8 +43,11 @@ export class KafkaAdminService {
     );
   }
 
-  resetOffsets(groupId: string, body: KafkaResetOffsetsRequest): Observable<unknown> {
-    return this.http.post(
+  resetOffsets(
+    groupId: string,
+    body: KafkaResetOffsetsRequest,
+  ): Observable<KafkaResetOffsetsResponse> {
+    return this.http.post<KafkaResetOffsetsResponse>(
       `${this.base}/consumer-groups/${encodeURIComponent(groupId)}/offsets/reset`,
       body,
     );

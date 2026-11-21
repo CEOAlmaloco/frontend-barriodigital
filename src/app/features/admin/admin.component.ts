@@ -5,53 +5,80 @@ import {
   ElementRef,
   computed,
   inject,
+  ViewEncapsulation,
   signal,
   viewChild,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { MatFormField, MatLabel, MatPrefix, MatSuffix } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
+import { MatInput } from '@angular/material/input';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltip } from '@angular/material/tooltip';
-import { Subject, catchError, of, switchMap, tap } from 'rxjs';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Subject, catchError, map, of, switchMap, tap } from 'rxjs';
 
 import { CatalogService } from '../../core/catalog/catalog.service';
 import { ProcedureType } from '../../shared/models/procedure-type.model';
+import { FailureKind, failureKind } from '../../shared/utils/http-failure';
 import { businessDaysLabel } from '../requests/sla-format';
+import { adminFailureCopy } from './admin-failure';
 import { AdminKafkaPanelComponent } from './admin-kafka-panel/admin-kafka-panel.component';
+import { AdminKpiComponent } from './admin-kpi/admin-kpi.component';
 import { AdminMqPanelComponent } from './admin-mq-panel/admin-mq-panel.component';
-import {
-  AdminNavSection,
-  AdminOverviewComponent,
-} from './admin-overview/admin-overview.component';
+import { AdminStateComponent } from './admin-state/admin-state.component';
 import {
   ProcedureTypeDialogComponent,
   ProcedureTypeDialogData,
   ProcedureTypeDialogResult,
 } from './procedure-type-dialog/procedure-type-dialog.component';
 
-type AdminSection = 'panel' | AdminNavSection;
+type AdminSection = 'catalog' | 'rabbitmq' | 'kafka';
+type CatalogFilter = 'todos' | 'activos' | 'inactivos';
+
+const SECTIONS: readonly { value: AdminSection; label: string; icon: string }[] = [
+  { value: 'catalog', label: 'Catálogo', icon: 'category' },
+  { value: 'rabbitmq', label: 'RabbitMQ', icon: 'inbox' },
+  { value: 'kafka', label: 'Kafka', icon: 'hub' },
+];
+
+function toSection(value: string | null): AdminSection {
+  return SECTIONS.some((section) => section.value === value) ? (value as AdminSection) : 'catalog';
+}
 
 @Component({
   selector: 'app-admin',
   imports: [
     AdminKafkaPanelComponent,
+    AdminKpiComponent,
     AdminMqPanelComponent,
-    AdminOverviewComponent,
+    AdminStateComponent,
     MatButton,
-    MatIconButton,
+    MatButtonToggle,
+    MatButtonToggleGroup,
+    MatFormField,
     MatIcon,
+    MatIconButton,
+    MatInput,
+    MatLabel,
+    MatPrefix,
     MatProgressSpinner,
+    MatSuffix,
     MatTableModule,
     MatTabsModule,
     MatTooltip,
+    RouterLink,
   ],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss',
+  // Las clases admin-* son compartidas por los paneles y los diálogos de detalle: se cargan una vez.
+  encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdminComponent {
@@ -67,55 +94,54 @@ export class AdminComponent {
   > | null = null;
   private readonly savedOperation = signal<'create' | 'edit' | null>(null);
 
-  protected readonly section = signal<AdminSection>('panel');
+  protected readonly sections = SECTIONS;
+  protected readonly section = toSignal(
+    inject(ActivatedRoute).queryParamMap.pipe(map((params) => toSection(params.get('section')))),
+    { initialValue: 'catalog' as AdminSection },
+  );
 
-  protected readonly columns = [
-    'codigo',
-    'nombre',
-    'estado',
-    'cupo',
-    'disponible',
-    'plazo',
-    'acciones',
+  protected readonly columns = ['tipo', 'estado', 'cupo', 'disponible', 'plazo', 'acciones'];
+  protected readonly catalogFilters: readonly { value: CatalogFilter; label: string }[] = [
+    { value: 'todos', label: 'Todos' },
+    { value: 'activos', label: 'Activos' },
+    { value: 'inactivos', label: 'Inactivos' },
   ];
   protected readonly catalog = signal<ProcedureType[]>([]);
   protected readonly hasCatalog = signal(false);
   protected readonly catalogQuery = signal('');
-  protected readonly catalogStatus = signal<'all' | 'active' | 'inactive'>('all');
+  protected readonly catalogFilter = signal<CatalogFilter>('todos');
   protected readonly loadState = signal<'loading' | 'ready' | 'error'>('loading');
+  private readonly failure = signal<FailureKind>('generic');
+  protected readonly loadFailure = computed(() =>
+    adminFailureCopy(this.failure(), {
+      unavailable: 'El catálogo no está disponible',
+      generic: 'No pudimos cargar los tipos de trámite',
+    }),
+  );
   protected readonly isRefreshing = signal(false);
   protected readonly catalogActive = computed(
     () => this.catalog().filter((type) => type.active).length,
   );
-  protected readonly visibleCatalog = computed(() => {
-    const q = this.catalogQuery().trim().toLowerCase();
-    const status = this.catalogStatus();
-    return this.catalog().filter((type) => {
-      if (status === 'active' && !type.active) {
-        return false;
-      }
-      if (status === 'inactive' && type.active) {
-        return false;
-      }
-      if (!q) {
-        return true;
-      }
-      return (
-        type.value.toLowerCase().includes(q) ||
-        type.label.toLowerCase().includes(q)
-      );
-    });
-  });
   protected readonly catalogWithQuota = computed(
     () => this.catalog().filter((type) => typeof type.dailyQuota === 'number').length,
   );
   protected readonly catalogExhausted = computed(
-    () =>
-      this.catalog().filter((type) => {
-        const available = this.availableQuota(type);
-        return available === 'Agotado' || available === 0;
-      }).length,
+    () => this.catalog().filter((type) => this.availableQuota(type) === 'Agotado').length,
   );
+  protected readonly visibleCatalog = computed(() => {
+    const query = this.catalogQuery().trim().toLocaleLowerCase('es');
+    const filter = this.catalogFilter();
+    return this.catalog().filter((type) => {
+      if ((filter === 'activos' && !type.active) || (filter === 'inactivos' && type.active)) {
+        return false;
+      }
+      return (
+        !query ||
+        type.value.toLocaleLowerCase('es').includes(query) ||
+        type.label.toLocaleLowerCase('es').includes(query)
+      );
+    });
+  });
   protected readonly loadError = computed(() => {
     switch (this.savedOperation()) {
       case 'create':
@@ -123,9 +149,7 @@ export class AdminComponent {
       case 'edit':
         return 'Los cambios se guardaron, pero no pudimos actualizar el catálogo.';
       default:
-        return this.hasCatalog()
-          ? 'No pudimos actualizar el catálogo. Se muestran los últimos datos disponibles. Intenta nuevamente.'
-          : 'No pudimos cargar los tipos de trámite. Intenta nuevamente.';
+        return 'No pudimos actualizar el catálogo. Se muestran los últimos datos disponibles.';
     }
   });
 
@@ -137,7 +161,14 @@ export class AdminComponent {
           this.isRefreshing.set(source === 'manual');
         }),
         // Una escritura puede reemplazar un GET en curso; su respuesta anterior se descarta.
-        switchMap(() => this.catalogService.getProcedures().pipe(catchError(() => of(null)))),
+        switchMap(() =>
+          this.catalogService.getProcedures().pipe(
+            catchError((error: unknown) => {
+              this.failure.set(failureKind(error));
+              return of(null);
+            }),
+          ),
+        ),
         takeUntilDestroyed(),
       )
       .subscribe((catalog) => {
@@ -155,12 +186,12 @@ export class AdminComponent {
     this.reload$.next();
   }
 
-  protected selectSection(section: AdminSection): void {
-    this.section.set(section);
-  }
-
   protected slaLabel({ slaBusinessDays }: ProcedureType): string {
     return slaBusinessDays == null ? 'Sin plazo' : businessDaysLabel(slaBusinessDays);
+  }
+
+  protected quotaLabel({ dailyQuota }: ProcedureType): string {
+    return dailyQuota === null ? 'Sin límite' : String(dailyQuota);
   }
 
   protected availableQuota({ dailyQuota, remainingQuota }: ProcedureType): number | string {
@@ -177,6 +208,11 @@ export class AdminComponent {
       return 'No disponible';
     }
     return remainingQuota === 0 ? 'Agotado' : remainingQuota;
+  }
+
+  protected clearFilters(): void {
+    this.catalogQuery.set('');
+    this.catalogFilter.set('todos');
   }
 
   protected refresh(): void {
