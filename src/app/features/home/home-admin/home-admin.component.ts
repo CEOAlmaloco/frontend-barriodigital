@@ -1,15 +1,25 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
 import { SlaAlertQuery } from '../../../shared/models/report.model';
+import { HomeAttentionComponent } from '../home-attention/home-attention.component';
 import { HomeKpisComponent } from '../home-kpis/home-kpis.component';
 import { HomeQueueBlockComponent } from '../home-queue-block/home-queue-block.component';
 import { HomeSlaBlockComponent } from '../home-sla-block/home-sla-block.component';
 
-/** Inicio del Admin: supervisión de la comuna. Asignar se hace desde el listado o el detalle. */
+/**
+ * Inicio del Admin: supervisión de la comuna, con lo que requiere atención primero. Asignar se hace desde
+ * el listado o el detalle.
+ */
 @Component({
   selector: 'app-home-admin',
-  imports: [HomeKpisComponent, HomeQueueBlockComponent, HomeSlaBlockComponent],
+  imports: [
+    HomeAttentionComponent,
+    HomeKpisComponent,
+    HomeQueueBlockComponent,
+    HomeSlaBlockComponent,
+  ],
   template: `
+    <app-home-attention />
     <app-home-kpis />
     <div class="home-grid">
       <app-home-sla-block

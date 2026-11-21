@@ -134,7 +134,7 @@
         aria-label="Mostrar"
         hideSingleSelectionIndicator
         [value]="filter()"
-        (change)="filter.set($event.value)"
+        (change)="setFilter($event.value)"
       >
         @for (option of filters; track option.value) {
           <mat-button-toggle [value]="option.value">{{ option.label }}</mat-button-toggle>

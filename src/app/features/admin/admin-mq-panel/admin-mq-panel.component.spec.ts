@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DEFAULT_OPTIONS, MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router, provideRouter } from '@angular/router';
 import { Subject, firstValueFrom, of, throwError } from 'rxjs';
 
 import { MqAdminService } from '../../../core/mq/mq-admin.service';
@@ -50,6 +51,7 @@ describe('AdminMqPanelComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AdminMqPanelComponent],
       providers: [
+        provideRouter([]),
         { provide: MqAdminService, useValue: service },
         {
           provide: MAT_DIALOG_DEFAULT_OPTIONS,
@@ -253,5 +255,19 @@ describe('AdminMqPanelComponent', () => {
     const state = element.querySelector('app-admin-state')!;
     expect(state.getAttribute('role')).toBe('alert');
     expect(state.querySelector('h3')?.textContent?.trim()).toBe('RabbitMQ no está disponible');
+  });
+
+  it('toma el filtro de la URL y lo guarda al cambiarlo', async () => {
+    await render();
+    const router = TestBed.inject(Router);
+    await router.navigate([], { queryParams: { mostrar: 'dlq' } });
+    await fixture.whenStable();
+    expect(tableNames()).toEqual(['q.cmd.email.dlq']);
+    button(element, 'Con mensajes').click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/?mostrar=con-mensajes');
+    button(element, 'Todas').click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/');
   });
 });

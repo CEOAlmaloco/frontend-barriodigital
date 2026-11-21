@@ -9,7 +9,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
 import {
@@ -27,6 +27,7 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltip } from '@angular/material/tooltip';
+import { ActivatedRoute, Router } from '@angular/router';
 import { catchError, finalize, map, of } from 'rxjs';
 
 import { MqAdminService } from '../../../core/mq/mq-admin.service';
@@ -48,6 +49,10 @@ import {
 } from '../confirm-action-dialog/confirm-action-dialog.component';
 
 type QueueFilter = 'todas' | 'con-mensajes' | 'dlq';
+
+function toQueueFilter(value: string | null): QueueFilter {
+  return value === 'con-mensajes' || value === 'dlq' ? value : 'todas';
+}
 
 /** Suma solo si todas las colas traen el dato; si falta en alguna, el total no se conoce. */
 function knownTotal(values: (number | null | undefined)[]): number | null {
@@ -114,7 +119,13 @@ export class AdminMqPanelComponent {
   protected readonly isRefreshing = signal(false);
   protected readonly fetchedAt = signal<Date | null>(null);
   protected readonly busyName = signal<string | null>(null);
-  protected readonly filter = signal<QueueFilter>('todas');
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  /** En la URL (`?mostrar=`) para que Inicio pueda abrir la sección ya filtrada. */
+  protected readonly filter = toSignal(
+    this.route.queryParamMap.pipe(map((params) => toQueueFilter(params.get('mostrar')))),
+    { initialValue: 'todas' as QueueFilter },
+  );
   protected readonly query = signal('');
   protected readonly detail = signal<MqQueue | null>(null);
   protected readonly detailLoading = signal(false);
@@ -174,7 +185,16 @@ export class AdminMqPanelComponent {
 
   protected clearFilters(): void {
     this.query.set('');
-    this.filter.set('todas');
+    this.setFilter('todas');
+  }
+
+  protected setFilter(value: QueueFilter): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { mostrar: value === 'todas' ? null : value },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   protected openDetail(queue: MqQueue): void {

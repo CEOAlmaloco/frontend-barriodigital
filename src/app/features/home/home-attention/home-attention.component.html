@@ -1,0 +1,62 @@
+@if (visible()) {
+  <section aria-labelledby="home-attention-title">
+    <h2 id="home-attention-title" class="cdk-visually-hidden">Requiere atención</h2>
+    <ul class="attention">
+      @if (exhausted().length > 0) {
+        <li class="attention__item attention__item--accent">
+          <mat-icon class="attention__icon" aria-hidden="true">block</mat-icon>
+          <p class="attention__text">{{ quotaText() }}</p>
+          <a
+            class="home-link attention__action"
+            routerLink="/administracion"
+            [queryParams]="{ seccion: 'catalogo' }"
+          >
+            Revisar cupos<mat-icon aria-hidden="true">arrow_forward</mat-icon>
+          </a>
+        </li>
+      } @else if (catalogFailed()) {
+        <li class="attention__item">
+          <mat-icon class="attention__icon" aria-hidden="true">cloud_off</mat-icon>
+          <p class="attention__text">No pudimos revisar los cupos del catálogo.</p>
+          <button
+            matButton="outlined"
+            type="button"
+            class="attention__action"
+            [attr.aria-disabled]="isRetrying('catalog')"
+            (click)="retry('catalog')"
+          >
+            Reintentar
+          </button>
+        </li>
+      }
+
+      @if (dlq().messages > 0) {
+        <li class="attention__item attention__item--error">
+          <mat-icon class="attention__icon" aria-hidden="true">report</mat-icon>
+          <p class="attention__text">{{ dlqText() }}</p>
+          <a
+            class="home-link attention__action"
+            routerLink="/administracion"
+            [queryParams]="{ seccion: 'rabbitmq', mostrar: 'dlq' }"
+          >
+            Revisar DLQ<mat-icon aria-hidden="true">arrow_forward</mat-icon>
+          </a>
+        </li>
+      } @else if (queuesFailed()) {
+        <li class="attention__item">
+          <mat-icon class="attention__icon" aria-hidden="true">cloud_off</mat-icon>
+          <p class="attention__text">No pudimos revisar las colas de RabbitMQ.</p>
+          <button
+            matButton="outlined"
+            type="button"
+            class="attention__action"
+            [attr.aria-disabled]="isRetrying('queues')"
+            (click)="retry('queues')"
+          >
+            Reintentar
+          </button>
+        </li>
+      }
+    </ul>
+  </section>
+}
