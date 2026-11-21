@@ -48,10 +48,10 @@ import {
   type ConfirmActionDialogData,
 } from '../confirm-action-dialog/confirm-action-dialog.component';
 
-type QueueFilter = 'todas' | 'con-mensajes' | 'dlq';
+type QueueFilter = 'all' | 'with-messages' | 'dlq';
 
 function toQueueFilter(value: string | null): QueueFilter {
-  return value === 'con-mensajes' || value === 'dlq' ? value : 'todas';
+  return value === 'with-messages' || value === 'dlq' ? value : 'all';
 }
 
 /** Suma solo si todas las colas traen el dato; si falta en alguna, el total no se conoce. */
@@ -102,8 +102,8 @@ export class AdminMqPanelComponent {
 
   protected readonly columns = ['name', 'ready', 'unacked', 'consumers', 'deadLetter', 'acciones'];
   protected readonly filters: readonly { value: QueueFilter; label: string }[] = [
-    { value: 'todas', label: 'Todas' },
-    { value: 'con-mensajes', label: 'Con mensajes' },
+    { value: 'all', label: 'Todas' },
+    { value: 'with-messages', label: 'Con mensajes' },
     { value: 'dlq', label: 'DLQ' },
   ];
   protected readonly queues = signal<MqQueue[]>([]);
@@ -121,10 +121,10 @@ export class AdminMqPanelComponent {
   protected readonly busyName = signal<string | null>(null);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  /** En la URL (`?mostrar=`) para que Inicio pueda abrir la sección ya filtrada. */
+  /** En la URL (`?show=`) para que Inicio pueda abrir la sección ya filtrada. */
   protected readonly filter = toSignal(
-    this.route.queryParamMap.pipe(map((params) => toQueueFilter(params.get('mostrar')))),
-    { initialValue: 'todas' as QueueFilter },
+    this.route.queryParamMap.pipe(map((params) => toQueueFilter(params.get('show')))),
+    { initialValue: 'all' as QueueFilter },
   );
   protected readonly query = signal('');
   protected readonly detail = signal<MqQueue | null>(null);
@@ -139,7 +139,7 @@ export class AdminMqPanelComponent {
   protected readonly visibleQueues = computed(() => {
     const query = this.query().trim().toLocaleLowerCase('es');
     return this.queues().filter((queue) => {
-      if (this.filter() === 'con-mensajes' && queue.messages === 0) {
+      if (this.filter() === 'with-messages' && queue.messages === 0) {
         return false;
       }
       if (this.filter() === 'dlq' && !isLikelyDlq(queue)) {
@@ -149,7 +149,7 @@ export class AdminMqPanelComponent {
     });
   });
   protected readonly isFiltered = computed(
-    () => this.query().trim() !== '' || this.filter() !== 'todas',
+    () => this.query().trim() !== '' || this.filter() !== 'all',
   );
   protected readonly readyTotal = computed(() =>
     knownTotal(this.queues().map((queue) => queue.messagesReady)),
@@ -185,13 +185,13 @@ export class AdminMqPanelComponent {
 
   protected clearFilters(): void {
     this.query.set('');
-    this.setFilter('todas');
+    this.setFilter('all');
   }
 
   protected setFilter(value: QueueFilter): void {
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { mostrar: value === 'todas' ? null : value },
+      queryParams: { show: value === 'all' ? null : value },
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });

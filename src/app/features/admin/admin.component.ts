@@ -39,17 +39,17 @@ import {
   ProcedureTypeDialogResult,
 } from './procedure-type-dialog/procedure-type-dialog.component';
 
-type AdminSection = 'catalogo' | 'rabbitmq' | 'kafka';
+type AdminSection = 'catalog' | 'rabbitmq' | 'kafka';
 type CatalogFilter = 'todos' | 'activos' | 'inactivos';
 
 const SECTIONS: readonly { value: AdminSection; label: string; icon: string }[] = [
-  { value: 'catalogo', label: 'Catálogo', icon: 'category' },
+  { value: 'catalog', label: 'Catálogo', icon: 'category' },
   { value: 'rabbitmq', label: 'RabbitMQ', icon: 'inbox' },
   { value: 'kafka', label: 'Kafka', icon: 'hub' },
 ];
 
 function toSection(value: string | null): AdminSection {
-  return SECTIONS.some((section) => section.value === value) ? (value as AdminSection) : 'catalogo';
+  return SECTIONS.some((section) => section.value === value) ? (value as AdminSection) : 'catalog';
 }
 
 @Component({
@@ -96,8 +96,8 @@ export class AdminComponent {
 
   protected readonly sections = SECTIONS;
   protected readonly section = toSignal(
-    inject(ActivatedRoute).queryParamMap.pipe(map((params) => toSection(params.get('seccion')))),
-    { initialValue: 'catalogo' as AdminSection },
+    inject(ActivatedRoute).queryParamMap.pipe(map((params) => toSection(params.get('section')))),
+    { initialValue: 'catalog' as AdminSection },
   );
 
   protected readonly columns = ['tipo', 'estado', 'cupo', 'disponible', 'plazo', 'acciones'];

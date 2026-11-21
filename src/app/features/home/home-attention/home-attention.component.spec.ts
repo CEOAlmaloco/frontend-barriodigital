@@ -78,8 +78,8 @@ describe('HomeAttentionComponent', () => {
     ]);
     const links = Array.from(element.querySelectorAll('a'), (link) => link.getAttribute('href'));
     expect(links).toEqual([
-      '/administracion?seccion=catalogo',
-      '/administracion?seccion=rabbitmq&mostrar=dlq',
+      '/administracion?section=catalog',
+      '/administracion?section=rabbitmq&show=dlq',
     ]);
     expect(element.querySelector('.attention__item--error')).not.toBeNull();
   });

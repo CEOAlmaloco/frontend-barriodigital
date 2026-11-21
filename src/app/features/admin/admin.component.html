@@ -14,7 +14,7 @@
       <a
         mat-tab-link
         [routerLink]="[]"
-        [queryParams]="{ seccion: item.value }"
+        [queryParams]="{ section: item.value }"
         [active]="section() === item.value"
       >
         <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
@@ -25,7 +25,7 @@
 
   <mat-tab-nav-panel #adminPanel class="admin__panel">
     @switch (section()) {
-      @case ('catalogo') {
+      @case ('catalog') {
         <section class="admin-section" aria-labelledby="procedure-types-title">
           <div class="admin-section__head">
             <div class="admin-section__intro">

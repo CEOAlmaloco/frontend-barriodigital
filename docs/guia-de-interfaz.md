@@ -95,7 +95,7 @@ Referencias: indicadores del mapa (`report-map-summary`), de Reportes (`report-k
 - **Búsqueda** con `mat-form-field`, ícono de búsqueda, `mat-label` y botón para borrar con nombre accesible.
 - **Filtros excluyentes** con `mat-button-toggle-group`. Si hay más opciones, `mat-select` dentro de un panel de filtros (ver `request-list-filters`).
 - **Contador de resultados** con `role="status"` y singular o plural correcto.
-- **Estado en la URL** cuando se quiere compartir o recargar sin perderlo: filtros, pestaña o vista (`?seccion=`, `?range=`, `?view=`). Un valor inválido se descarta.
+- **Estado en la URL** cuando se quiere compartir o recargar sin perderlo: filtros, pestaña o vista (`?section=`, `?range=`, `?view=`). Un valor inválido se descarta.
 
 ### Listados y acciones
 
@@ -213,8 +213,8 @@ Animaciones y transiciones solo como respuesta a una acción u orientación (un 
 
 ### Convenciones
 
-- **Nombres en inglés:** componentes, clases, archivos, campos y rutas de API.
-- **En español:** rutas de la interfaz (`/tramites`, `/administracion`), valores de enums de dominio en mayúsculas (`EN_TERRENO`) y textos visibles.
+- **Nombres en inglés:** componentes, clases, archivos, campos, rutas de API y parámetros de URL con sus valores (`?section=catalog`, `?show=dlq`, `?view=list`).
+- **En español:** rutas de la interfaz (`/tramites`, `/administracion`), valores de enums de dominio en mayúsculas (`EN_TERRENO`, también como valor de un parámetro: `?status=EN_TERRENO`) y textos visibles.
 - **Comentarios** breves y solo para lo que el código no explica: una restricción, una decisión o un caso borde.
 - **Prettier** en archivos nuevos. En archivos existentes se respeta su formato, sin reformatear carpetas completas.
 

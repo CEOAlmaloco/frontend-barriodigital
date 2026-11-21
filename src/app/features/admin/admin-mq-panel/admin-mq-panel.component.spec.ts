@@ -260,12 +260,12 @@ describe('AdminMqPanelComponent', () => {
   it('toma el filtro de la URL y lo guarda al cambiarlo', async () => {
     await render();
     const router = TestBed.inject(Router);
-    await router.navigate([], { queryParams: { mostrar: 'dlq' } });
+    await router.navigate([], { queryParams: { show: 'dlq' } });
     await fixture.whenStable();
     expect(tableNames()).toEqual(['q.cmd.email.dlq']);
     button(element, 'Con mensajes').click();
     await fixture.whenStable();
-    expect(router.url).toBe('/?mostrar=con-mensajes');
+    expect(router.url).toBe('/?show=with-messages');
     button(element, 'Todas').click();
     await fixture.whenStable();
     expect(router.url).toBe('/');

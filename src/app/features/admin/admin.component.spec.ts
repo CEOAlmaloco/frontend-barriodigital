@@ -537,13 +537,13 @@ describe('AdminComponent', () => {
   it('abre la sección indicada en la URL y vuelve al catálogo con un valor desconocido', async () => {
     await render();
     const router = TestBed.inject(Router);
-    await router.navigate([], { queryParams: { seccion: 'rabbitmq' } });
+    await router.navigate([], { queryParams: { section: 'rabbitmq' } });
     await fixture.whenStable();
     expect(element.querySelector('app-admin-mq-panel')).not.toBeNull();
     expect(element.querySelector('a[mat-tab-link].mdc-tab--active')?.textContent).toContain(
       'RabbitMQ',
     );
-    await router.navigate([], { queryParams: { seccion: 'otra' } });
+    await router.navigate([], { queryParams: { section: 'otra' } });
     await fixture.whenStable();
     expect(element.querySelector('app-admin-mq-panel')).toBeNull();
     expect(text()).toContain('Tipos de trámite');
