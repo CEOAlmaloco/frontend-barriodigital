@@ -1,88 +1,69 @@
 <main class="admin">
   <header class="admin__header">
     <h1>Administración</h1>
-    <p class="admin__text">
-      Centro de control y supervisión de BarrioDigital: operación, catálogo y mensajería.
-    </p>
+    <p class="admin__subtitle">Catálogo de trámites y mensajería de la plataforma.</p>
   </header>
 
-  <nav class="admin__tabs" mat-tab-nav-bar [tabPanel]="adminPanel" aria-label="Secciones de administración">
-    <button
-      type="button"
-      mat-tab-link
-      [active]="section() === 'panel'"
-      (click)="selectSection('panel')"
-    >
-      <mat-icon aria-hidden="true">dashboard</mat-icon>
-      Panel
-    </button>
-    <button
-      type="button"
-      mat-tab-link
-      [active]="section() === 'catalog'"
-      (click)="selectSection('catalog')"
-    >
-      <mat-icon aria-hidden="true">category</mat-icon>
-      Catálogo
-    </button>
-    <button
-      type="button"
-      mat-tab-link
-      [active]="section() === 'rabbitmq'"
-      (click)="selectSection('rabbitmq')"
-    >
-      <mat-icon aria-hidden="true">inbox</mat-icon>
-      RabbitMQ
-    </button>
-    <button
-      type="button"
-      mat-tab-link
-      [active]="section() === 'kafka'"
-      (click)="selectSection('kafka')"
-    >
-      <mat-icon aria-hidden="true">hub</mat-icon>
-      Kafka
-    </button>
+  <nav
+    class="admin__tabs"
+    mat-tab-nav-bar
+    [tabPanel]="adminPanel"
+    aria-label="Secciones de administración"
+  >
+    @for (item of sections; track item.value) {
+      <a
+        mat-tab-link
+        [routerLink]="[]"
+        [queryParams]="{ seccion: item.value }"
+        [active]="section() === item.value"
+      >
+        <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+        {{ item.label }}
+      </a>
+    }
   </nav>
 
   <mat-tab-nav-panel #adminPanel class="admin__panel">
     @switch (section()) {
-      @case ('panel') {
-        <app-admin-overview (openSection)="selectSection($event)" />
-      }
-      @case ('catalog') {
-        <section class="admin__catalog" aria-labelledby="procedure-types-title">
-          <div class="admin__heading">
-            <div class="admin__header">
-              <h2 id="procedure-types-title" #listTitle tabindex="-1">Tipos de trámite</h2>
-              <p class="admin__text">
-                Crea y actualiza los tipos de trámite y configura su disponibilidad y cupo diario
+      @case ('catalogo') {
+        <section class="admin-section" aria-labelledby="procedure-types-title">
+          <div class="admin-section__head">
+            <div class="admin-section__intro">
+              <h2 id="procedure-types-title" class="admin-section__title" #listTitle tabindex="-1">
+                Tipos de trámite
+              </h2>
+              <p class="admin-section__lead">
+                Disponibilidad, cupo diario y plazo de atención de cada tipo.
               </p>
             </div>
-            <div class="admin__actions">
+            <div class="admin-section__actions">
               @if (loadState() !== 'error') {
                 <button
                   mat-icon-button
                   type="button"
-                  class="admin__refresh"
+                  class="admin-section__refresh"
                   aria-label="Actualizar catálogo"
                   matTooltip="Actualizar catálogo"
                   [disabled]="loadState() === 'loading'"
                   (click)="refresh()"
                 >
-                  <mat-icon aria-hidden="true" [class.admin__refresh-icon--spinning]="isRefreshing()"
+                  <mat-icon
+                    aria-hidden="true"
+                    [class.admin-section__refresh-icon--spinning]="isRefreshing()"
                     >refresh</mat-icon
                   >
                 </button>
               }
-              <button matButton="filled" type="button" (click)="openCreate($event)">Nuevo tipo</button>
+              <button matButton="filled" type="button" (click)="openCreate($event)">
+                Nuevo tipo
+              </button>
             </div>
           </div>
 
           <div
-            class="admin__feedback"
-            [class.admin__feedback--compact]="hasCatalog()"
-            [hidden]="loadState() === 'ready'"
+            class="admin-section__status"
+            [class.admin-section__status--compact]="hasCatalog()"
+            [hidden]="loadState() !== 'loading'"
             [attr.aria-busy]="loadState() === 'loading'"
             aria-live="polite"
           >
@@ -92,181 +73,231 @@
                 [diameter]="hasCatalog() ? 20 : 40"
                 aria-label="Cargando tipos de trámite"
               />
-            } @else if (loadState() === 'error') {
-              <p class="admin__error">{{ loadError() }}</p>
-              <button matButton type="button" (click)="retry()">Reintentar</button>
             }
           </div>
 
+          @if (loadState() === 'error') {
+            @if (hasCatalog()) {
+              <div class="admin-section__notice" role="alert">
+                <mat-icon aria-hidden="true">warning</mat-icon>
+                <span>{{ loadError() }}</span>
+                <button matButton="outlined" type="button" (click)="retry()">Reintentar</button>
+              </div>
+            } @else {
+              @let failure = loadFailure();
+              <app-admin-state
+                tone="error"
+                [icon]="failure.icon"
+                [heading]="failure.heading"
+                [message]="failure.message"
+              >
+                @if (failure.retry) {
+                  <button matButton="filled" type="button" (click)="retry()">
+                    <mat-icon aria-hidden="true">refresh</mat-icon>
+                    Reintentar
+                  </button>
+                }
+              </app-admin-state>
+            }
+          }
+
           @if (hasCatalog()) {
             @if (catalog().length === 0) {
-              <p class="admin__empty">Todavía no hay tipos de trámite registrados.</p>
+              <app-admin-state
+                icon="category"
+                heading="Todavía no hay tipos de trámite registrados"
+              />
             } @else {
-              <dl class="admin-ops-kpis" aria-label="Indicadores del catálogo">
-                <div class="admin-ops-kpis__tile">
-                  <dt>Tipos</dt>
-                  <dd>{{ catalog().length }}</dd>
-                </div>
-                <div class="admin-ops-kpis__tile">
-                  <dt>Activos</dt>
-                  <dd>{{ catalogActive() }}</dd>
-                </div>
-                <div class="admin-ops-kpis__tile">
-                  <dt>Con cupo diario</dt>
-                  <dd>{{ catalogWithQuota() }}</dd>
-                </div>
+              <dl class="admin-ops-kpis" aria-label="Resumen del catálogo">
                 <div
-                  class="admin-ops-kpis__tile"
-                  [class.admin-ops-kpis__tile--warn]="catalogExhausted() > 0"
-                >
-                  <dt>Cupo agotado hoy</dt>
-                  <dd>{{ catalogExhausted() }}</dd>
-                </div>
+                  app-admin-kpi
+                  icon="category"
+                  label="Tipos"
+                  [value]="catalog().length"
+                  tone="primary"
+                ></div>
+                <div
+                  app-admin-kpi
+                  icon="check_circle"
+                  label="Activos"
+                  [value]="catalogActive()"
+                  tone="success"
+                ></div>
+                <div
+                  app-admin-kpi
+                  icon="confirmation_number"
+                  label="Con cupo diario"
+                  [value]="catalogWithQuota()"
+                ></div>
+                <div
+                  app-admin-kpi
+                  icon="block"
+                  label="Cupo agotado hoy"
+                  [value]="catalogExhausted()"
+                  tone="accent"
+                ></div>
               </dl>
-              <div class="admin__filters">
-                <label class="admin__search">
-                  <span class="cdk-visually-hidden">Buscar tipo</span>
+
+              <div class="admin-section__toolbar">
+                <mat-form-field class="admin-section__search" subscriptSizing="dynamic">
+                  <mat-label>Buscar tipo</mat-label>
+                  <mat-icon matIconPrefix aria-hidden="true">search</mat-icon>
                   <input
+                    #catalogSearch
+                    matInput
                     type="search"
-                    placeholder="Buscar por código o nombre…"
+                    autocomplete="off"
+                    placeholder="Código o nombre"
                     [value]="catalogQuery()"
-                    (input)="catalogQuery.set($any($event.target).value)"
+                    (input)="catalogQuery.set(catalogSearch.value)"
                   />
-                </label>
-                <div class="admin__filter-chips" role="group" aria-label="Filtrar por estado">
-                  <button
-                    type="button"
-                    class="admin__chip"
-                    [attr.aria-pressed]="catalogStatus() === 'all'"
-                    (click)="catalogStatus.set('all')"
-                  >
-                    Todos
-                  </button>
-                  <button
-                    type="button"
-                    class="admin__chip"
-                    [attr.aria-pressed]="catalogStatus() === 'active'"
-                    (click)="catalogStatus.set('active')"
-                  >
-                    Activos
-                  </button>
-                  <button
-                    type="button"
-                    class="admin__chip"
-                    [attr.aria-pressed]="catalogStatus() === 'inactive'"
-                    (click)="catalogStatus.set('inactive')"
-                  >
-                    Inactivos
-                  </button>
-                </div>
-              </div>
-              @if (visibleCatalog().length === 0) {
-                <p class="admin__empty">Ningún tipo coincide con la búsqueda o el filtro.</p>
-              } @else {
-              <div class="admin__table-wrapper">
-                <table
-                  mat-table
-                  [dataSource]="visibleCatalog()"
-                  class="admin__table"
-                  aria-label="Tipos de trámite"
+                  @if (catalogQuery()) {
+                    <button
+                      matIconSuffix
+                      mat-icon-button
+                      type="button"
+                      aria-label="Borrar la búsqueda"
+                      (click)="catalogQuery.set(''); catalogSearch.focus()"
+                    >
+                      <mat-icon aria-hidden="true">close</mat-icon>
+                    </button>
+                  }
+                </mat-form-field>
+
+                <mat-button-toggle-group
+                  class="admin-section__toggle"
+                  aria-label="Estado"
+                  hideSingleSelectionIndicator
+                  [value]="catalogFilter()"
+                  (change)="catalogFilter.set($event.value)"
                 >
-                  <ng-container matColumnDef="codigo">
-                    <th mat-header-cell *matHeaderCellDef>Código</th>
-                    <td mat-cell *matCellDef="let type">
-                      <span class="admin__code">{{ type.value }}</span>
-                    </td>
-                  </ng-container>
-                  <ng-container matColumnDef="nombre">
-                    <th mat-header-cell *matHeaderCellDef>Nombre</th>
-                    <td mat-cell *matCellDef="let type">
-                      <span class="admin__name">{{ type.label }}</span>
-                    </td>
-                  </ng-container>
-                  <ng-container matColumnDef="estado">
-                    <th mat-header-cell *matHeaderCellDef>Estado</th>
-                    <td mat-cell *matCellDef="let type">
-                      <span class="admin__badge" [class.admin__badge--active]="type.active">{{
-                        type.active ? 'Activo' : 'Inactivo'
-                      }}</span>
-                    </td>
-                  </ng-container>
-                  <ng-container matColumnDef="cupo">
-                    <th mat-header-cell *matHeaderCellDef>Cupo diario</th>
-                    <td mat-cell *matCellDef="let type">
-                      {{ type.dailyQuota === null ? 'Sin límite' : type.dailyQuota }}
-                    </td>
-                  </ng-container>
-                  <ng-container matColumnDef="disponible">
-                    <th mat-header-cell *matHeaderCellDef>Cupo disponible hoy</th>
-                    <td mat-cell *matCellDef="let type">{{ availableQuota(type) }}</td>
-                  </ng-container>
-                  <ng-container matColumnDef="plazo">
-                    <th mat-header-cell *matHeaderCellDef>Plazo de atención</th>
-                    <td mat-cell *matCellDef="let type">
-                      <span [class.admin__muted]="type.slaBusinessDays == null">{{
-                        slaLabel(type)
-                      }}</span>
-                    </td>
-                  </ng-container>
-                  <ng-container matColumnDef="acciones">
-                    <th mat-header-cell *matHeaderCellDef>Acciones</th>
-                    <td mat-cell *matCellDef="let type">
-                      <button
-                        matButton="filled"
-                        type="button"
-                        [attr.aria-label]="'Editar ' + type.label + ' (' + type.value + ')'"
-                        (click)="openEdit(type, $event)"
-                      >
-                        Editar
-                      </button>
-                    </td>
-                  </ng-container>
-                  <tr mat-header-row *matHeaderRowDef="columns"></tr>
-                  <tr mat-row *matRowDef="let row; columns: columns"></tr>
-                </table>
+                  @for (option of catalogFilters; track option.value) {
+                    <mat-button-toggle [value]="option.value">{{ option.label }}</mat-button-toggle>
+                  }
+                </mat-button-toggle-group>
+
+                <p class="admin-section__count" role="status">
+                  {{ visibleCatalog().length }}
+                  {{ visibleCatalog().length === 1 ? 'tipo' : 'tipos' }}
+                </p>
               </div>
 
-              <ul class="admin__cards" aria-label="Tipos de trámite">
-                @for (type of visibleCatalog(); track type.value) {
-                  <li class="admin__item">
-                    <h3 class="admin__name">{{ type.label }}</h3>
-                    <dl class="admin__fields">
-                      <div>
-                        <dt>Código</dt>
-                        <dd class="admin__code">{{ type.value }}</dd>
+              @if (visibleCatalog().length === 0) {
+                <app-admin-state
+                  icon="search_off"
+                  heading="Ningún tipo coincide con la búsqueda o el filtro"
+                >
+                  <button matButton="outlined" type="button" (click)="clearFilters()">
+                    Limpiar búsqueda y filtro
+                  </button>
+                </app-admin-state>
+              } @else {
+                <div class="admin-section__table">
+                  <table mat-table [dataSource]="visibleCatalog()" aria-label="Tipos de trámite">
+                    <ng-container matColumnDef="tipo">
+                      <th mat-header-cell *matHeaderCellDef>Tipo</th>
+                      <td mat-cell *matCellDef="let type">
+                        <span class="admin-section__name">{{ type.label }}</span>
+                        <span class="admin-section__muted admin__code">{{ type.value }}</span>
+                      </td>
+                    </ng-container>
+                    <ng-container matColumnDef="estado">
+                      <th mat-header-cell *matHeaderCellDef>Estado</th>
+                      <td mat-cell *matCellDef="let type">
+                        <span
+                          class="admin-badge"
+                          [class.admin-badge--success]="type.active"
+                          [class.admin-badge--primary]="!type.active"
+                          >{{ type.active ? 'Activo' : 'Inactivo' }}</span
+                        >
+                      </td>
+                    </ng-container>
+                    <ng-container matColumnDef="cupo">
+                      <th mat-header-cell *matHeaderCellDef>Cupo diario</th>
+                      <td mat-cell *matCellDef="let type" class="admin-section__num">
+                        {{ quotaLabel(type) }}
+                      </td>
+                    </ng-container>
+                    <ng-container matColumnDef="disponible">
+                      <th mat-header-cell *matHeaderCellDef>Disponible hoy</th>
+                      <td mat-cell *matCellDef="let type" class="admin-section__num">
+                        {{ availableQuota(type) }}
+                      </td>
+                    </ng-container>
+                    <ng-container matColumnDef="plazo">
+                      <th mat-header-cell *matHeaderCellDef>Plazo de atención</th>
+                      <td mat-cell *matCellDef="let type">
+                        <span [class.admin-section__none]="type.slaBusinessDays == null">{{
+                          slaLabel(type)
+                        }}</span>
+                      </td>
+                    </ng-container>
+                    <ng-container matColumnDef="acciones">
+                      <th mat-header-cell *matHeaderCellDef>
+                        <span class="cdk-visually-hidden">Acciones</span>
+                      </th>
+                      <td mat-cell *matCellDef="let type">
+                        <div class="admin-section__row-actions">
+                          <button
+                            matButton="outlined"
+                            type="button"
+                            [attr.aria-label]="'Editar ' + type.label + ' (' + type.value + ')'"
+                            (click)="openEdit(type, $event)"
+                          >
+                            Editar
+                          </button>
+                        </div>
+                      </td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="columns"></tr>
+                    <tr mat-row *matRowDef="let row; columns: columns"></tr>
+                  </table>
+                </div>
+
+                <ul class="admin-section__cards" aria-label="Tipos de trámite">
+                  @for (type of visibleCatalog(); track type.value) {
+                    <li class="admin-section__card">
+                      <div class="admin-section__card-head">
+                        <div>
+                          <h3 class="admin-section__card-title">{{ type.label }}</h3>
+                          <span class="admin-section__muted admin__code">{{ type.value }}</span>
+                        </div>
+                        <span
+                          class="admin-badge"
+                          [class.admin-badge--success]="type.active"
+                          [class.admin-badge--primary]="!type.active"
+                          >{{ type.active ? 'Activo' : 'Inactivo' }}</span
+                        >
                       </div>
-                      <div>
-                        <dt>Estado</dt>
-                        <dd>
-                          <span class="admin__badge" [class.admin__badge--active]="type.active">{{
-                            type.active ? 'Activo' : 'Inactivo'
-                          }}</span>
-                        </dd>
+                      <dl class="admin-section__fields">
+                        <div>
+                          <dt>Cupo diario</dt>
+                          <dd>{{ quotaLabel(type) }}</dd>
+                        </div>
+                        <div>
+                          <dt>Disponible hoy</dt>
+                          <dd>{{ availableQuota(type) }}</dd>
+                        </div>
+                        <div>
+                          <dt>Plazo de atención</dt>
+                          <dd [class.admin-section__none]="type.slaBusinessDays == null">
+                            {{ slaLabel(type) }}
+                          </dd>
+                        </div>
+                      </dl>
+                      <div class="admin-section__card-actions">
+                        <button
+                          matButton="outlined"
+                          type="button"
+                          [attr.aria-label]="'Editar ' + type.label + ' (' + type.value + ')'"
+                          (click)="openEdit(type, $event)"
+                        >
+                          Editar
+                        </button>
                       </div>
-                      <div>
-                        <dt>Cupo diario</dt>
-                        <dd>{{ type.dailyQuota === null ? 'Sin límite' : type.dailyQuota }}</dd>
-                      </div>
-                      <div>
-                        <dt>Cupo disponible hoy</dt>
-                        <dd>{{ availableQuota(type) }}</dd>
-                      </div>
-                      <div>
-                        <dt>Plazo de atención</dt>
-                        <dd [class.admin__muted]="type.slaBusinessDays == null">{{ slaLabel(type) }}</dd>
-                      </div>
-                    </dl>
-                    <button
-                      matButton="filled"
-                      type="button"
-                      [attr.aria-label]="'Editar ' + type.label + ' (' + type.value + ')'"
-                      (click)="openEdit(type, $event)"
-                    >
-                      Editar
-                    </button>
-                  </li>
-                }
-              </ul>
+                    </li>
+                  }
+                </ul>
               }
             }
           }

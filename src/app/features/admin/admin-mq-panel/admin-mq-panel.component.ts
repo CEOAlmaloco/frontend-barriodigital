@@ -1,15 +1,28 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  TemplateRef,
   computed,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButton, MatIconButton } from '@angular/material/button';
-import { MatDialog } from '@angular/material/dialog';
+import { MatButtonToggle, MatButtonToggleGroup } from '@angular/material/button-toggle';
+import {
+  MatDialog,
+  MatDialogActions,
+  MatDialogClose,
+  MatDialogContent,
+  MatDialogTitle,
+} from '@angular/material/dialog';
+import { MatFormField, MatLabel, MatPrefix, MatSuffix } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
+import { MatInput } from '@angular/material/input';
+import { MatMenu, MatMenuContent, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
@@ -21,37 +34,55 @@ import {
   formatBytes,
   formatRate,
   isLikelyDlq,
+  isSystemQueue,
   type MqQueue,
 } from '../../../core/mq/mq-admin.models';
-import { failureKind } from '../../../shared/utils/http-failure';
+import { FailureKind, failureKind } from '../../../shared/utils/http-failure';
 import { formatClock } from '../../reports/report-format';
-import {
-  RankingItem,
-  ReportRankingComponent,
-} from '../../reports/report-ranking/report-ranking.component';
-import {
-  AdminRateChartComponent,
-  type AdminRateSample,
-} from '../admin-rate-chart/admin-rate-chart.component';
+import { adminFailureCopy } from '../admin-failure';
+import { AdminKpiComponent } from '../admin-kpi/admin-kpi.component';
+import { AdminStateComponent } from '../admin-state/admin-state.component';
 import {
   ConfirmActionDialogComponent,
   type ConfirmActionDialogData,
 } from '../confirm-action-dialog/confirm-action-dialog.component';
 
-const RATE_SAMPLE_MAX = 24;
-const POLL_MS = 5000;
+type QueueFilter = 'todas' | 'con-mensajes' | 'dlq';
+
+/** Suma solo si todas las colas traen el dato; si falta en alguna, el total no se conoce. */
+function knownTotal(values: (number | null | undefined)[]): number | null {
+  return values.every((value) => typeof value === 'number')
+    ? (values as number[]).reduce((sum, value) => sum + value, 0)
+    : null;
+}
 
 @Component({
   selector: 'app-admin-mq-panel',
   imports: [
-    AdminRateChartComponent,
+    AdminKpiComponent,
+    AdminStateComponent,
     MatButton,
-    MatIconButton,
+    MatButtonToggle,
+    MatButtonToggleGroup,
+    MatDialogActions,
+    MatDialogClose,
+    MatDialogContent,
+    MatDialogTitle,
+    MatFormField,
     MatIcon,
+    MatIconButton,
+    MatInput,
+    MatLabel,
+    MatMenu,
+    MatMenuContent,
+    MatMenuItem,
+    MatMenuTrigger,
+    MatPrefix,
     MatProgressSpinner,
+    MatSuffix,
     MatTableModule,
     MatTooltip,
-    ReportRankingComponent,
+    NgTemplateOutlet,
   ],
   templateUrl: './admin-mq-panel.component.html',
   styleUrl: './admin-mq-panel.component.scss',
@@ -62,258 +93,197 @@ export class AdminMqPanelComponent {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
-  private refreshing = false;
+  private readonly detailTemplate = viewChild.required<TemplateRef<unknown>>('queueDetail');
 
-  protected readonly columns = [
-    'name',
-    'ready',
-    'unacked',
-    'messages',
-    'consumers',
-    'publish',
-    'ack',
-    'ttl',
-    'deadLetter',
-    'acciones',
-  ] as const;
+  protected readonly columns = ['name', 'ready', 'unacked', 'consumers', 'deadLetter', 'acciones'];
+  protected readonly filters: readonly { value: QueueFilter; label: string }[] = [
+    { value: 'todas', label: 'Todas' },
+    { value: 'con-mensajes', label: 'Con mensajes' },
+    { value: 'dlq', label: 'DLQ' },
+  ];
   protected readonly queues = signal<MqQueue[]>([]);
+  protected readonly hasData = signal(false);
   protected readonly loadState = signal<'loading' | 'ready' | 'error'>('loading');
+  private readonly failure = signal<FailureKind>('generic');
+  protected readonly loadFailure = computed(() =>
+    adminFailureCopy(this.failure(), {
+      unavailable: 'RabbitMQ no está disponible',
+      generic: 'No pudimos cargar las colas',
+    }),
+  );
+  protected readonly isRefreshing = signal(false);
+  protected readonly fetchedAt = signal<Date | null>(null);
   protected readonly busyName = signal<string | null>(null);
-  protected readonly onlyWithMessages = signal(false);
-  protected readonly onlyDlq = signal(false);
+  protected readonly filter = signal<QueueFilter>('todas');
   protected readonly query = signal('');
   protected readonly detail = signal<MqQueue | null>(null);
   protected readonly detailLoading = signal(false);
-  protected readonly fetchedAt = signal<Date | null>(null);
-  protected readonly autoRefresh = signal(true);
-  protected readonly rateSamples = signal<AdminRateSample[]>([]);
+  protected readonly detailFailed = signal(false);
   protected readonly formatRate = formatRate;
   protected readonly formatBytes = formatBytes;
   protected readonly formatClock = formatClock;
-  protected readonly rateLegend = [
-    { key: 'publish', label: 'Publish', color: 'primary' },
-    { key: 'deliver', label: 'Deliver', color: 'secondary' },
-    { key: 'ack', label: 'ACK', color: 'accent' },
-  ] as const;
+  protected readonly isDlq = isLikelyDlq;
+  protected readonly isSystem = isSystemQueue;
 
   protected readonly visibleQueues = computed(() => {
-    let list = this.queues();
-    if (this.onlyWithMessages()) {
-      list = list.filter((queue) => queue.messages > 0);
-    }
-    if (this.onlyDlq()) {
-      list = list.filter((queue) => isLikelyDlq(queue));
-    }
-    const q = this.query().trim().toLowerCase();
-    if (q) {
-      list = list.filter((queue) => queue.name.toLowerCase().includes(q));
-    }
-    return list;
+    const query = this.query().trim().toLocaleLowerCase('es');
+    return this.queues().filter((queue) => {
+      if (this.filter() === 'con-mensajes' && queue.messages === 0) {
+        return false;
+      }
+      if (this.filter() === 'dlq' && !isLikelyDlq(queue)) {
+        return false;
+      }
+      return !query || queue.name.toLocaleLowerCase('es').includes(query);
+    });
   });
-
+  protected readonly isFiltered = computed(
+    () => this.query().trim() !== '' || this.filter() !== 'todas',
+  );
   protected readonly readyTotal = computed(() =>
-    this.queues().reduce((sum, queue) => sum + (queue.messagesReady ?? 0), 0),
+    knownTotal(this.queues().map((queue) => queue.messagesReady)),
   );
   protected readonly unackedTotal = computed(() =>
-    this.queues().reduce((sum, queue) => sum + (queue.messagesUnacked ?? 0), 0),
+    knownTotal(this.queues().map((queue) => queue.messagesUnacked)),
   );
   protected readonly consumersTotal = computed(() =>
-    this.queues().reduce((sum, queue) => sum + (queue.consumers ?? 0), 0),
+    this.queues().reduce((sum, queue) => sum + queue.consumers, 0),
   );
   protected readonly dlqMessageTotal = computed(() =>
     this.queues()
       .filter((queue) => isLikelyDlq(queue))
       .reduce((sum, queue) => sum + queue.messages, 0),
   );
+  /** Una DLQ no tiene consumidor por diseño: solo cuentan las colas de trabajo. */
   protected readonly stuckQueues = computed(
-    () => this.queues().filter((queue) => queue.messages > 0 && queue.consumers === 0).length,
-  );
-  /** Top colas por Ready (incluye 0 para mantener estructura del panel). */
-  protected readonly accumulation = computed<RankingItem[]>(() =>
-    [...this.queues()]
-      .map((queue) => ({
-        label: queue.name,
-        value: queue.messagesReady ?? 0,
-      }))
-      .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label))
-      .slice(0, 8),
-  );
-  protected readonly dlqRanking = computed<RankingItem[]>(() =>
-    this.queues()
-      .filter((queue) => isLikelyDlq(queue))
-      .map((queue) => ({ label: queue.name, value: queue.messages }))
-      .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label)),
+    () =>
+      this.queues().filter(
+        (queue) => !isLikelyDlq(queue) && queue.messages > 0 && queue.consumers === 0,
+      ).length,
   );
 
   constructor() {
-    this.reload(true);
-    const timer = setInterval(() => {
-      if (this.autoRefresh() && this.loadState() !== 'loading') {
-        this.reload(false);
-      }
-    }, POLL_MS);
-    this.destroyRef.onDestroy(() => clearInterval(timer));
+    this.load();
   }
 
-  protected isDlq(queue: MqQueue): boolean {
-    return isLikelyDlq(queue);
-  }
-
-  protected toggleAutoRefresh(): void {
-    this.autoRefresh.update((value) => !value);
-  }
-
-  /** @param showLoading false = muestreo silencioso (no tapa la UI). */
-  protected reload(showLoading = true): void {
-    if (this.refreshing) {
-      return;
+  protected refresh(): void {
+    if (this.loadState() !== 'loading') {
+      this.load(true);
     }
-    this.refreshing = true;
-    if (showLoading) {
-      this.loadState.set('loading');
-    }
-    this.mq
-      .listQueues()
-      .pipe(
-        catchError((error: unknown) => {
-          if (showLoading) {
-            this.snackBar.open(this.errorMessage(error), 'Cerrar', { duration: 5000 });
-          }
-          return of(null);
-        }),
-        finalize(() => {
-          this.refreshing = false;
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe((queues) => {
-        if (queues) {
-          this.queues.set(queues);
-          this.fetchedAt.set(new Date());
-          this.pushRateSample(queues);
-          this.loadState.set('ready');
-        } else if (showLoading) {
-          this.loadState.set('error');
-        }
-      });
   }
 
-  protected toggleOnlyMessages(): void {
-    this.onlyWithMessages.update((value) => !value);
-  }
-
-  protected toggleOnlyDlq(): void {
-    this.onlyDlq.update((value) => !value);
-  }
-
-  protected onQuery(value: string): void {
-    this.query.set(value);
+  protected clearFilters(): void {
+    this.query.set('');
+    this.filter.set('todas');
   }
 
   protected openDetail(queue: MqQueue): void {
+    this.detail.set(queue);
+    this.detailFailed.set(false);
     this.detailLoading.set(true);
-    this.detail.set(null);
+    this.dialog.open(this.detailTemplate(), {
+      panelClass: 'admin-dialog',
+      width: '40rem',
+      maxWidth: 'calc(100vw - 32px)',
+      autoFocus: 'first-heading',
+    });
     this.mq
       .getQueue(queue.name)
       .pipe(
-        catchError((error: unknown) => {
-          this.snackBar.open(this.errorMessage(error), 'Cerrar', { duration: 5000 });
+        catchError(() => {
+          this.detailFailed.set(true);
           return of(null);
         }),
         finalize(() => this.detailLoading.set(false)),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((detail) => this.detail.set(detail ?? queue));
-  }
-
-  protected closeDetail(): void {
-    this.detail.set(null);
+      .subscribe((detail) => {
+        if (detail) {
+          this.detail.set(detail);
+        }
+      });
   }
 
   protected purge(queue: MqQueue): void {
     this.confirm({
       title: 'Vaciar cola',
-      message: `Se eliminarán ${queue.messages} mensaje(s) de «${queue.name}». Esta acción no se puede deshacer.`,
+      message: `Se eliminarán ${queue.messages} ${queue.messages === 1 ? 'mensaje' : 'mensajes'} de «${queue.name}». Esta acción no se puede deshacer.`,
       confirmLabel: 'Vaciar',
       danger: true,
     }).subscribe((ok) => {
-      if (!ok) {
-        return;
+      if (ok) {
+        this.run(queue, this.mq.purgeQueue(queue.name), `Cola «${queue.name}» vaciada.`);
       }
-      this.busyName.set(queue.name);
-      this.mq
-        .purgeQueue(queue.name)
-        .pipe(
-          map(() => true),
-          catchError((error: unknown) => {
-            this.snackBar.open(this.errorMessage(error), 'Cerrar', { duration: 5000 });
-            return of(false);
-          }),
-          finalize(() => this.busyName.set(null)),
-          takeUntilDestroyed(this.destroyRef),
-        )
-        .subscribe((okResult) => {
-          if (okResult) {
-            this.snackBar.open(`Cola «${queue.name}» vaciada.`, 'Cerrar', { duration: 4000 });
-            this.reload(true);
-          }
-        });
     });
   }
 
   protected remove(queue: MqQueue): void {
     this.confirm({
       title: 'Eliminar cola',
-      message: `Se borrará la cola «${queue.name}» y sus mensajes. Confirma solo si ya no se usa en producción.`,
+      message: `Se eliminará la cola «${queue.name}» con sus mensajes. Esta acción no se puede deshacer.`,
       confirmLabel: 'Eliminar',
       danger: true,
     }).subscribe((ok) => {
-      if (!ok) {
-        return;
+      if (ok) {
+        this.run(queue, this.mq.deleteQueue(queue.name), `Cola «${queue.name}» eliminada.`);
       }
-      this.busyName.set(queue.name);
-      this.mq
-        .deleteQueue(queue.name)
-        .pipe(
-          map(() => true),
-          catchError((error: unknown) => {
-            this.snackBar.open(this.errorMessage(error), 'Cerrar', { duration: 5000 });
-            return of(false);
-          }),
-          finalize(() => this.busyName.set(null)),
-          takeUntilDestroyed(this.destroyRef),
-        )
-        .subscribe((okResult) => {
-          if (okResult) {
-            this.snackBar.open(`Cola «${queue.name}» eliminada.`, 'Cerrar', { duration: 4000 });
-            this.reload(true);
-          }
-        });
     });
   }
 
-  private pushRateSample(queues: MqQueue[]): void {
-    const now = new Date();
-    const publish = queues.reduce((sum, queue) => sum + (queue.publishRate ?? 0), 0);
-    const deliver = queues.reduce((sum, queue) => sum + (queue.deliverRate ?? 0), 0);
-    const ack = queues.reduce((sum, queue) => sum + (queue.ackRate ?? 0), 0);
-    const sample: AdminRateSample = {
-      label: formatClock(now),
-      full: now.toISOString(),
-      series: [
-        { key: 'publish', value: publish },
-        { key: 'deliver', value: deliver },
-        { key: 'ack', value: ack },
-      ],
-    };
-    this.rateSamples.update((prev) => [...prev, sample].slice(-RATE_SAMPLE_MAX));
+  private load(manual = false): void {
+    this.loadState.set('loading');
+    this.isRefreshing.set(manual);
+    this.mq
+      .listQueues()
+      .pipe(
+        catchError((error: unknown) => {
+          this.failure.set(failureKind(error));
+          return of(null);
+        }),
+        finalize(() => this.isRefreshing.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((queues) => {
+        if (queues) {
+          this.queues.set(queues);
+          this.hasData.set(true);
+          this.fetchedAt.set(new Date());
+          this.loadState.set('ready');
+        } else {
+          this.loadState.set('error');
+        }
+      });
+  }
+
+  private run(
+    queue: MqQueue,
+    operation: ReturnType<MqAdminService['purgeQueue']>,
+    done: string,
+  ): void {
+    this.busyName.set(queue.name);
+    operation
+      .pipe(
+        map(() => true),
+        catchError((error: unknown) => {
+          this.snackBar.open(this.errorMessage(error), 'Cerrar', { duration: 5000 });
+          return of(false);
+        }),
+        finalize(() => this.busyName.set(null)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((ok) => {
+        if (ok) {
+          this.snackBar.open(done, 'Cerrar', { duration: 4000 });
+          this.load();
+        }
+      });
   }
 
   private confirm(data: ConfirmActionDialogData) {
     return this.dialog
       .open<ConfirmActionDialogComponent, ConfirmActionDialogData, boolean>(
         ConfirmActionDialogComponent,
-        { data, width: '28rem' },
+        { data, width: '28rem', maxWidth: 'calc(100vw - 32px)', panelClass: 'admin-dialog' },
       )
       .afterClosed();
   }

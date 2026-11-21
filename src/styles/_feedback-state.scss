@@ -1,0 +1,43 @@
+// Aviso centrado cuando una fuente no responde o no hay datos. Lo comparten Reportes y Administración.
+@use 'tokens' as *;
+
+@mixin feedback-state {
+  align-items: center;
+  padding-block: $space-12;
+  text-align: center;
+
+  h2,
+  h3 {
+    font-size: calc(#{$font-h2} * var(--bd-text-scale, 1));
+  }
+
+  p {
+    max-width: 46ch;
+    margin: 0;
+    color: var(--bd-text-muted);
+  }
+}
+
+// error para una fuente caída; neutral para un estado vacío
+@mixin feedback-state-icon($tone: error) {
+  display: grid;
+  width: $space-12 + $space-2;
+  height: $space-12 + $space-2;
+  place-items: center;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: 50%;
+
+  @if $tone == error {
+    background-color: var(--bd-error-container);
+    color: var(--bd-error);
+  } @else {
+    background-color: var(--bd-background);
+    color: var(--bd-text-muted);
+  }
+
+  mat-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 28px;
+  }
+}

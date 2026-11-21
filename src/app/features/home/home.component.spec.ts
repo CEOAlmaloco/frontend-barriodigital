@@ -131,26 +131,9 @@ describe('HomeComponent', () => {
     active: true,
     dailyQuota: null,
     remainingQuota: null,
-    slaBusinessDays: null,
   });
   const unavailable = (req: TestRequest) => {
     req.flush({ message: 'No disponible' }, { status: 503, statusText: 'Service Unavailable' });
-    render();
-  };
-  /** Demanda, catálogo y señales técnicas del Inicio Admin (no forman parte del polling K8). */
-  const flushAdminExtras = () => {
-    for (const req of pending('/api/catalog/procedures')) {
-      req.flush([catalogType('bache', 'Bache en calzada')]);
-    }
-    for (const req of pending('/api/report/top-procedures')) {
-      req.flush({ range: 'last24h', items: [], lastEventAt: null });
-    }
-    for (const req of pending('/api/mq/queues')) {
-      req.flush([]);
-    }
-    for (const req of pending('/api/kafka/topics')) {
-      req.flush([]);
-    }
     render();
   };
 
@@ -304,15 +287,10 @@ describe('HomeComponent', () => {
 
     it('un tipo que el catálogo no tiene conserva el nombre guardado', async () => {
       await open(Role.Admin);
-      for (const req of pending('/api/catalog/procedures')) {
-        req.flush([catalogType('poda', 'Poda de árboles')]);
-      }
-      render();
+      flush(one('/api/catalog/procedures'), [catalogType('poda', 'Poda de árboles')]);
       flush(one('/api/report/kpis'), kpis());
-      flush(one('/api/report/sla', { status: 'VENCIDO', page: '0', size: '1' }), slaPage([], 0));
-      flush(one('/api/report/sla', { status: 'VENCIDO', page: '0', size: '5' }), slaPage([alert()]));
+      flush(one('/api/report/sla'), slaPage([alert()]));
       flush(one('/api/requests'), page([]));
-      flushAdminExtras();
 
       expect(text(block('Plazos vencidos'))).toContain('Luminaria apagada');
     });
@@ -432,47 +410,27 @@ describe('HomeComponent', () => {
   });
 
   describe('Admin', () => {
-    const flushOps = (overdueTotal = 2) => {
-      flush(one('/api/report/kpis', { range: 'last24h' }), kpis());
-      const overdueTotals = pending('/api/report/sla', {
-        status: 'VENCIDO',
-        page: '0',
-        size: '1',
-      }).filter((req) => !req.cancelled);
-      expect(overdueTotals.length).toBeGreaterThan(0);
-      for (const req of overdueTotals) {
-        req.flush(slaPage([], overdueTotal));
-      }
-      render();
-    };
+    it('KPIs con polling cada 5 s, vencidos de la comuna con responsable y sin asignar', async () => {
+      await open(Role.Admin);
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
 
-    const flushAdminShell = () => {
-      flushAdminExtras();
+      flush(one('/api/report/kpis', { range: 'last24h' }), kpis());
+      const overdue = one('/api/report/sla', { status: 'VENCIDO', page: '0', size: '5' });
+      expect(overdue.request.params.has('assignee')).toBe(false);
+      flush(
+        overdue,
+        slaPage([alert(), alert({ requestId: 'r-11', assigneeId: null, assigneeName: null })]),
+      );
       flush(
         one('/api/requests', { assignee: 'none', open: 'true', sort: 'createdAt,asc' }),
         page([]),
       );
-    };
 
-    it('KPIs operativos con polling cada 5 s, vencidos de la comuna y sin asignar', async () => {
-      await open(Role.Admin);
-      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
-
-      flushOps(2);
-      const overdueList = one('/api/report/sla', { status: 'VENCIDO', page: '0', size: '5' });
-      expect(overdueList.request.params.has('assignee')).toBe(false);
-      flush(
-        overdueList,
-        slaPage([alert(), alert({ requestId: 'r-11', assigneeId: null, assigneeName: null })]),
-      );
-      flushAdminShell();
-
-      const admission = Array.from(element().querySelectorAll('.ops-tile')).find(
-        (tile) => tile.querySelector('dt')?.textContent === 'Pendientes de admisión',
+      const openTile = Array.from(element().querySelectorAll('.kpi-tile')).find(
+        (tile) => tile.querySelector('dt')?.textContent === 'Trámites abiertos',
       )!;
-      expect(text(admission.querySelector('.ops-tile__value'))).toBe('12');
+      expect(text(openTile.querySelector('.kpi-tile__value'))).toBe('26');
       expect(text(element().querySelector('.kpis'))).toContain('Se actualiza cada 5 s');
-      expect(text(element().querySelector('.kpis'))).toContain('26 abiertos');
       expect(
         element().querySelector<HTMLAnchorElement>('.kpis .home-link')!.getAttribute('href'),
       ).toBe('/reportes');
@@ -483,20 +441,18 @@ describe('HomeComponent', () => {
 
       vi.advanceTimersByTime(5_000);
       render();
-      flushOps(2);
-      // El polling es solo del resumen operativo (K8), no de las bandejas
-      expect(pending('/api/report/sla', { status: 'VENCIDO', page: '0', size: '5' })).toHaveLength(
-        0,
-      );
+      flush(one('/api/report/kpis'), kpis());
+      // El polling es solo de los KPIs (K8)
+      expect(pending('/api/report/sla')).toHaveLength(0);
       expect(pending('/api/requests')).toHaveLength(0);
     });
 
     it('Pausar detiene el polling y salir de /inicio también', async () => {
       await open(Role.Admin);
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
-      flushOps(0);
-      flush(one('/api/report/sla', { status: 'VENCIDO', page: '0', size: '5' }), slaPage([]));
-      flushAdminShell();
+      flush(one('/api/report/kpis'), kpis());
+      flush(one('/api/report/sla'), slaPage([]));
+      flush(one('/api/requests'), page([]));
 
       const pause = element().querySelector<HTMLButtonElement>('.kpis__actions button')!;
       pause.click();
@@ -508,7 +464,7 @@ describe('HomeComponent', () => {
 
       pause.click();
       render();
-      flushOps(0);
+      flush(one('/api/report/kpis'), kpis());
       await TestBed.inject(Router).navigateByUrl('/otra');
       vi.advanceTimersByTime(30_000);
       expect(pending('/api/report/kpis')).toHaveLength(0);
@@ -518,9 +474,7 @@ describe('HomeComponent', () => {
       await open(Role.Admin);
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
       unavailable(one('/api/report/kpis'));
-      // forkJoin cancela el sla size=1 al fallar kpis; no se puede flush de un request cancelado
-      unavailable(one('/api/report/sla', { status: 'VENCIDO', page: '0', size: '5' }));
-      flushAdminExtras();
+      unavailable(one('/api/report/sla'));
       flush(one('/api/requests'), page([request({ hasAssignee: false })]));
 
       expect(text(element().querySelector('.kpis'))).toContain('Indicadores no disponibles');
@@ -534,7 +488,7 @@ describe('HomeComponent', () => {
       vi.advanceTimersByTime(9_999);
       expect(pending('/api/report/kpis')).toHaveLength(0);
       vi.advanceTimersByTime(1);
-      flushOps(0);
+      flush(one('/api/report/kpis'), kpis());
       expect(announce).toHaveBeenCalledWith('Los indicadores se actualizaron nuevamente.');
     });
   });

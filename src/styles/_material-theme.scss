@@ -99,7 +99,8 @@ html {
 }
 
 .request-dialog,
-.procedure-type-dialog {
+.procedure-type-dialog,
+.admin-dialog {
   @include mat.dialog-overrides((
     container-shape: $radius-base,
   ));
