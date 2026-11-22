@@ -2,10 +2,10 @@
 export interface MqQueue {
   name: string;
   messages: number;
-  /** Listos (Ready) según RabbitMQ Management. */
-  messagesReady: number;
-  /** Entregados sin ACK (Unacked). */
-  messagesUnacked: number;
+  /** Listos (Ready). Opcional: una versión de mq-admin sin el desglose no lo envía. */
+  messagesReady?: number | null;
+  /** Entregados sin ACK (Unacked). Opcional por la misma razón. */
+  messagesUnacked?: number | null;
   consumers: number;
   durable: boolean;
   ttl: number | null;
@@ -23,6 +23,11 @@ export interface MqQueue {
 export function isLikelyDlq(queue: MqQueue): boolean {
   const name = queue.name.toLowerCase();
   return name.includes('dead') || name.includes('dlq') || name.endsWith('.dlx');
+}
+
+/** Topología de mensajería del sistema: mq-admin responde 409 si se intenta vaciar o eliminar. */
+export function isSystemQueue(queue: MqQueue): boolean {
+  return queue.name.startsWith('q.cmd.');
 }
 
 export function formatRate(rate: number | null | undefined): string {

@@ -1,46 +1,41 @@
 @use 'tokens' as *;
 
-$content-max-width: 1400px;
+$content-max-width: 1200px;
 
 .reports-layout {
   display: flex;
   flex-direction: column;
-  gap: $space-4;
+  gap: $space-6;
   max-width: $content-max-width;
   margin-inline: auto;
-  padding: $space-4;
+  padding: $space-6 $space-4;
 
   @media (min-width: $breakpoint-md) {
-    gap: $space-4;
-    padding: $space-4 $space-6;
+    padding: $space-8 $space-6;
   }
 
   @media (min-width: $breakpoint-lg) {
-    padding: $space-6 $space-8;
+    padding: $space-12;
   }
 }
 
 .reports-layout__head {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: $space-1;
 
   h1,
   p {
     margin: 0;
-  }
-
-  h1 {
-    font-size: calc(#{$font-h2} * var(--bd-text-scale, 1));
   }
 }
 
 .reports-layout__lead {
   max-width: $measure-body;
   color: var(--bd-text-muted);
-  font-size: calc(#{$font-body-sm} * var(--bd-text-scale, 1));
 }
 
+// Mismas pestañas que Auditoría
 .reports-layout__tabs {
   --mat-tab-active-label-text-color: var(--bd-primary);
   --mat-tab-active-focus-label-text-color: var(--bd-primary);
@@ -52,9 +47,9 @@ $content-max-width: 1400px;
   --mat-tab-inactive-hover-label-text-color: var(--bd-text);
   --mat-tab-inactive-focus-label-text-color: var(--bd-text);
   --mat-tab-divider-color: var(--bd-border);
-  --mat-tab-container-height: #{$size-touch-target};
+  --mat-tab-container-height: #{$size-touch-target + 4px};
 
-  margin-block-start: -$space-1;
+  margin-block-start: -$space-2;
 
   mat-icon {
     margin-inline-end: $space-2;
