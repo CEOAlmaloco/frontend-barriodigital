@@ -15,7 +15,7 @@ export interface ConfirmActionDialogData {
   danger?: boolean;
 }
 
-/** Confirmación genérica antes de vaciar, borrar o reenviar en el panel de mensajería. */
+/** Confirmación antes de vaciar, borrar, reiniciar o reenviar en el panel de mensajería. */
 @Component({
   selector: 'app-confirm-action-dialog',
   imports: [MatButton, MatDialogActions, MatDialogClose, MatDialogContent, MatDialogTitle],
@@ -29,7 +29,7 @@ export interface ConfirmActionDialogData {
       <button
         matButton="filled"
         type="button"
-        [attr.data-danger]="data.danger ? true : null"
+        [class.admin-button--danger]="data.danger"
         [mat-dialog-close]="true"
       >
         {{ data.confirmLabel || 'Confirmar' }}
@@ -41,10 +41,6 @@ export interface ConfirmActionDialogData {
       margin: 0;
       line-height: 1.5;
       max-width: 40rem;
-    }
-    button[data-danger='true'] {
-      --mat-filled-button-container-color: var(--bd-error);
-      --mat-filled-button-label-text-color: var(--bd-surface);
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -115,7 +115,7 @@ describe('Ruta /perfil', () => {
 describe.each([
   { path: 'tramites', selector: 'app-requests', allowed: ALL_ROLES },
   { path: 'tramites/req-1', route: 'tramites/:id', selector: 'app-request-detail', allowed: ALL_ROLES },
-  { path: 'administracion', selector: 'app-admin', heading: 'Panel de administración', allowed: ADMIN_ONLY },
+  { path: 'administracion', selector: 'app-admin', heading: 'Administración', allowed: ADMIN_ONLY },
   { path: 'auditoria', selector: 'app-audit', heading: 'Auditoría', allowed: OVERSIGHT },
 ])('Ruta /$path', ({ path, route, selector, heading, allowed }) => {
   let ctx: ReturnType<typeof setup>;

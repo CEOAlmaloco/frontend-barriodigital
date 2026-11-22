@@ -5,10 +5,13 @@ import { MAT_DIALOG_DEFAULT_OPTIONS, MatDialog, MatDialogRef } from '@angular/ma
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltip } from '@angular/material/tooltip';
 import { By } from '@angular/platform-browser';
+import { Router, provideRouter } from '@angular/router';
 import { Observable, Subject, Subscriber, firstValueFrom, of, throwError } from 'rxjs';
 
 import { CatalogService } from '../../core/catalog/catalog.service';
 import { ProcedureType } from '../../shared/models/procedure-type.model';
+import { KafkaAdminService } from '../../core/kafka/kafka-admin.service';
+import { MqAdminService } from '../../core/mq/mq-admin.service';
 import { AdminComponent } from './admin.component';
 import {
   ProcedureTypeDialogComponent,
@@ -50,7 +53,13 @@ describe('AdminComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AdminComponent],
       providers: [
+        provideRouter([{ path: '**', component: AdminComponent }]),
         { provide: CatalogService, useValue: service },
+        { provide: MqAdminService, useValue: { listQueues: () => of([]) } },
+        {
+          provide: KafkaAdminService,
+          useValue: { listTopics: () => of([]), listConsumerGroups: () => of([]) },
+        },
         {
           provide: MAT_DIALOG_DEFAULT_OPTIONS,
           useValue: { enterAnimationDuration: 0, exitAnimationDuration: 0 },
@@ -66,9 +75,10 @@ describe('AdminComponent', () => {
     element.querySelector<HTMLButtonElement>('button[aria-label="Actualizar catálogo"]');
   const quotas = (selector: string) =>
     Array.from(element.querySelectorAll(selector), (cell) => cell.textContent?.trim());
+  // El texto del botón sin su ícono: Material proyecta mat-icon fuera de .mdc-button__label
   const button = (label: string) =>
     Array.from(element.querySelectorAll<HTMLButtonElement>('button')).find(
-      (item) => item.textContent?.trim() === label,
+      (item) => (item.querySelector('.mdc-button__label') ?? item).textContent?.trim() === label,
     )!;
   const dialogRef = () =>
     TestBed.inject(MatDialog).openDialogs[0] as MatDialogRef<
@@ -103,17 +113,17 @@ describe('AdminComponent', () => {
 
   it('mantiene encabezado y creación disponibles durante una única carga inicial', async () => {
     await render(() => new Subject<ProcedureType[]>());
-    expect(text()).toContain('Panel de administración');
+    expect(text()).toContain('Administración');
     expect(text()).toContain('RabbitMQ');
     expect(text()).toContain('Kafka');
     expect(button('Nuevo tipo').disabled).toBe(false);
     expect(refreshButton()?.disabled).toBe(true);
-    expect(element.querySelector('.admin__refresh-icon--spinning')).toBeNull();
+    expect(element.querySelector('.admin-section__refresh-icon--spinning')).toBeNull();
     fixture.componentInstance['refresh']();
     expect(element.querySelector('mat-progress-spinner')?.getAttribute('aria-label')).toBe(
       'Cargando tipos de trámite',
     );
-    expect(element.querySelector('.admin__table')).toBeNull();
+    expect(element.querySelector('.admin-section__table')).toBeNull();
     expect(service.getProcedures).toHaveBeenCalledTimes(1);
     await open('create');
     expect(dialogRef().componentInstance['data']).toEqual({ mode: 'create' });
@@ -126,7 +136,9 @@ describe('AdminComponent', () => {
 
   it('ofrece reintento explícito, reemplaza el error por spinner y evita consultas duplicadas', async () => {
     await render(() => throwError(() => new Error('sin red')));
-    expect(text()).toContain('No pudimos cargar los tipos de trámite. Intenta nuevamente.');
+    expect(text()).toContain('No pudimos cargar los tipos de trámite');
+    expect(text()).toContain('Revisa tu conexión e inténtalo de nuevo.');
+    expect(element.querySelector('app-admin-state')?.getAttribute('role')).toBe('alert');
     expect(refreshButton()).toBeNull();
     expect(button('Reintentar')).toBeTruthy();
     expect(button('Nuevo tipo')).toBeTruthy();
@@ -137,7 +149,7 @@ describe('AdminComponent', () => {
     await fixture.whenStable();
     expect(element.querySelector('mat-progress-spinner')).not.toBeNull();
     expect(refreshButton()?.disabled).toBe(true);
-    expect(element.querySelector('.admin__refresh-icon--spinning')).toBeNull();
+    expect(element.querySelector('.admin-section__refresh-icon--spinning')).toBeNull();
     expect(text()).not.toContain('No pudimos cargar');
     expect(service.getProcedures).toHaveBeenCalledTimes(2);
     response.next(catalog);
@@ -149,7 +161,7 @@ describe('AdminComponent', () => {
 
   it('muestra vacío sin duplicar la acción de creación', async () => {
     await render(() => of([]));
-    expect(text()).toContain('Todavía no hay tipos de trámite registrados.');
+    expect(text()).toContain('Todavía no hay tipos de trámite registrados');
     expect(button('Nuevo tipo').disabled).toBe(false);
     expect(refreshButton()).not.toBeNull();
   });
@@ -157,15 +169,14 @@ describe('AdminComponent', () => {
   it('presenta tabla y tarjetas con código, nombre, estado, cupo y plazo en el orden recibido', async () => {
     await render();
     expect(Array.from(element.querySelectorAll('th'), (cell) => cell.textContent?.trim())).toEqual([
-      'Código',
-      'Nombre',
+      'Tipo',
       'Estado',
       'Cupo diario',
-      'Cupo disponible hoy',
+      'Disponible hoy',
       'Plazo de atención',
       'Acciones',
     ]);
-    for (const selector of ['.admin__table', '.admin__cards']) {
+    for (const selector of ['.admin-section__table', '.admin-section__cards']) {
       const container = element.querySelector(selector)!;
       expect(container.textContent).toContain('Bache en calle');
       expect(container.textContent).toContain('Servicio histórico');
@@ -181,9 +192,12 @@ describe('AdminComponent', () => {
       ).toEqual(['Editar Bache en calle (bache)', 'Editar Servicio histórico (historico)']);
     }
     expect(quotas('td.mat-column-disponible')).toEqual(['3', 'Sin límite']);
-    expect(quotas('.admin__fields > div:nth-child(4) dd')).toEqual(['3', 'Sin límite']);
+    expect(quotas('.admin-section__fields > div:nth-child(2) dd')).toEqual(['3', 'Sin límite']);
     expect(quotas('td.mat-column-plazo')).toEqual(['10 días hábiles', 'Sin plazo']);
-    expect(quotas('.admin__fields > div:last-child dd')).toEqual(['10 días hábiles', 'Sin plazo']);
+    expect(quotas('.admin-section__fields > div:last-child dd')).toEqual([
+      '10 días hábiles',
+      'Sin plazo',
+    ]);
     expect(element.querySelector('mat-checkbox')).toBeNull();
   });
 
@@ -230,8 +244,8 @@ describe('AdminComponent', () => {
     await render(() => of(received));
     const expected = cases.map(([, , label]) => label);
     expect(quotas('td.mat-column-disponible')).toEqual(expected);
-    expect(quotas('.admin__fields > div:nth-child(4) dd')).toEqual(expected);
-    expect(quotas('.admin__badge').every((label) => label === 'Inactivo')).toBe(true);
+    expect(quotas('.admin-section__fields > div:nth-child(2) dd')).toEqual(expected);
+    expect(quotas('.admin-badge').every((label) => label === 'Inactivo')).toBe(true);
     expect(
       Array.from(element.querySelectorAll<HTMLButtonElement>('button[aria-label^="Editar"]')).every(
         (edit) => !edit.disabled,
@@ -258,18 +272,18 @@ describe('AdminComponent', () => {
     fixture.componentInstance['refresh']();
     await fixture.whenStable();
     expect(refreshButton()?.disabled).toBe(true);
-    expect(trigger.querySelector('.admin__refresh-icon--spinning')).not.toBeNull();
+    expect(trigger.querySelector('.admin-section__refresh-icon--spinning')).not.toBeNull();
     expect(service.getProcedures).toHaveBeenCalledTimes(2);
     expect(element.querySelectorAll('mat-progress-spinner')).toHaveLength(1);
     expect(quotas('td.mat-column-disponible')).toEqual(['3', 'Sin límite']);
-    expect(quotas('.admin__fields > div:nth-child(4) dd')).toEqual(['3', 'Sin límite']);
+    expect(quotas('.admin-section__fields > div:nth-child(2) dd')).toEqual(['3', 'Sin límite']);
     response.next([{ ...catalog[0], remainingQuota: 0 }]);
     response.complete();
     await fixture.whenStable();
     expect(quotas('td.mat-column-disponible')).toEqual(['Agotado']);
-    expect(quotas('.admin__fields > div:nth-child(4) dd')).toEqual(['Agotado']);
+    expect(quotas('.admin-section__fields > div:nth-child(2) dd')).toEqual(['Agotado']);
     expect(refreshButton()?.disabled).toBe(false);
-    expect(trigger.querySelector('.admin__refresh-icon--spinning')).toBeNull();
+    expect(trigger.querySelector('.admin-section__refresh-icon--spinning')).toBeNull();
     expect(element.querySelector('mat-progress-spinner')).toBeNull();
     expect(document.activeElement).toBe(trigger);
     expect(service.createProcedure).not.toHaveBeenCalled();
@@ -283,7 +297,7 @@ describe('AdminComponent', () => {
     service.getProcedures.mockReturnValue(failedResponse);
     refreshButton()!.click();
     await fixture.whenStable();
-    expect(element.querySelector('.admin__refresh-icon--spinning')).not.toBeNull();
+    expect(element.querySelector('.admin-section__refresh-icon--spinning')).not.toBeNull();
     failedResponse.error(new Error('sin red'));
     await fixture.whenStable();
     expect(text()).toContain(
@@ -291,14 +305,14 @@ describe('AdminComponent', () => {
     );
     expect(refreshButton()).toBeNull();
     expect(fixture.componentInstance['isRefreshing']()).toBe(false);
-    expect(element.querySelectorAll('.admin__error')).toHaveLength(1);
+    expect(element.querySelectorAll('.admin-section__notice')).toHaveLength(1);
     expect(
       Array.from(element.querySelectorAll('button')).filter(
         (item) => item.textContent?.trim() === 'Reintentar',
       ),
     ).toHaveLength(1);
     expect(quotas('td.mat-column-disponible')).toEqual(['3', 'Sin límite']);
-    expect(quotas('.admin__fields > div:nth-child(4) dd')).toEqual(['3', 'Sin límite']);
+    expect(quotas('.admin-section__fields > div:nth-child(2) dd')).toEqual(['3', 'Sin límite']);
     fixture.componentInstance['refresh']();
     expect(service.getProcedures).toHaveBeenCalledTimes(2);
     const response = new Subject<ProcedureType[]>();
@@ -313,10 +327,10 @@ describe('AdminComponent', () => {
     response.next([]);
     response.complete();
     await fixture.whenStable();
-    expect(text()).toContain('Todavía no hay tipos de trámite registrados.');
-    expect(element.querySelector('.admin__table')).toBeNull();
-    expect(element.querySelector('.admin__cards')).toBeNull();
-    expect(element.querySelector('.admin__error')).toBeNull();
+    expect(text()).toContain('Todavía no hay tipos de trámite registrados');
+    expect(element.querySelector('.admin-section__table')).toBeNull();
+    expect(element.querySelector('.admin-section__cards')).toBeNull();
+    expect(element.querySelector('.admin-section__notice')).toBeNull();
     expect(refreshButton()?.disabled).toBe(false);
     expect(service.createProcedure).not.toHaveBeenCalled();
     expect(service.updateProcedure).not.toHaveBeenCalled();
@@ -374,9 +388,11 @@ describe('AdminComponent', () => {
         undefined,
         { duration: 3000 },
       );
-      expect(element.querySelector('.admin__table')?.textContent).toContain('Bache en calle');
+      expect(element.querySelector('.admin-section__table')?.textContent).toContain(
+        'Bache en calle',
+      );
       expect(
-        element.querySelector('.admin__feedback--compact mat-progress-spinner'),
+        element.querySelector('.admin-section__status--compact mat-progress-spinner'),
       ).not.toBeNull();
       reload.error(new Error('falló GET'));
       await fixture.whenStable();
@@ -385,9 +401,11 @@ describe('AdminComponent', () => {
           ? 'El tipo se creó, pero no pudimos actualizar el catálogo.'
           : 'Los cambios se guardaron, pero no pudimos actualizar el catálogo.';
       expect(text()).toContain(message);
-      expect(element.querySelectorAll('.admin__error')).toHaveLength(1);
+      expect(element.querySelectorAll('.admin-section__notice')).toHaveLength(1);
       expect(refreshButton()).toBeNull();
-      expect(element.querySelector('.admin__cards')?.textContent).toContain('Servicio histórico');
+      expect(element.querySelector('.admin-section__cards')?.textContent).toContain(
+        'Servicio histórico',
+      );
       service.getProcedures
         .mockReturnValueOnce(throwError(() => new Error('todavía sin red')))
         .mockReturnValue(of([]));
@@ -463,23 +481,118 @@ describe('AdminComponent', () => {
     await fixture.whenStable();
     refreshButton()!.click();
     await fixture.whenStable();
-    expect(element.querySelector('.admin__refresh-icon--spinning')).not.toBeNull();
+    expect(element.querySelector('.admin-section__refresh-icon--spinning')).not.toBeNull();
     const ref = await open('create');
     const closed = firstValueFrom(ref.afterClosed());
     ref.close({ kind: 'saved', mode: 'create' });
     await closed;
     await fixture.whenStable();
     expect(responses[1].closed).toBe(true);
-    expect(element.querySelector('.admin__refresh-icon--spinning')).toBeNull();
+    expect(element.querySelector('.admin-section__refresh-icon--spinning')).toBeNull();
     expect(refreshButton()?.disabled).toBe(true);
     responses[2].next(catalog);
     responses[1].next([]);
     await fixture.whenStable();
-    expect(element.querySelector('.admin__table')?.textContent).toContain('Bache en calle');
+    expect(element.querySelector('.admin-section__table')?.textContent).toContain('Bache en calle');
     await open('edit');
     fixture.destroy();
     expect(responses[2].closed).toBe(true);
     expect(service.createProcedure).not.toHaveBeenCalled();
     expect(service.updateProcedure).not.toHaveBeenCalled();
+  });
+  it('filtra por código o nombre y por estado, con conteo y opción de limpiar', async () => {
+    await render();
+    const search = element.querySelector<HTMLInputElement>('input[type="search"]')!;
+    const rows = () => quotas('td.mat-column-tipo .admin-section__name');
+    search.value = 'HIST';
+    search.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    expect(rows()).toEqual(['Servicio histórico']);
+    expect(text()).toContain('1 tipo');
+    search.value = 'bache';
+    search.dispatchEvent(new Event('input'));
+    button('Inactivos').click();
+    await fixture.whenStable();
+    expect(rows()).toEqual([]);
+    expect(text()).toContain('Ningún tipo coincide con la búsqueda o el filtro');
+    button('Limpiar búsqueda y filtro').click();
+    await fixture.whenStable();
+    expect(rows()).toEqual(['Bache en calle', 'Servicio histórico']);
+    expect(text()).toContain('2 tipos');
+    expect(search.value).toBe('');
+  });
+
+  it('marca como aviso el cupo agotado sin tratarlo como error', async () => {
+    await render(() => of([{ ...catalog[0], remainingQuota: 0 }, catalog[1]]));
+    const tile = Array.from(element.querySelectorAll('[app-admin-kpi]')).find((item) =>
+      item.textContent?.includes('Cupo agotado hoy'),
+    )!;
+    expect(tile.querySelector('dt')?.textContent?.trim()).toBe('block Cupo agotado hoy');
+    expect(tile.querySelector('.kpi__icon')?.getAttribute('aria-hidden')).toBe('true');
+    expect(tile.querySelector('dd')?.textContent?.trim()).toBe('1');
+    expect(tile.getAttribute('data-tone')).toBe('accent');
+    expect(element.querySelector('[data-tone="error"]')).toBeNull();
+  });
+
+  it('abre la sección indicada en la URL y vuelve al catálogo con un valor desconocido', async () => {
+    await render();
+    const router = TestBed.inject(Router);
+    await router.navigate([], { queryParams: { section: 'rabbitmq' } });
+    await fixture.whenStable();
+    expect(element.querySelector('app-admin-mq-panel')).not.toBeNull();
+    expect(element.querySelector('a[mat-tab-link].mdc-tab--active')?.textContent).toContain(
+      'RabbitMQ',
+    );
+    await router.navigate([], { queryParams: { section: 'otra' } });
+    await fixture.whenStable();
+    expect(element.querySelector('app-admin-mq-panel')).toBeNull();
+    expect(text()).toContain('Tipos de trámite');
+  });
+
+  it.each([
+    [
+      503,
+      'El catálogo no está disponible',
+      'El servicio no responde. Inténtalo en unos minutos.',
+      true,
+    ],
+    [
+      403,
+      'No tienes acceso a esta sección',
+      'Tu rol no permite administrar esta información.',
+      false,
+    ],
+  ] as const)('sin datos y con %s explica la causa', async (status, heading, message, retry) => {
+    await render(() => throwError(() => new HttpErrorResponse({ status })));
+    const state = element.querySelector('app-admin-state')!;
+    expect(state.querySelector('h3')?.textContent?.trim()).toBe(heading);
+    expect(state.textContent).toContain(message);
+    expect(Boolean(button('Reintentar'))).toBe(retry);
+  });
+
+  it('distingue Inactivo con la paleta primaria y no rompe la celda sin plazo', async () => {
+    await render();
+    const badges = Array.from(element.querySelectorAll('td.mat-column-estado .admin-badge'));
+    expect(badges[0].classList).toContain('admin-badge--success');
+    expect(badges[1].classList).toContain('admin-badge--primary');
+    const empty = element.querySelectorAll('td.mat-column-plazo')[1];
+    expect(empty.classList).not.toContain('admin-section__none');
+    expect(empty.querySelector('.admin-section__none')?.textContent?.trim()).toBe('Sin plazo');
+  });
+
+  it('da tono solo a los indicadores con valor mayor que 0', async () => {
+    await render();
+    const tones = Array.from(element.querySelectorAll('[app-admin-kpi]'), (tile) =>
+      tile.getAttribute('data-tone'),
+    );
+    expect(tones).toEqual(['primary', 'success', 'secondary', null]);
+  });
+
+  it('deja en gris los indicadores en 0, como el mapa de trámites', async () => {
+    await render(() => of([catalog[1]]));
+    const toned = Array.from(element.querySelectorAll('[app-admin-kpi]'), (tile) =>
+      tile.hasAttribute('data-tone'),
+    );
+    expect(toned).toEqual([true, false, false, false]);
   });
 });
