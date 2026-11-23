@@ -64,6 +64,15 @@
       </span>
       <span class="cdk-visually-hidden"> — Mi perfil</span>
     </a>
-    <button matButton type="button" class="header__sign-out" (click)="signOut()">Cerrar sesión</button>
+    <button
+      matButton
+      type="button"
+      class="header__sign-out"
+      aria-label="Cerrar sesión"
+      (click)="signOut()"
+    >
+      <mat-icon aria-hidden="true">logout</mat-icon>
+      <span class="header__sign-out-label">Cerrar sesión</span>
+    </button>
   </div>
 </header>

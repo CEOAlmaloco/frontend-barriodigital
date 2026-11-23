@@ -28,8 +28,8 @@ describe('HeaderComponent', () => {
         provideRouter([
           { path: 'inicio', children: [] },
           { path: 'perfil', children: [] },
-          { path: 'reports', children: [{ path: 'map', children: [] }] },
-          { path: 'audit', children: [] },
+          { path: 'reportes', children: [{ path: 'mapa', children: [] }] },
+          { path: 'auditoria', children: [] },
         ]),
         { provide: AuthService, useValue: auth },
       ],
@@ -61,16 +61,16 @@ describe('HeaderComponent', () => {
   it('el Auditor no ve Administración', async () => {
     await render(Role.Auditor);
 
-    expect(element.querySelector('a[href="/admin"]')).toBeNull();
-    expect(element.querySelector('a[href="/reports"]')).not.toBeNull();
-    expect(element.querySelector('a[href="/audit"]')).not.toBeNull();
+    expect(element.querySelector('a[href="/administracion"]')).toBeNull();
+    expect(element.querySelector('a[href="/reportes"]')).not.toBeNull();
+    expect(element.querySelector('a[href="/auditoria"]')).not.toBeNull();
   });
 
   it('el Funcionario llega al mapa sin ver los indicadores de reportería', async () => {
     await render(Role.Funcionario);
 
-    expect(element.querySelector('a[href="/reports/map"]')).not.toBeNull();
-    expect(element.querySelector('a[href="/reports"]')).toBeNull();
+    expect(element.querySelector('a[href="/reportes/mapa"]')).not.toBeNull();
+    expect(element.querySelector('a[href="/reportes"]')).toBeNull();
   });
 
   it('sin un rol válido no ofrece navegación', async () => {
@@ -102,9 +102,20 @@ describe('HeaderComponent', () => {
       '/perfil',
     );
 
-    element.querySelector<HTMLButtonElement>('.header__sign-out')?.click();
+    const signOut = element.querySelector<HTMLButtonElement>('.header__sign-out');
+    expect(signOut?.getAttribute('aria-label')).toBe('Cerrar sesión');
+    expect(signOut?.textContent).toContain('Cerrar sesión');
+    signOut?.click();
     expect(logout).toHaveBeenCalled();
   });
+
+  it.each([Role.Admin, Role.Funcionario, Role.Auditor])(
+    'el personal %s tiene cierre de sesión visible en el header',
+    async (role) => {
+      await render(role);
+      expect(element.querySelector('.header__sign-out')).not.toBeNull();
+    },
+  );
 
   it('el botón de menú abre la navegación y lo indica con aria-expanded', async () => {
     const fixture = await render(Role.Vecino);
@@ -120,9 +131,9 @@ describe('HeaderComponent', () => {
   });
 
   it.each([
-    { label: 'Reportes', path: '/reports', role: Role.Admin },
-    { label: 'Auditoría', path: '/audit', role: Role.Auditor },
-    { label: 'Mapa de trámites', path: '/reports/map', role: Role.Funcionario },
+    { label: 'Reportes', path: '/reportes', role: Role.Admin },
+    { label: 'Auditoría', path: '/auditoria', role: Role.Auditor },
+    { label: 'Mapa de trámites', path: '/reportes/mapa', role: Role.Funcionario },
   ])('navegar a $label cierra el menú móvil y marca el enlace activo', async ({ path, role }) => {
     const fixture = await render(role);
     const toggle = element.querySelector<HTMLButtonElement>('.header__menu-toggle');

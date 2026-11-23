@@ -6,6 +6,8 @@ import { Observable, catchError, map, of, shareReplay, switchMap, tap } from 'rx
 
 import { Role, RoleAccess, resolveAccess } from '../../shared/models/role';
 import { apiScope, loginRequest } from './msal-config';
+import { SessionChannel } from './session-channel';
+import { clearUserData } from './session-cleanup';
 import { AccessTokenClaims, decodeJwtPayload } from './token-claims';
 
 /** `pending` mientras se pide el token; `claims` en null si no se pudo leer. */
@@ -14,6 +16,7 @@ type ClaimsState = { status: 'pending' } | { status: 'loaded'; claims: AccessTok
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly msal = inject(MsalService);
+  private readonly sessionChannel = inject(SessionChannel);
   private readonly interactionStatus = toSignal(inject(MsalBroadcastService).inProgress$, {
     initialValue: InteractionStatus.Startup,
   });
@@ -96,10 +99,28 @@ export class AuthService {
     });
   }
 
+  /** MSAL borra los tokens de su caché antes de redirigir a Entra ID. */
   logout(): void {
-    this.msal.logoutRedirect({ account: this.account() }).subscribe({
+    const account = this.account();
+    this.resetLocalState();
+    this.sessionChannel.post({ type: 'logout' });
+    this.msal.logoutRedirect({ account }).subscribe({
       error: (error: unknown) => console.error('No se pudo cerrar sesión en Microsoft Entra ID', error),
     });
+  }
+
+  /** Cierra la sesión solo en esta pestaña, cuando otra ya la cerró en Entra ID. */
+  async endLocalSession(): Promise<void> {
+    this.resetLocalState();
+    await this.msal.instance.clearCache();
+  }
+
+  private resetLocalState(): void {
+    clearUserData();
+    this.account.set(null);
+    this.claimsAccountId = null;
+    this.claimsState.set({ status: 'loaded', claims: null });
+    this.claims$ = of(null);
   }
 
   private syncAccount(account?: AccountInfo | null): void {

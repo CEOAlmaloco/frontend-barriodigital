@@ -1,0 +1,82 @@
+@use 'tokens' as *;
+
+$header-height: 64px;
+$logo-height: 32px;
+$content-max-width: 1040px;
+
+:host {
+  display: block;
+}
+
+.legal-layout__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-4;
+  height: $header-height;
+  padding-inline: $space-6;
+  background-color: var(--bd-surface);
+  border-bottom: $border-width solid var(--bd-border);
+
+  @media (min-width: $breakpoint-lg) {
+    padding-inline: $space-12;
+  }
+
+  @media print {
+    display: none;
+  }
+}
+
+.legal-layout__brand {
+  display: flex;
+  align-items: center;
+  // Área de clic más amplia que el dibujo sin mover el logo, igual que en el header de la app
+  padding: $space-1;
+  margin: -$space-1;
+  border-radius: $radius-base;
+
+  &:focus-visible {
+    outline: $border-width-strong solid var(--bd-primary-dark);
+    outline-offset: 2px;
+  }
+}
+
+.legal-layout__logo {
+  height: $logo-height;
+}
+
+.legal-layout {
+  display: flex;
+  flex-direction: column;
+  gap: $space-6;
+  max-width: $content-max-width;
+  margin-inline: auto;
+  padding: $space-6;
+
+  @media (min-width: $breakpoint-lg) {
+    padding: $space-8 $space-12 $space-12;
+  }
+}
+
+// Mismos tokens que las pestañas de Auditoría y Reportes
+.legal-layout__tabs {
+  --mat-tab-active-label-text-color: var(--bd-primary);
+  --mat-tab-active-focus-label-text-color: var(--bd-primary);
+  --mat-tab-active-hover-label-text-color: var(--bd-primary);
+  --mat-tab-active-indicator-color: var(--bd-primary);
+  --mat-tab-active-focus-indicator-color: var(--bd-primary);
+  --mat-tab-active-hover-indicator-color: var(--bd-primary);
+  --mat-tab-inactive-label-text-color: var(--bd-text-muted);
+  --mat-tab-inactive-hover-label-text-color: var(--bd-text);
+  --mat-tab-inactive-focus-label-text-color: var(--bd-text);
+  --mat-tab-divider-color: var(--bd-border);
+  --mat-tab-container-height: #{$size-touch-target + 4px};
+
+  mat-icon {
+    margin-inline-end: $space-2;
+  }
+
+  @media print {
+    display: none;
+  }
+}

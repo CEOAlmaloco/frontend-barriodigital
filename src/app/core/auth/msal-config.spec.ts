@@ -28,12 +28,12 @@ import {
 } from './msal-config';
 
 describe('provideMsal', () => {
-  it('guarda la sesión en localStorage para compartirla entre pestañas y ventanas', () => {
+  it('guarda la sesión en sessionStorage para que no sobreviva al cerrar el navegador', () => {
     TestBed.configureTestingModule({ providers: [provideRouter([]), provideMsal()] });
 
     const { cache } = TestBed.inject(MSAL_INSTANCE).getConfiguration();
 
-    expect(cache.cacheLocation).toBe(BrowserCacheLocation.LocalStorage);
+    expect(cache.cacheLocation).toBe(BrowserCacheLocation.SessionStorage);
   });
 });
 
@@ -47,6 +47,7 @@ describe('MSALInterceptorConfigFactory', () => {
     expect(config.interactionType).toBe(InteractionType.Redirect);
     expect(config.protectedResourceMap.get(`${environment.bffBaseUrl}/*`)).toEqual([apiScope]);
     expect(loginRequest.scopes).toContain(apiScope);
+    expect(loginRequest.prompt).toBe('select_account');
   });
 
   it('adjunta el accessToken, no el idToken, solo en las llamadas al BFF', () => {

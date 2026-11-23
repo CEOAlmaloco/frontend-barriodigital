@@ -1,14 +1,13 @@
-@use 'sass:color';
 @use 'tokens' as *;
-@use './admin-ops-kpis';
+@use './admin-section';
 
-$content-max-width: 1200px;
-$badge-tint: 0.12;
+// Las tablas de mensajería suman columnas: mismo ancho que el listado de trámites del personal
+$content-max-width: 1440px;
 
 .admin {
   display: flex;
   flex-direction: column;
-  gap: $space-8;
+  gap: $space-6;
   max-width: $content-max-width;
   min-width: 0;
   margin-inline: auto;
@@ -23,7 +22,11 @@ $badge-tint: 0.12;
   display: flex;
   flex-direction: column;
   gap: $space-2;
-  min-width: 0;
+}
+
+.admin__subtitle {
+  margin: 0;
+  color: var(--bd-text-muted);
 }
 
 .admin__tabs {
@@ -36,189 +39,7 @@ $badge-tint: 0.12;
 }
 
 .admin__panel {
+  display: block;
   min-width: 0;
-}
-
-.admin__text,
-.admin__empty,
-.admin__code {
-  color: var(--bd-text-muted);
-}
-
-.admin__catalog {
-  min-width: 0;
-}
-
-.admin__heading {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: $space-4;
-  margin-bottom: $space-6;
-
-  @media (min-width: $breakpoint-md) {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  button {
-    flex-shrink: 0;
-  }
-
-  h2:focus-visible {
-    outline: $border-width-strong solid $color-primary-dark;
-    outline-offset: $space-1;
-  }
-}
-
-.admin__actions {
-  display: flex;
-  flex-wrap: wrap;
-  flex-shrink: 0;
-  align-items: center;
-  gap: $space-2;
-  max-width: 100%;
-}
-
-.admin__refresh {
-  // El mismo tono neutro de la acción secundaria del header; Material conserva sus estados.
-  --mat-icon-button-icon-color: var(--bd-text-muted);
-  --mat-icon-button-state-layer-color: var(--bd-text-muted);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .admin__refresh-icon--spinning {
-    animation: admin-refresh-spin 1s linear infinite;
-  }
-}
-
-@keyframes admin-refresh-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.admin__feedback {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: $space-4;
-  padding-block: $space-12;
-
-  &[hidden] {
-    display: none;
-  }
-}
-
-.admin__feedback--compact {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: $space-2;
-  padding-block: 0;
-  margin-bottom: $space-4;
-}
-
-.admin__error {
-  font-size: $font-body-sm;
-  color: $color-error;
-}
-
-.admin__table-wrapper,
-.admin__item {
-  background-color: var(--bd-surface);
-  border-radius: $radius-base;
-  box-shadow: $shadow-elevated;
-}
-
-.admin__table-wrapper {
-  display: none;
-  max-width: 100%;
-  overflow-x: auto;
-
-  @media (min-width: $breakpoint-md) {
-    display: block;
-  }
-}
-
-.admin__table {
-  width: 100%;
-  table-layout: fixed;
-
-  td,
-  th {
-    overflow-wrap: anywhere;
-  }
-
-  .mat-column-acciones {
-    width: $space-8 * 4;
-
-    button {
-      white-space: nowrap;
-    }
-  }
-}
-
-.admin__name {
-  font-weight: $font-weight-semibold;
-  overflow-wrap: anywhere;
-}
-
-.admin__code {
-  font-size: $font-body-sm;
-  overflow-wrap: anywhere;
-  user-select: text;
-}
-
-.admin__cards {
-  display: flex;
-  flex-direction: column;
-  gap: $space-3;
-  padding: 0;
-  margin: 0;
-  list-style: none;
-
-  @media (min-width: $breakpoint-md) {
-    display: none;
-  }
-}
-
-.admin__item {
-  min-width: 0;
-  padding: $space-4;
-}
-
-.admin__fields {
-  display: grid;
-  gap: $space-3;
-  margin-block: $space-4;
-
-  dt {
-    font-size: $font-label;
-    color: var(--bd-text-muted);
-  }
-
-  dd {
-    margin: 0;
-    overflow-wrap: anywhere;
-  }
-}
-
-.admin__badge {
-  display: inline-block;
-  padding: $space-1 $space-2;
-  font-size: $font-label;
-  font-weight: $font-weight-medium;
-  border-radius: $radius-base;
-  color: $color-primary-dark;
-  background-color: color.change($color-primary-light, $alpha: $badge-tint * 2);
-}
-
-.admin__badge--active {
-  color: $color-success;
-  background-color: color.change($color-success, $alpha: $badge-tint);
-}
-
-.admin__muted {
-  color: var(--bd-text-muted);
+  padding-top: $space-2;
 }

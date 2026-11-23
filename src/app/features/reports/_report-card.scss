@@ -1,4 +1,5 @@
 @use 'tokens' as *;
+@use 'feedback-state';
 
 // Tarjeta de reportería, compartida por las pestañas Indicadores y Mapa de trámites
 @mixin report-card {
@@ -36,34 +37,9 @@
 
 // Aviso centrado cuando una fuente no responde, igual que el error del detalle del trámite
 @mixin report-state {
-  align-items: center;
-  padding-block: $space-12;
-  text-align: center;
-
-  h2 {
-    font-size: calc(#{$font-h2} * var(--bd-text-scale, 1));
-  }
-
-  p {
-    max-width: 46ch;
-    margin: 0;
-    color: var(--bd-text-muted);
-  }
+  @include feedback-state.feedback-state;
 }
 
 @mixin report-state-icon {
-  display: grid;
-  width: $space-12 + $space-2;
-  height: $space-12 + $space-2;
-  place-items: center;
-  border: $border-width solid var(--bd-container-border);
-  border-radius: 50%;
-  background-color: var(--bd-error-container);
-  color: var(--bd-error);
-
-  mat-icon {
-    width: 28px;
-    height: 28px;
-    font-size: 28px;
-  }
+  @include feedback-state.feedback-state-icon;
 }

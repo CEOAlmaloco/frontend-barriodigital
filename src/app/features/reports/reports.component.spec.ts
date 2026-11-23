@@ -99,7 +99,7 @@ describe('ReportsComponent', () => {
     render();
   };
 
-  async function open(url = '/reports') {
+  async function open(url = '/reportes') {
     kpiCalls = [];
     topCalls = [];
     announce = vi.fn();
@@ -111,7 +111,7 @@ describe('ReportsComponent', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
-          { path: 'reports', component: ReportsComponent },
+          { path: 'reportes', component: ReportsComponent },
           { path: 'otra', component: OtherComponent },
         ]),
         { provide: LiveAnnouncer, useValue: { announce } },
@@ -247,7 +247,7 @@ describe('ReportsComponent', () => {
     vi.useFakeTimers();
     render();
 
-    expect(TestBed.inject(Router).url).toBe('/reports?range=last7d');
+    expect(TestBed.inject(Router).url).toBe('/reportes?range=last7d');
     expect(kpiCalls.at(-1)?.range).toBe('last7d');
     expect(topCalls.at(-1)?.range).toBe('last7d');
     loadBoth(
@@ -262,16 +262,16 @@ describe('ReportsComponent', () => {
   });
 
   it('lee el período de la URL y corrige un valor inválido', async () => {
-    await open('/reports?range=last7d');
+    await open('/reportes?range=last7d');
     expect(kpiCalls[0].range).toBe('last7d');
     expect(
       element().querySelector('.mat-button-toggle-checked')?.textContent?.trim(),
     ).toBe('Últimos 7 días');
 
     vi.useRealTimers();
-    await harness.navigateByUrl('/reports?range=ayer');
+    await harness.navigateByUrl('/reportes?range=ayer');
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/reports');
+    expect(TestBed.inject(Router).url).toBe('/reportes');
   });
 
   it('si falla el período nuevo no muestra los datos del anterior como propios', async () => {

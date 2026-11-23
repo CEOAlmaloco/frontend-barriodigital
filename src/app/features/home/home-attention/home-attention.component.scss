@@ -1,0 +1,72 @@
+@use 'tokens' as *;
+
+:host {
+  display: block;
+  min-width: 0;
+
+  &:empty {
+    display: none;
+  }
+}
+
+// Avisos en banda, sin tarjeta: el mismo tratamiento que el aviso de datos desactualizados de los KPIs
+.attention {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attention__item {
+  --item-color: var(--bd-text-muted);
+  --item-container: var(--bd-surface);
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-1 $space-3;
+  padding: $space-2 $space-2 $space-2 $space-4;
+  border: $border-width solid var(--bd-container-border);
+  border-radius: $radius-base;
+  background-color: var(--item-container);
+}
+
+// Sin tono (fuente que no respondió): superficie con borde visible, sobre el fondo gris de la página
+.attention__item:not(.attention__item--accent, .attention__item--error) {
+  border-color: var(--bd-border);
+}
+
+.attention__item--accent {
+  --item-color: var(--bd-accent-text);
+  --item-container: var(--bd-accent-container);
+}
+
+.attention__item--error {
+  --item-color: var(--bd-error);
+  --item-container: var(--bd-error-container);
+}
+
+.attention__icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  color: var(--item-color);
+  font-size: 20px;
+}
+
+.attention__text {
+  flex: 1 1 16rem;
+  min-width: 0;
+  margin: 0;
+  font-weight: $font-weight-medium;
+}
+
+.attention__action {
+  margin-inline-start: auto;
+}
+
+button[aria-disabled='true'] {
+  cursor: progress;
+}

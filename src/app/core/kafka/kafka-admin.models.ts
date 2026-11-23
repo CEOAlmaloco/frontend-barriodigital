@@ -111,12 +111,35 @@ export interface KafkaReplayResponse {
   notAttempted: number;
 }
 
-export function totalLag(detail: KafkaGroupDetail): number {
-  return detail.topics.reduce(
-    (sum, topic) =>
-      sum + topic.partitions.reduce((inner, part) => inner + (part.lag ?? 0), 0),
-    0,
-  );
+export interface KafkaResetOffsetsPartition {
+  partition: number;
+  currentOffset: number | null;
+  targetOffset: number;
+  lagAfter: number;
+}
+
+export interface KafkaResetOffsetsResponse {
+  groupId: string;
+  topic: string;
+  strategy: KafkaResetOffsetsRequest['strategy'];
+  dryRun: boolean;
+  partitions: KafkaResetOffsetsPartition[];
+}
+
+/** Retraso conocido del grupo. Un `lag` null es una partición sin offset: no se cuenta como 0. */
+export interface KafkaGroupLag {
+  known: number;
+  unknownPartitions: number;
+  partitions: number;
+}
+
+export function groupLag(detail: KafkaGroupDetail): KafkaGroupLag {
+  const parts = detail.topics.flatMap((topic) => topic.partitions);
+  return {
+    known: parts.reduce((sum, part) => sum + (part.lag ?? 0), 0),
+    unknownPartitions: parts.filter((part) => part.lag === null).length,
+    partitions: parts.length,
+  };
 }
 
 export function flattenDltMessages(view: KafkaDltMessages): KafkaDltMessage[] {

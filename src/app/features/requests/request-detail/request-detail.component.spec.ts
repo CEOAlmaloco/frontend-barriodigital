@@ -739,13 +739,13 @@ describe('RequestDetailComponent', () => {
       '%s abre el historial del trámite por folio',
       async (role) => {
         await render(role);
-        expect(auditLink()?.getAttribute('href')).toBe('/audit?view=timeline&folio=BD-2026-000123');
+        expect(auditLink()?.getAttribute('href')).toBe('/auditoria?view=timeline&folio=BD-2026-000123');
       },
     );
 
     it('un trámite sin folio enlaza por su id', async () => {
       await render(Role.Auditor, () => of({ ...base, folio: null }));
-      expect(auditLink()?.getAttribute('href')).toBe('/audit?view=timeline&requestId=req-1');
+      expect(auditLink()?.getAttribute('href')).toBe('/auditoria?view=timeline&requestId=req-1');
     });
 
     it.each([Role.Funcionario, Role.Vecino])('%s no ve el enlace', async (role) => {
@@ -798,7 +798,7 @@ describe('RequestDetailComponent', () => {
       await render(Role.Vecino, () => of({ ...base, status: 'RESUELTO' }));
 
       expect(element.querySelector('app-request-satisfaction')).not.toBeNull();
-      expect(text()).toContain('¿Cómo fue la atención?');
+      expect(text()).toContain('¿Qué tan satisfecho estás con la atención de este trámite?');
       expect(hasButton('Enviar calificación')).toBe(true);
     });
 
@@ -840,7 +840,9 @@ describe('RequestDetailComponent', () => {
         }),
       );
 
-      element.querySelector<HTMLButtonElement>('[aria-label="Nota 5 de 5"]')!.click();
+      element
+        .querySelector<HTMLButtonElement>('[aria-label^="Nota 5 de 5"]')!
+        .click();
       await fixture.whenStable();
       await click(button('Enviar calificación'));
 

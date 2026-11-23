@@ -23,7 +23,7 @@ describe('AuditComponent', () => {
   async function open(path: string) {
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([{ path: 'audit', component: AuditComponent }]),
+        provideRouter([{ path: 'auditoria', component: AuditComponent }]),
         {
           provide: AuditService,
           useValue: { searchEvents: () => NEVER, getTimeline: () => NEVER },
@@ -39,7 +39,7 @@ describe('AuditComponent', () => {
   }
 
   it('reemplaza el placeholder con la búsqueda de eventos dentro del contenido principal', async () => {
-    await open('/audit');
+    await open('/auditoria');
     expect(element().querySelector('main h1')?.textContent).toBe('Auditoría');
     expect(element().querySelector('main app-audit-events')).not.toBeNull();
     expect(element().textContent).not.toContain('Kafka');
@@ -47,26 +47,26 @@ describe('AuditComponent', () => {
   });
 
   it('abre el timeline por la URL', async () => {
-    await open('/audit?view=timeline&folio=BD-2026-000412');
+    await open('/auditoria?view=timeline&folio=BD-2026-000412');
     expect(element().querySelector('app-audit-timeline')).not.toBeNull();
     expect(element().querySelector('app-audit-events')).toBeNull();
     expect(tab('Por trámite').getAttribute('aria-selected')).toBe('true');
   });
 
   it('cada pestaña recuerda su última consulta', async () => {
-    await open('/audit?actorRole=Admin');
-    await harness.navigateByUrl('/audit?view=timeline&folio=BD-2026-000412');
+    await open('/auditoria?actorRole=Admin');
+    await harness.navigateByUrl('/auditoria?view=timeline&folio=BD-2026-000412');
     await settle();
 
-    expect(TestBed.inject(Router).url).toBe('/audit?view=timeline&folio=BD-2026-000412');
-    expect(tab('Eventos').getAttribute('href')).toBe('/audit?actorRole=Admin');
+    expect(TestBed.inject(Router).url).toBe('/auditoria?view=timeline&folio=BD-2026-000412');
+    expect(tab('Eventos').getAttribute('href')).toBe('/auditoria?actorRole=Admin');
     expect(tab('Por trámite').getAttribute('href')).toBe(
-      '/audit?view=timeline&folio=BD-2026-000412',
+      '/auditoria?view=timeline&folio=BD-2026-000412',
     );
   });
 
   it('no tiene acciones de escritura', async () => {
-    await open('/audit');
+    await open('/auditoria');
     const labels = [...element().querySelectorAll('button')].map((b) => b.textContent ?? '');
     for (const word of ['Eliminar', 'Editar', 'Guardar', 'Crear']) {
       expect(labels.some((label) => label.includes(word))).toBe(false);

@@ -7,7 +7,6 @@ import {
   redirectAuthenticatedGuard,
   roleGuard,
 } from './core/auth/auth.guard';
-import { AuthenticatedLayoutComponent } from './core/layout/authenticated-layout.component';
 import { OVERSIGHT_ROLES, REPORTS_ROLES, REQUESTS_ROLES, Role } from './shared/models/role';
 
 export const routes: Routes = [
@@ -18,9 +17,45 @@ export const routes: Routes = [
     canActivate: [redirectAuthenticatedGuard],
     title: 'Iniciar sesión | BarrioDigital',
   },
+  // Información pública: se lee con o sin sesión
+  {
+    path: 'legal',
+    loadComponent: () =>
+      import('./features/legal/legal-layout/legal-layout.component').then(
+        (m) => m.LegalLayoutComponent,
+      ),
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'privacidad' },
+      {
+        path: 'privacidad',
+        loadComponent: () =>
+          import('./features/legal/privacy-notice/privacy-notice.component').then(
+            (m) => m.PrivacyNoticeComponent,
+          ),
+        title: 'Aviso de privacidad | BarrioDigital',
+      },
+      {
+        path: 'accesibilidad',
+        loadComponent: () =>
+          import('./features/legal/accessibility-statement/accessibility-statement.component').then(
+            (m) => m.AccessibilityStatementComponent,
+          ),
+        title: 'Declaración de accesibilidad | BarrioDigital',
+      },
+      {
+        path: 'condiciones-de-uso',
+        loadComponent: () =>
+          import('./features/legal/terms-of-use/terms-of-use.component').then(
+            (m) => m.TermsOfUseComponent,
+          ),
+        title: 'Condiciones de uso | BarrioDigital',
+      },
+    ],
+  },
+
   // Fuera del layout: sin un rol válido no hay navegación que mostrar
   {
-    path: 'no-access',
+    path: 'sin-acceso',
     canActivate: [authGuard, noAccessGuard],
     loadComponent: () =>
       import('./features/no-access/no-access.component').then((m) => m.NoAccessComponent),
@@ -29,7 +64,10 @@ export const routes: Routes = [
   // Rutas privadas: hijas del layout autenticado, que monta el header. accessGuard corre después de authGuard
   {
     path: '',
-    component: AuthenticatedLayoutComponent,
+    loadComponent: () =>
+      import('./core/layout/authenticated-layout.component').then(
+        (m) => m.AuthenticatedLayoutComponent,
+      ),
     canActivate: [authGuard],
     canActivateChild: [accessGuard],
     children: [
@@ -63,7 +101,7 @@ export const routes: Routes = [
         title: 'Detalle del trámite | BarrioDigital',
       },
       {
-        path: 'admin',
+        path: 'administracion',
         canActivate: [roleGuard],
         data: { roles: [Role.Admin] },
         loadComponent: () =>
@@ -71,7 +109,7 @@ export const routes: Routes = [
         title: 'Administración | BarrioDigital',
       },
       {
-        path: 'reports',
+        path: 'reportes',
         canActivate: [roleGuard],
         data: { roles: REPORTS_ROLES },
         loadComponent: () =>
@@ -83,13 +121,13 @@ export const routes: Routes = [
             path: '',
             pathMatch: 'full',
             canActivate: [roleGuard],
-            data: { roles: OVERSIGHT_ROLES, deniedRedirect: '/reports/map' },
+            data: { roles: OVERSIGHT_ROLES, deniedRedirect: '/reportes/mapa' },
             loadComponent: () =>
               import('./features/reports/reports.component').then((m) => m.ReportsComponent),
             title: 'Reportes | BarrioDigital',
           },
           {
-            path: 'map',
+            path: 'mapa',
             loadComponent: () =>
               import('./features/reports/report-map/report-map.component').then(
                 (m) => m.ReportMapComponent,
@@ -99,7 +137,7 @@ export const routes: Routes = [
         ],
       },
       {
-        path: 'audit',
+        path: 'auditoria',
         canActivate: [roleGuard],
         data: { roles: OVERSIGHT_ROLES },
         loadComponent: () =>
@@ -108,5 +146,11 @@ export const routes: Routes = [
       },
     ],
   },
+  // Rutas anteriores en inglés: los enlaces guardados siguen funcionando
+  { path: 'no-access', redirectTo: 'sin-acceso' },
+  { path: 'admin', redirectTo: 'administracion' },
+  { path: 'reports/map', redirectTo: 'reportes/mapa' },
+  { path: 'reports', redirectTo: 'reportes' },
+  { path: 'audit', redirectTo: 'auditoria' },
   { path: '**', redirectTo: '' },
 ];

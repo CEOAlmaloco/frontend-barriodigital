@@ -36,7 +36,10 @@
   --bd-brand-paper: var(--bd-surface);
 }
 
+// Columna: el pie del sitio queda al final aunque la página sea corta
 .app-shell {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
   background-color: var(--bd-background);
   color: var(--bd-text);
@@ -176,8 +179,8 @@ html[data-bd-contrast='dark'] {
 html[data-bd-contrast='dark'] .requests__card,
 html[data-bd-contrast='dark'] .requests__item,
 html[data-bd-contrast='dark'] .requests__table-wrapper,
-html[data-bd-contrast='dark'] .admin__table-wrapper,
-html[data-bd-contrast='dark'] .admin__item,
+html[data-bd-contrast='dark'] .admin-section__table,
+html[data-bd-contrast='dark'] .admin-section__card,
 html[data-bd-contrast='dark'] .login__panel,
 html[data-bd-contrast='dark'] .request-detail__card,
 html[data-bd-contrast='dark'] .reports__card,
@@ -185,8 +188,8 @@ html[data-bd-contrast='dark'] .audit__card,
 html[data-bd-contrast='high'] .requests__card,
 html[data-bd-contrast='high'] .requests__item,
 html[data-bd-contrast='high'] .requests__table-wrapper,
-html[data-bd-contrast='high'] .admin__table-wrapper,
-html[data-bd-contrast='high'] .admin__item,
+html[data-bd-contrast='high'] .admin-section__table,
+html[data-bd-contrast='high'] .admin-section__card,
 html[data-bd-contrast='high'] .login__panel,
 html[data-bd-contrast='high'] .request-detail__card,
 html[data-bd-contrast='high'] .reports__card,
@@ -194,8 +197,8 @@ html[data-bd-contrast='high'] .audit__card,
 html[data-bd-contrast='negative'] .requests__card,
 html[data-bd-contrast='negative'] .requests__item,
 html[data-bd-contrast='negative'] .requests__table-wrapper,
-html[data-bd-contrast='negative'] .admin__table-wrapper,
-html[data-bd-contrast='negative'] .admin__item,
+html[data-bd-contrast='negative'] .admin-section__table,
+html[data-bd-contrast='negative'] .admin-section__card,
 html[data-bd-contrast='negative'] .login__panel,
 html[data-bd-contrast='negative'] .request-detail__card,
 html[data-bd-contrast='negative'] .reports__card,

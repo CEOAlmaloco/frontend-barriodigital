@@ -78,6 +78,14 @@ const WORK_KEY_PREFIX = 'bd.profile.work.';
 const PHOTO_MAX_BYTES = 512 * 1024;
 const PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
+/** Personal en equipos compartidos: no persiste foto/prefs de trabajo al cerrar el navegador. */
+function profileStore(role: Role | null): Storage {
+  if (role === Role.Admin || role === Role.Funcionario || role === Role.Auditor) {
+    return sessionStorage;
+  }
+  return localStorage;
+}
+
 const NAV: readonly NavItem[] = [
   {
     id: 'cuenta',
@@ -137,28 +145,28 @@ const SHORTCUTS: readonly Shortcut[] = [
   {
     label: 'Administración',
     description: 'Tipos de trámite y cupos',
-    path: '/admin',
+    path: '/administracion',
     icon: 'settings',
     roles: [Role.Admin],
   },
   {
     label: 'Reportes',
     description: 'Indicadores y plazos',
-    path: '/reports',
+    path: '/reportes',
     icon: 'insights',
     roles: OVERSIGHT_ROLES,
   },
   {
     label: 'Mapa de trámites',
     description: 'Ubicación de casos abiertos',
-    path: '/reports/map',
+    path: '/reportes/mapa',
     icon: 'map',
     roles: REPORTS_ROLES,
   },
   {
     label: 'Auditoría',
     description: 'Historial interno de eventos',
-    path: '/audit',
+    path: '/auditoria',
     icon: 'history',
     roles: OVERSIGHT_ROLES,
   },
@@ -419,7 +427,7 @@ export class ProfileComponent {
       }
       const key = this.photoKey();
       if (key) {
-        localStorage.setItem(key, dataUrl);
+        profileStore(this.role()).setItem(key, dataUrl);
       }
       this.photoUrl.set(dataUrl);
       this.snackBar.open('Imagen actualizada.', 'Cerrar', { duration: 3000 });
@@ -430,7 +438,7 @@ export class ProfileComponent {
   protected clearPhoto(): void {
     const key = this.photoKey();
     if (key) {
-      localStorage.removeItem(key);
+      profileStore(this.role()).removeItem(key);
     }
     this.photoUrl.set(null);
   }
@@ -481,7 +489,7 @@ export class ProfileComponent {
     this.workPrefs.set(next);
     const storageKey = this.workKey();
     if (storageKey) {
-      localStorage.setItem(storageKey, JSON.stringify(next));
+      profileStore(this.role()).setItem(storageKey, JSON.stringify(next));
     }
   }
 
@@ -508,7 +516,7 @@ export class ProfileComponent {
     if (!key) {
       return;
     }
-    const stored = localStorage.getItem(key);
+    const stored = profileStore(this.role()).getItem(key);
     if (stored?.startsWith('data:image/')) {
       this.photoUrl.set(stored);
     }
@@ -520,7 +528,7 @@ export class ProfileComponent {
       return;
     }
     try {
-      const raw = localStorage.getItem(key);
+      const raw = profileStore(this.role()).getItem(key);
       if (!raw) {
         return;
       }

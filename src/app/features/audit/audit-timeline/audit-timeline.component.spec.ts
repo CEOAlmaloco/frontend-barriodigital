@@ -87,12 +87,12 @@ describe('AuditTimelineComponent', () => {
     await settle();
   };
 
-  async function open(path = '/audit?view=timeline') {
+  async function open(path = '/auditoria?view=timeline') {
     calls = [];
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
-          { path: 'audit', component: AuditTimelineComponent },
+          { path: 'auditoria', component: AuditTimelineComponent },
           { path: 'tramites/:id', component: OtherComponent },
         ]),
         {
@@ -132,13 +132,13 @@ describe('AuditTimelineComponent', () => {
     await open();
     await search('  bd-2026-000412 ');
 
-    expect(url()).toBe('/audit?view=timeline&folio=BD-2026-000412');
+    expect(url()).toBe('/auditoria?view=timeline&folio=BD-2026-000412');
     expect(calls[0].params).toEqual({ folio: 'BD-2026-000412', page: '0', size: '50' });
     expect(input().value).toBe('BD-2026-000412');
   });
 
   it('muestra el historial en orden, con actor, intervención y datos originales', async () => {
-    await open('/audit?view=timeline&folio=BD-2026-000412');
+    await open('/auditoria?view=timeline&folio=BD-2026-000412');
     await respond(calls[0], pageOf([created, rejected]));
 
     const items = [...element().querySelectorAll('.timeline__item')];
@@ -163,7 +163,7 @@ describe('AuditTimelineComponent', () => {
   });
 
   it('descarta la respuesta de un folio anterior que llega después del nuevo', async () => {
-    await open('/audit?view=timeline&folio=BD-2026-000001');
+    await open('/auditoria?view=timeline&folio=BD-2026-000001');
     await search('BD-2026-000412');
 
     expect(calls.length).toBe(2);
@@ -178,7 +178,7 @@ describe('AuditTimelineComponent', () => {
   });
 
   it('Actualizar vuelve a consultar el mismo folio', async () => {
-    await open('/audit?view=timeline&folio=BD-2026-000412');
+    await open('/auditoria?view=timeline&folio=BD-2026-000412');
     await respond(calls[0], pageOf([created]));
 
     const refresh = [...element().querySelectorAll('button')].find((b) =>
@@ -203,7 +203,7 @@ describe('AuditTimelineComponent', () => {
   });
 
   it('distingue el historial vacío del error', async () => {
-    await open('/audit?view=timeline&folio=BD-2026-000999');
+    await open('/auditoria?view=timeline&folio=BD-2026-000999');
     await respond(calls[0], pageOf([]));
     expect(text()).toContain('Sin eventos registrados');
     expect(text()).toContain(
@@ -213,8 +213,8 @@ describe('AuditTimelineComponent', () => {
   });
 
   it('consulta por requestId cuando el trámite no tiene folio', async () => {
-    await open('/audit?view=timeline&requestId=7B6E1D44-2A18-4C90-9F01-88AA11BB22CC');
-    expect(url()).toBe('/audit?view=timeline&requestId=7b6e1d44-2a18-4c90-9f01-88aa11bb22cc');
+    await open('/auditoria?view=timeline&requestId=7B6E1D44-2A18-4C90-9F01-88AA11BB22CC');
+    expect(url()).toBe('/auditoria?view=timeline&requestId=7b6e1d44-2a18-4c90-9f01-88aa11bb22cc');
     expect(calls[0].params['requestId']).toBe('7b6e1d44-2a18-4c90-9f01-88aa11bb22cc');
     expect(calls[0].params['folio']).toBeUndefined();
 
@@ -223,7 +223,7 @@ describe('AuditTimelineComponent', () => {
   });
 
   it('muestra el servicio no disponible y reintenta el mismo folio', async () => {
-    await open('/audit?view=timeline&folio=BD-2026-000412');
+    await open('/auditoria?view=timeline&folio=BD-2026-000412');
     calls[0].subject.error(new HttpErrorResponse({ status: 503 }));
     await settle();
 
@@ -238,13 +238,13 @@ describe('AuditTimelineComponent', () => {
   });
 
   it('pagina un historial largo y conserva la página anterior mientras carga', async () => {
-    await open('/audit?view=timeline&folio=BD-2026-000412');
+    await open('/auditoria?view=timeline&folio=BD-2026-000412');
     await respond(calls[0], pageOf([created], { totalElements: 60, totalPages: 2 }));
     expect(element().querySelector('mat-paginator')).not.toBeNull();
     // Solo la última página dice cuál es el último estado registrado
     expect(element().querySelector('h2#timeline-title app-request-status-badge')).toBeNull();
 
-    await harness.navigateByUrl('/audit?view=timeline&folio=BD-2026-000412&page=1');
+    await harness.navigateByUrl('/auditoria?view=timeline&folio=BD-2026-000412&page=1');
     await settle();
     expect(calls[1].params['page']).toBe('1');
     expect(element().querySelectorAll('.timeline__item').length).toBe(1);

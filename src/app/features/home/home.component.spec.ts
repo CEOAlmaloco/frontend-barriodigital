@@ -433,7 +433,7 @@ describe('HomeComponent', () => {
       expect(text(element().querySelector('.kpis'))).toContain('Se actualiza cada 5 s');
       expect(
         element().querySelector<HTMLAnchorElement>('.kpis .home-link')!.getAttribute('href'),
-      ).toBe('/reports');
+      ).toBe('/reportes');
       const vencidos = block('Plazos vencidos')!;
       expect(text(vencidos)).toContain('Toda la comuna');
       expect(text(vencidos)).toContain('Pedro Soto');
@@ -520,19 +520,19 @@ describe('HomeComponent', () => {
       expect(text(list)).toContain('Funcionario con licencia médica');
       expect(text(list)).toContain('BD-2026-000097');
       expect(list.querySelector<HTMLAnchorElement>('.list__row')!.getAttribute('href')).toBe(
-        '/audit?view=timeline&folio=BD-2026-000097',
+        '/auditoria?view=timeline&folio=BD-2026-000097',
       );
       expect(
         decodeURIComponent(
           list.querySelector<HTMLAnchorElement>('.home-link')!.getAttribute('href')!,
         ),
-      ).toBe('/audit?actorRole=Admin&eventType=request.status-changed,request.contact-logged');
+      ).toBe('/auditoria?actorRole=Admin&eventType=request.status-changed,request.contact-logged');
 
       const last = block('Últimos eventos')!;
       expect(text(last)).not.toContain('Hoy');
       expect(last.querySelector('.list__attention, .event__reason')).toBeNull();
       expect(last.querySelector<HTMLAnchorElement>('.home-link')!.getAttribute('href')).toBe(
-        '/audit?period=all',
+        '/auditoria?period=all',
       );
       // Solo lectura: ninguna acción sobre trámites
       expect(text(element())).not.toMatch(/Tomar|Asignar|Rechazar/);

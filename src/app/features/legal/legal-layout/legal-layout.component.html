@@ -1,0 +1,38 @@
+<header class="legal-layout__header">
+  <a class="legal-layout__brand" routerLink="/" aria-label="BarrioDigital, ir al inicio">
+    <app-brand-logo class="legal-layout__logo" variant="horizontal" decorative />
+  </a>
+
+  @if (isAuthenticated()) {
+    <a matButton="outlined" routerLink="/inicio">Ir al inicio</a>
+  } @else {
+    <a matButton="filled" routerLink="/">Iniciar sesión</a>
+  }
+</header>
+
+<main class="legal-layout">
+  <nav
+    mat-tab-nav-bar
+    class="legal-layout__tabs"
+    aria-label="Documentos de información"
+    mat-stretch-tabs="false"
+    [tabPanel]="panel"
+  >
+    @for (page of pages; track page.path) {
+      <a
+        mat-tab-link
+        [routerLink]="page.path"
+        routerLinkActive
+        #link="routerLinkActive"
+        [active]="link.isActive"
+      >
+        <mat-icon aria-hidden="true">{{ page.icon }}</mat-icon>
+        {{ page.label }}
+      </a>
+    }
+  </nav>
+
+  <mat-tab-nav-panel #panel>
+    <router-outlet />
+  </mat-tab-nav-panel>
+</main>

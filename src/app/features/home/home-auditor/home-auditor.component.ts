@@ -58,7 +58,7 @@ const RECENT: AuditEventsQuery = { ...DEFAULT_EVENTS_QUERY, period: 'all', size:
           tone="success"
           heading="Sin intervenciones en los últimos 7 días"
         />
-        <a homeBlockFooter class="home-link" routerLink="/audit" [queryParams]="interventionsLink">
+        <a homeBlockFooter class="home-link" routerLink="/auditoria" [queryParams]="interventionsLink">
           Ver en Auditoría<mat-icon aria-hidden="true">arrow_forward</mat-icon>
         </a>
       </app-home-block>
@@ -73,7 +73,7 @@ const RECENT: AuditEventsQuery = { ...DEFAULT_EVENTS_QUERY, period: 'all', size:
       >
         <app-home-audit-list [events]="recentPage()?.content ?? []" [now]="recentAt()" />
         <app-home-state homeBlockEmpty icon="history" heading="Aún no hay eventos registrados" />
-        <a homeBlockFooter class="home-link" routerLink="/audit" [queryParams]="recentLink">
+        <a homeBlockFooter class="home-link" routerLink="/auditoria" [queryParams]="recentLink">
           Ver todos los eventos<mat-icon aria-hidden="true">arrow_forward</mat-icon>
         </a>
       </app-home-block>
